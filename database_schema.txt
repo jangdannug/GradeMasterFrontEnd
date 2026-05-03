@@ -1,0 +1,286 @@
+================================================================================
+DEPED GRADEMASTER - DATABASE SCHEMA & DATA OVERVIEW
+================================================================================
+
+SYSTEM OVERVIEW:
+This system manages learner grades, class records, and faculty assignments
+following DepEd Order 8, s. 2015. Data is persisted via browser LocalStorage.
+
+--------------------------------------------------------------------------------
+1. PERSISTENCE LAYER (LocalStorage Keys)
+--------------------------------------------------------------------------------
+The following keys are used to store JSON-serialized state:
+
+- gradeMaster_users: System accounts (Admin, Teacher, Adviser).
+- gradeMaster_registrations: Pending faculty applications.
+- gradeMaster_sections: Grade levels and sections.
+- gradeMaster_students: Roster of all enrolled learners.
+- gradeMaster_baseSubjects: Global grading templates.
+- gradeMaster_subjects: Active subject instances assigned to classes.
+- gradeMaster_savedClassRecords: Snapshots of submitted/verified grades.
+- gradeMaster_classRecordLogs: Audit trail for submissions and edit requests.
+- gradeMaster_transmutation: Grade mapping table.
+- gradeMaster_descriptors: Verbal descriptors for performance levels.
+- gradeMaster_currentUser: Current session state.
+
+--------------------------------------------------------------------------------
+2. LOGICAL ENTITIES & STRUCTURE
+--------------------------------------------------------------------------------
+
+[USERS]
+Structure:
+- id (string): Unique identifier (e.g., 'u-12345').
+- name (string): Full name in uppercase.
+- username (string): Login credential.
+- password (string): Plaintext password (for mock/prototype purposes).
+- role (enum): 'admin' | 'teacher' | 'adviser'.
+- assignedSectionId (string?): ID of the section if user is an Adviser.
+- assignedSubjectIds (string[]): Array of subject IDs taught by this user.
+- status (string): 'active' | 'inactive'.
+
+[STUDENTS]
+Structure:
+- id (string): Unique learner identifier.
+- name (string): FORMAT: "LAST NAME, FIRST NAME MIDDLE NAME".
+- gender (enum): 'MALE' | 'FEMALE'.
+- gradeLevel (string): '7' through '12'.
+- schoolYear (string): e.g., '2025-2026'.
+- sectionId (string?): Current class assignment (null if unassigned).
+- grades (Object): Nested map: subjectId -> quarter -> categoryGrades.
+
+[SECTIONS]
+Structure:
+- id (string): Unique section ID.
+- name (string): Section name (e.g., 'RUBY').
+- gradeLevel (string): '7' - '12'.
+- adviserId (string?): User ID of the assigned adviser.
+- schoolYear (string): Active school year.
+- region/division/schoolName: Metadata for reports.
+
+[BASE SUBJECTS (Templates)]
+Structure:
+- id (string): Unique template ID.
+- code (string): Subject code (e.g., 'G10-MATH').
+- name (string): Descriptive name.
+- gradeLevel (string): Intended grade level.
+- categories (Object[]): Array of {id, name, weight (decimal), columnNames[]}.
+
+[ACTIVE SUBJECTS (Instances)]
+Structure:
+- id (string): Unique instance ID.
+- baseSubjectId (string): Link to parent template.
+- sectionId (string): Class where this subject is taught.
+- teacherId (string): User ID of the teacher.
+- teacherName (string): Cached name of the teacher.
+- categories (Object[]): Current structure (cloned from template).
+
+[CLASS RECORDS (Snapshots)]
+Structure:
+- id (string): Composite ID (sectionId-subjectId-Q[quarter]).
+- sectionId/subjectId/quarter: Identifiers.
+- submittedAt (ISO Date): Timestamp of submission.
+- isLocked (boolean): True if teacher cannot edit.
+- isVerified (boolean): True if approved by adviser/finalized.
+- teacherId/teacherName: Snapshot of faculty at time of submission.
+- studentSnapshots (Object[]): Snapshot of all student grades at submission.
+
+[CLASS RECORD LOGS]
+Structure:
+- id (string): Unique log ID.
+- recordId (string): Associated Class Record.
+- action (string): 'submitted' | 'edit_requested' | 'edit_approved' | 'locked'.
+- status (string): 'pending' | 'approved' | 'rejected' | 'resolved'.
+- reason (string?): User-provided explanation for the action.
+
+--------------------------------------------------------------------------------
+3. RELATIONSHIP MAP
+--------------------------------------------------------------------------------
+
+- ONE Section HAS MANY Students (via student.sectionId).
+- ONE User (Adviser) MANAGES ONE Section (via section.adviserId).
+- ONE Section HAS MANY Subjects (via subject.sectionId).
+- ONE User (Teacher) MANAGES MANY Subjects (via subject.teacherId).
+- ONE BaseSubject DEFINES MANY Subjects (via subject.code + subject.gradeLevel).
+- ONE Subject + ONE Quarter GENERATES ONE ClassRecord.
+
+--------------------------------------------------------------------------------
+4. GRADING LOGIC (DepEd Order 8, s. 2015)
+--------------------------------------------------------------------------------
+
+Calculations are performed in 'src/utils/calculations.js':
+1. Sum of scores per Category.
+2. Total scores divided by HPS (Highest Possible Score) = Percentage Score (PS).
+3. PS * Category Weight = Weighted Score (WS).
+4. Sum of all WS = Initial Grade.
+5. Initial Grade lookup in Transmutation Table = Quarterly Grade.
+6. Yearly Grade = Average of Verified Quarters.
+
+--------------------------------------------------------------------------------
+5. INITIAL SEED DATA (MOCK)
+--------------------------------------------------------------------------------
+
+Default Users:
+- admin (Admin Control)
+- teacher1 (Juan Dela Cruz)
+- teacher2 (Maria Santos - Adviser of RUBY)
+- teacher3 (Pedro Penduko)
+
+Default Sections:
+- RUBY (Grade 10)
+- DIAMOND (Grade 10)
+- ROSE (Grade 9)
+- SAMPAGUITA (Grade 9)
+
+Default Subject Templates:
+- G10-MATH (Mathematics)
+- G10-SCI (Science)
+- G10-ENG (English)
+- G10-FIL (Filipino)
+- G9-AP (Araling Panlipunan)
+
+Grading Weights (Standard):
+- Written Works: 20-30%
+- Performance Tasks: 40-50%
+- Quarterly Assessment: 20%
+
+================================================================================
+6. SUPABASE / POSTGRESQL SCHEMA (SQL)
+================================================================================
+Paste the following into the Supabase SQL Editor to initialize your tables:
+
+-- Create custom types
+CREATE TYPE user_role AS ENUM ('admin', 'teacher', 'adviser');
+
+-- 1. Profiles Table (Extends Supabase Auth)
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  role user_role DEFAULT 'teacher',
+  assigned_section_id UUID, -- Circular ref handled later
+  assigned_subject_ids UUID[] DEFAULT '{}',
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Sections Table
+CREATE TABLE sections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  grade_level TEXT NOT NULL,
+  adviser_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  school_year TEXT NOT NULL,
+  region TEXT,
+  division TEXT,
+  school_id TEXT,
+  school_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. Students Table
+CREATE TABLE students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('MALE', 'FEMALE')),
+  grade_level TEXT NOT NULL,
+  school_year TEXT NOT NULL,
+  section_id UUID REFERENCES sections(id) ON DELETE SET NULL,
+  grades JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Base Subjects (Templates)
+CREATE TABLE base_subjects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  grade_level TEXT NOT NULL,
+  categories JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Active Subject Instances
+CREATE TABLE subjects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  base_subject_id UUID REFERENCES base_subjects(id) ON DELETE CASCADE,
+  section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
+  teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  teacher_name TEXT,
+  categories JSONB DEFAULT '[]'::jsonb,
+  code TEXT,
+  grade_level TEXT,
+  name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. Class Records (Snapshots)
+CREATE TABLE class_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  section_id UUID REFERENCES sections(id),
+  subject_id UUID REFERENCES subjects(id),
+  quarter INTEGER NOT NULL,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_locked BOOLEAN DEFAULT TRUE,
+  is_verified BOOLEAN DEFAULT FALSE,
+  teacher_id UUID REFERENCES profiles(id),
+  teacher_name TEXT,
+  student_snapshots JSONB DEFAULT '[]'::jsonb,
+  unique_record_key TEXT UNIQUE -- Format: sectionId-subjectId-Q[quarter]
+);
+
+-- 7. Class Record Logs
+CREATE TABLE class_record_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  record_id UUID REFERENCES class_records(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  reason TEXT,
+  actor_name TEXT, 
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. Transmutation Table
+CREATE TABLE transmutation_table (
+  id SERIAL PRIMARY KEY,
+  min NUMERIC(5,2) NOT NULL,
+  max NUMERIC(5,2) NOT NULL,
+  transmuted_value INTEGER NOT NULL
+);
+
+-- 9. Descriptors
+CREATE TABLE descriptors (
+  id SERIAL PRIMARY KEY,
+  min INTEGER NOT NULL,
+  max INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  color TEXT NOT NULL
+);
+
+-- Update profiles to link to sections properly (FK constraint)
+ALTER TABLE profiles 
+ADD CONSTRAINT fk_assigned_section 
+FOREIGN KEY (assigned_section_id) REFERENCES sections(id);
+
+--------------------------------------------------------------------------------
+7. SUPABASE AI PROMPT
+--------------------------------------------------------------------------------
+If you want to use the Supabase AI assistant to generate or refine these tables,
+copy and paste the following prompt into the "Chat" or "SQL Editor" AI:
+
+"I am building a School Grade Management system (DepEd Order 8, s. 2015). 
+Create a PostgreSQL schema for the following entities:
+1. profiles: id (uuid, references auth.users), name (text), username (text, unique), role (enum: admin, teacher, adviser), assigned_section_id (uuid), assigned_subject_ids (uuid array), status (text).
+2. sections: id (uuid, pk), name (text), grade_level (text), adviser_id (uuid, fk to profiles), school_year (text), region (text), division (text), school_id (text), school_name (text).
+3. students: id (uuid, pk), name (text), gender (text), grade_level (text), school_year (text), section_id (uuid, fk to sections), grades (jsonb).
+4. base_subjects (Templates): id (uuid, pk), code (text), name (text), grade_level (text), categories (jsonb).
+5. subjects (Active Instances): id (uuid, pk), base_subject_id (uuid, fk to base_subjects), section_id (uuid, fk to sections), teacher_id (uuid, fk to profiles), teacher_name (text), categories (jsonb), code (text), grade_level (text), name (text).
+6. class_records (Snapshots): id (uuid, pk), section_id (uuid, fk to sections), subject_id (uuid, fk to subjects), quarter (int), submitted_at (timestamptz), is_locked (bool), is_verified (bool), teacher_id (uuid, fk to profiles), teacher_name (text), student_snapshots (jsonb).
+7. class_record_logs: id (uuid, pk), record_id (uuid, fk to class_records), action (text), status (text), reason (text), actor_name (text), created_at (timestamptz).
+8. transmutation_table: min (numeric), max (numeric), transmuted_value (int).
+9. descriptors: min (int), max (int), label (text), color (text).
+
+Include appropriate ON DELETE CASCADE/SET NULL constraints and handle circular dependencies between profiles and sections."
+
+================================================================================
+END OF SCHEMA
+================================================================================

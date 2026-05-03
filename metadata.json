@@ -1,0 +1,6 @@
+{
+  "name": "DepEd GradeMaster",
+  "description": "A comprehensive grading system following DepEd Order 8, s. 2015 with Class Record input for teachers and automated report card computation for advisers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
