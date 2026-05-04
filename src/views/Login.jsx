@@ -1,48 +1,40 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { LogIn, ShieldCheck, UserCircle, GraduationCap, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
-import { USERS } from '../mockData';
 import { RegistrationView } from './RegistrationView';
+// UPDATED: Use the new authService
+import authService from '../services/authService';
 
-export function Login({ users, registrations, onLogin, onRegister }) {
+export function Login({ onLogin, onRegister }) {
+  const navigate = useNavigate();
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // UPDATED: Async login flow
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Mocking auth logic
-    setTimeout(() => {
-      const user = users.find(u => u.username === username);
-      const registration = registrations.find(r => r.username === username);
+    try {
+      const profile = await authService.login(username, password);
+      onLogin(profile);
 
-      if (user) {
-        if (user.password === password) {
-          onLogin(user);
-        } else {
-          setError('Incorrect password. Please try again.');
-          setIsLoading(false);
-        }
-      } else if (registration) {
-        if (registration.status === 'pending') {
-          setError('Your application is still pending administrator approval.');
-        } else if (registration.status === 'rejected') {
-          setError('Your application was rejected. Please contact the admin.');
-        } else {
-          setError('Invalid credentials.');
-        }
-        setIsLoading(false);
+      // UPDATED: Redirect based on role
+      if (profile.role === 'teacher') {
+        navigate('/record');
       } else {
-        setError('Username not found. Please register first.');
-        setIsLoading(false);
+        navigate('/'); // Admin and Adviser go to Dashboard
       }
-    }, 800);
+    } catch (err) {
+      setError(err); // UPDATED: Catch service error message
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isRegistering) {

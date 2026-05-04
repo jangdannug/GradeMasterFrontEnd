@@ -5,6 +5,8 @@ import { Header } from './components/layout/Header';
 import { useGradeManagement } from './hooks/useGradeManagement';
 import { INITIAL_SECTION } from './mockData';
 import { ShieldAlert, Loader2 } from 'lucide-react';
+import ProtectedRoute from './components/ProtectedRoute'; // UPDATED
+import authService from './services/authService'; // UPDATED
 import { theme } from './theme';
 
 // Lazy loaded views for code splitting
@@ -70,38 +72,15 @@ export default function App() {
   } = useGradeManagement();
 
   const [selectedQuarter, setSelectedQuarter] = useState(1);
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('gradeMaster_currentUser');
-    if (!saved) return null;
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return null;
-    }
-  });
+  // UPDATED: Now uses authService profile retrieval
+  const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
 
   const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
-    const savedUser = localStorage.getItem('gradeMaster_currentUser');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        return (user.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
-      } catch {
-        return '';
-      }
-    }
-    return '';
+    const user = authService.getProfile();
+    return (user?.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  React.useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('gradeMaster_currentUser', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('gradeMaster_currentUser');
-    }
-  }, [currentUser]);
 
   const userHasSubjects = useMemo(() => {
     if (!currentUser) return false;
@@ -165,43 +144,37 @@ export default function App() {
     </div>
   );
 
-  if (!currentUser) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <Login 
-          users={users}
-          registrations={registrations}
-          onRegister={registerUser} 
-          onLogin={(user) => {
-            setCurrentUser(user);
-            if (user.assignedSubjectIds && user.assignedSubjectIds.length > 0) {
-              setSelectedSubjectId(user.assignedSubjectIds[0]);
-            }
-          }} 
-        />
-      </Suspense>
-    );
-  }
-
   return (
     <Router>
+      <Suspense fallback={<PageLoader />}>
+        {!currentUser ? (
+          <Login // UPDATED: Removed mock users/registrations props
+            onRegister={registerUser}
+            onLogin={(user) => {
+              setCurrentUser(user);
+              if (user.assignedSubjectIds && user.assignedSubjectIds.length > 0) {
+                setSelectedSubjectId(user.assignedSubjectIds[0]);
+              }
+            }}
+          />
+        ) : (
       <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
         <Sidebar 
           isOpen={isSidebarOpen} 
           setIsOpen={setIsSidebarOpen} 
-          onLogout={() => {
+          onLogout={() => { // UPDATED: Centralized logout
+            authService.logout();
             setCurrentUser(null);
-            localStorage.removeItem('gradeMaster_currentUser');
           }}
-          role={currentUser.role} 
+          role={currentUser?.role} 
           hasSubjects={userHasSubjects}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden relative">
-          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={
-              <>
+              // UPDATED: All routes except login are protected
+              <ProtectedRoute roles={['admin', 'teacher', 'adviser']}>
                 <Header 
                   section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
                   userName={currentUser.name}
@@ -228,11 +201,11 @@ export default function App() {
                     onDeleteSubject={deleteSubject}
                   />
                 </div>
-              </>
+              </ProtectedRoute>
             } />
 
             <Route path="/admin" element={
-              currentUser.role === 'admin' ? (
+              <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
                     section={INITIAL_SECTION} 
@@ -259,11 +232,11 @@ export default function App() {
                     />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
             
             <Route path="/record" element={
-              currentUser.role !== 'admin' ? (
+              <ProtectedRoute roles={['teacher', 'adviser']}>
                 <>
                   <Header 
                     section={sections.find(s => s.id === selectedSubject?.sectionId) || INITIAL_SECTION}
@@ -325,11 +298,11 @@ export default function App() {
                     )}
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/submitted-records" element={
-              (currentUser.role === 'teacher' || currentUser.role === 'adviser') ? (
+              <ProtectedRoute roles={['teacher', 'adviser']}>
                 <>
                   <Header 
                     section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
@@ -351,11 +324,11 @@ export default function App() {
                     />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/report" element={
-              (currentUser.role === 'adviser' || currentUser.role === 'admin') ? (
+              <ProtectedRoute roles={['admin', 'adviser']}>
                 <>
                   <Header 
                     section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
@@ -372,11 +345,11 @@ export default function App() {
                     />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/transmutation-table" element={
-              currentUser.role === 'admin' ? (
+              <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
                     section={INITIAL_SECTION} 
@@ -386,11 +359,11 @@ export default function App() {
                     <TransmutationSettings data={transmutationTable} onSave={setTransmutationTable} />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/descriptors" element={
-              currentUser.role === 'admin' ? (
+              <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
                     section={INITIAL_SECTION} 
@@ -400,11 +373,11 @@ export default function App() {
                     <DescriptorSettings data={descriptors} onSave={setDescriptors} />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/templates" element={
-              currentUser.role === 'admin' ? (
+              <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
                     section={INITIAL_SECTION} 
@@ -425,11 +398,11 @@ export default function App() {
                     />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
 
             <Route path="/student-management" element={
-              currentUser.role === 'admin' || currentUser.role === 'adviser' ? (
+              <ProtectedRoute roles={['admin', 'adviser']}>
                 <>
                   <Header 
                     section={INITIAL_SECTION} 
@@ -446,12 +419,13 @@ export default function App() {
                     />
                   </div>
                 </>
-              ) : <Navigate to="/" />
+              </ProtectedRoute>
             } />
           </Routes>
-          </Suspense>
         </main>
       </div>
+        )}
+      </Suspense>
     </Router>
   );
 }
