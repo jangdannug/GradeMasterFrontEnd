@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import studentService from '../../services/studentService';
+import subjectService from '../../services/subjectService';
 import authService from '../../services/authService';
 
 export function useStudentGrades(subjects, setSubjects, setBaseSubjects, currentUser) {
@@ -62,93 +63,239 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }));
   };
 
-  const updateCategoryTitle = (subjectId, categoryId, title) => {
-    // This should ideally update the base subject template via API
-    // and then trigger a sync for all instances.
-    // For now, we'll update locally and assume a separate API call for base subjects.
+  const updateCategoryTitle = async (subjectId, categoryId, title) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, name: title } : c) };
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, name: title } : c) };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to update category title via API:", error);
+      }
+    }
   };
 
-  const updateCategoryWeight = (subjectId, categoryId, weight) => {
-    // This should ideally update the base subject template via API
+  const updateCategoryWeight = async (subjectId, categoryId, weight) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c) };
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c) };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to update category weight via API:", error);
+      }
+    }
   };
 
-  const updateColumnName = (subjectId, categoryId, index, name) => {
-    // This should ideally update the base subject template via API
+  const updateColumnName = async (subjectId, categoryId, index, name) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: baseSub.categories.map(c => {
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.map(c => {
           if (c.id !== categoryId) return c;
           const names = [...(c.columnNames || [])];
           names[index] = name;
           return { ...c, columnNames: names };
         }) };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to update column name via API:", error);
+      }
+    }
   };
 
-  const addCategory = (subjectId) => {
-    // This should ideally update the base subject template via API
+  const addCategory = async (subjectId) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: [...baseSub.categories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }] };
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: [...baseSub.categories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }] };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to add category via API:", error);
+      }
+    }
   };
 
-  const removeCategory = (subjectId, categoryId) => {
-    // This should ideally update the base subject template via API
-    setBaseSubjects(prev => prev.map(baseSub => baseSub.id === subjectId ? { ...baseSub, categories: baseSub.categories.filter(c => c.id !== categoryId) } : baseSub));
-    // TODO: Add API call to update base subject
-  };
-
-  const addColumnToCategory = (subjectId, categoryId) => {
-    // This should ideally update the base subject template via API
+  const removeCategory = async (subjectId, categoryId) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c) };
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.filter(c => c.id !== categoryId) };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to remove category via API:", error);
+      }
+    }
   };
 
-  const removeColumnFromCategory = (subjectId, categoryId) => {
-    // This should ideally update the base subject template via API
+  const addColumnToCategory = async (subjectId, categoryId) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
-      if (baseSub.id === subjectId) { // Assuming subjectId here refers to baseSubjectId
-        return { ...baseSub, categories: baseSub.categories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c) };
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c) };
+        updatedSubject = updated;
+        return updated;
       }
       return baseSub;
     }));
-    // TODO: Add API call to update base subject
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to add column via API:", error);
+      }
+    }
   };
 
-  const resetSubjectTemplate = (id) => {
-    // This should ideally update the base subject template via API
-    setBaseSubjects(prev => prev.map(baseSub => baseSub.id === id ? { ...baseSub, categories: [
+  const removeColumnFromCategory = async (subjectId, categoryId) => {
+    // Update local state first for immediate UI feedback
+    let updatedSubject = null;
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        const updated = { ...baseSub, categories: baseSub.categories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c) };
+        updatedSubject = updated;
+        return updated;
+      }
+      return baseSub;
+    }));
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(subjectId, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(updatedSubject.categories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to remove column via API:", error);
+      }
+    }
+  };
+
+  const resetSubjectTemplate = async (id) => {
+    const defaultCategories = [
       { id: `cat-ww-${Date.now()}`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
       { id: `cat-pt-${Date.now()}`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
       { id: `cat-qa-${Date.now()}`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['1'] },
-    ] } : baseSub));
-    // TODO: Add API call to update base subject
+    ];
+
+    // Get the subject being reset to access its name, code, gradeLevel
+    let updatedSubject = null;
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === id) {
+        const updated = { ...baseSub, categories: defaultCategories };
+        updatedSubject = updated;
+        return updated;
+      }
+      return baseSub;
+    }));
+
+    // Persist to backend with complete template data
+    if (updatedSubject) {
+      try {
+        await subjectService.updateBaseSubject(id, {
+          name: updatedSubject.name,
+          code: updatedSubject.code,
+          gradeLevel: updatedSubject.gradeLevel,
+          categoriesJson: JSON.stringify(defaultCategories),
+          pushToInstances: false
+        });
+      } catch (error) {
+        console.error("Failed to reset subject template via API:", error);
+      }
+    }
   };
 
   // Function for enrolling a student to a specific section (used by AdvisoryDashboardView)

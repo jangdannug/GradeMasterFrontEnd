@@ -114,7 +114,7 @@ export function StudentManagementView({
           <p className="text-sm font-medium text-slate-500">The student has been successfully added to the system. You can now assign them to a section.</p>
         </div>
         <button 
-          onClick={() => { setIsSubmitted(false); setActiveTab('manage'); }} // Go to manage tab after enrolling
+          onClick={() => { setIsSubmitted(false); setActiveTab('enroll'); }} // Go back to enroll tab after enrolling
           className={`${theme.styles.button} ${theme.styles.buttonPrimary} w-full`}
         >
           Enroll Another Student

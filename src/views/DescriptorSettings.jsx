@@ -6,6 +6,10 @@ import { Save, Plus, Trash2 } from 'lucide-react';
 export function DescriptorSettings({ data, onSave }) {
   const [localData, setLocalData] = React.useState([...data]);
 
+  React.useEffect(() => {
+    setLocalData([...data]);
+  }, [data]);
+
   const handleUpdate = (index, field, value) => {
     const next = [...localData];
     next[index] = { ...next[index], [field]: value };

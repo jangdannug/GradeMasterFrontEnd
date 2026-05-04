@@ -22,11 +22,11 @@ export function useSubjectManagement(users, setUsers) {
         const data = await subjectService.getBaseSubjects();
         // Normalize PascalCase from backend to camelCase for frontend
         const normalizedData = data.map(item => ({
-          id: item.Id,
-          name: item.Name,
-          code: item.Code,
-          gradeLevel: item.GradeLevel,
-          categories: item.CategoriesJson ? JSON.parse(item.CategoriesJson) : []
+          id: item.id || item.Id,
+          name: item.name || item.Name,
+          code: item.code || item.Code,
+          gradeLevel: item.gradeLevel || item.GradeLevel,
+          categories: item.categoriesJson ? JSON.parse(item.categoriesJson) : (item.categories ? (typeof item.categories === 'string' ? JSON.parse(item.categories) : item.categories) : (item.CategoriesJson ? JSON.parse(item.CategoriesJson) : []))
         }));
         setBaseSubjects(normalizedData);
       } catch (error) {
@@ -80,13 +80,13 @@ export function useSubjectManagement(users, setUsers) {
   const createBaseSubject = async (data) => {
     try {
       const response = await subjectService.createBaseSubject(data);
-      // Normalize the response from PascalCase to camelCase
+      // Normalize the response from backend to camelCase (handle both PascalCase and camelCase)
       const normalizedBaseSubject = {
-        id: response.Id,
-        name: response.Name,
-        code: response.Code,
-        gradeLevel: response.GradeLevel,
-        categories: response.CategoriesJson ? JSON.parse(response.CategoriesJson) : []
+        id: response.id || response.Id,
+        name: response.name || response.Name,
+        code: response.code || response.Code,
+        gradeLevel: response.gradeLevel || response.GradeLevel,
+        categories: response.categories ? (typeof response.categories === 'string' ? JSON.parse(response.categories) : response.categories) : (response.CategoriesJson ? JSON.parse(response.CategoriesJson) : [])
       };
       setBaseSubjects(prev => [...prev, normalizedBaseSubject]);
       return normalizedBaseSubject;
@@ -99,14 +99,17 @@ export function useSubjectManagement(users, setUsers) {
   const updateBaseSubject = async (id, data) => {
     try {
       const response = await subjectService.updateBaseSubject(id, data);
-      // Normalize the response from PascalCase to camelCase
+      // Normalize the response from backend to camelCase (handle both PascalCase and camelCase)
       const normalizedBaseSubject = {
-        id: response.template?.Id || response.Id,
-        name: response.template?.Name || response.Name,
-        code: response.template?.Code || response.Code,
-        gradeLevel: response.template?.GradeLevel || response.GradeLevel,
-        categories: response.template?.CategoriesJson ? JSON.parse(response.template.CategoriesJson) : 
-                   response.CategoriesJson ? JSON.parse(response.CategoriesJson) : []
+        id: response.id || response.template?.id || response.Id || response.template?.Id,
+        name: response.name || response.template?.name || response.Name || response.template?.Name,
+        code: response.code || response.template?.code || response.Code || response.template?.Code,
+        gradeLevel: response.gradeLevel || response.template?.gradeLevel || response.GradeLevel || response.template?.GradeLevel,
+        categories: (response.categories ? (typeof response.categories === 'string' ? JSON.parse(response.categories) : response.categories) : null) ||
+                   (response.template?.categories ? (typeof response.template.categories === 'string' ? JSON.parse(response.template.categories) : response.template.categories) : null) ||
+                   (response.CategoriesJson ? JSON.parse(response.CategoriesJson) : null) ||
+                   (response.template?.CategoriesJson ? JSON.parse(response.template.CategoriesJson) : null) ||
+                   []
       };
       setBaseSubjects(prev => prev.map(b => {
         if (b.id === id) {

@@ -9,7 +9,7 @@ import { useStudentGrades } from './grading/useStudentGrades';
 export function useGradeManagement(currentUser) {
   // Centralized State Composition
   const authState = useAuthManagement(currentUser);
-  const standardsState = useGradingStandards();
+  const standardsState = useGradingStandards(currentUser);
   const subjectsState = useSubjectManagement(authState.users, authState.setUsers);
 
   const sectionsState = useSectionManagement(
@@ -24,7 +24,8 @@ export function useGradeManagement(currentUser) {
   const gradingState = useStudentGrades(
     subjectsState.subjects, 
     subjectsState.setSubjects, 
-    subjectsState.setBaseSubjects
+    subjectsState.setBaseSubjects,
+    currentUser
   );
 
   const deleteUser = (id) => {
