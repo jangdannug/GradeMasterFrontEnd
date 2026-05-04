@@ -59,4 +59,14 @@ export const deleteStudent = async (id) => {
     }
 };
 
-export default { getStudents, getStudentById, createStudent, bulkUploadStudents, updateStudent, deleteStudent };
+export const assignStudentToSection = async (studentId, sectionId) => {
+    try {
+        // Assuming a PATCH or PUT endpoint to update a student's section
+        const response = await api.put(`/students/${studentId}/assign-section`, { sectionId });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to assign student to section';
+    }
+};
+
+export default { getStudents, getStudentById, createStudent, bulkUploadStudents, updateStudent, deleteStudent, assignStudentToSection };

@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_SUBJECTS } from '../mockData';
+import subjectService from '../services/subjectService';
 
 export function useSubjectManagement(users, setUsers) {
-  const [subjects, setSubjects] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_subjects')) || DEFAULT_SUBJECTS);
-  const [baseSubjects, setBaseSubjects] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_baseSubjects')) || []);
-
-  useEffect(() => localStorage.setItem('gradeMaster_subjects', JSON.stringify(subjects)), [subjects]);
-  useEffect(() => localStorage.setItem('gradeMaster_baseSubjects', JSON.stringify(baseSubjects)), [baseSubjects]);
+  const [subjects, setSubjects] = useState([]);
+  const [baseSubjects, setBaseSubjects] = useState([]);
 
   const syncInstancesWithTemplate = (updatedBase) => {
     setSubjects(prev => prev.map(sub => {

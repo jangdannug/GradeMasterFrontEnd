@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuthManagement } from './useAuthManagement';
-import { useGradingStandards } from './grading/useGradingStandards';
+import { useGradingStandards } from './grading/useGradingStandards'; // Import useGradingStandards
 import { useSectionManagement } from './grading/useSectionManagement';
 import { useSubjectManagement } from './grading/useSubjectManagement';
 import { useSubmissionManagement } from './grading/useSubmissionManagement';
 import { useStudentGrades } from './grading/useStudentGrades';
 
-export function useGradeManagement() {
+export function useGradeManagement(currentUser) {
   // Centralized State Composition
-  const authState = useAuthManagement();
+  const authState = useAuthManagement(currentUser);
   const standardsState = useGradingStandards();
   const subjectsState = useSubjectManagement(authState.users, authState.setUsers);
 
@@ -16,7 +16,8 @@ export function useGradeManagement() {
     authState.users, 
     authState.setUsers, 
     authState.registrations,
-    authState.setRegistrations
+    authState.setRegistrations,
+    currentUser
   );
 
   const submissionsState = useSubmissionManagement();

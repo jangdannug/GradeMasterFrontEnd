@@ -1,12 +1,46 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_SUBJECTS } from '../../mockData';
+import authService from '../../services/authService';
+import subjectService from '../../services/subjectService';
 
 export function useSubjectManagement(users, setUsers) {
-  const [subjects, setSubjects] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_subjects')) || DEFAULT_SUBJECTS);
-  const [baseSubjects, setBaseSubjects] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_baseSubjects')) || []);
+  const [subjects, setSubjects] = useState([]);
+  const [baseSubjects, setBaseSubjects] = useState([]);
+  const [baseSubjectsLoading, setBaseSubjectsLoading] = useState(false);
+  const [baseSubjectsError, setBaseSubjectsError] = useState(null);
 
-  useEffect(() => localStorage.setItem('gradeMaster_subjects', JSON.stringify(subjects)), [subjects]);
-  useEffect(() => localStorage.setItem('gradeMaster_baseSubjects', JSON.stringify(baseSubjects)), [baseSubjects]);
+  useEffect(() => {
+    localStorage.removeItem('gradeMaster_subjects');
+    localStorage.removeItem('gradeMaster_baseSubjects');
+  }, []);
+
+  // Fetch base subjects from API on mount only when authenticated
+  useEffect(() => {
+    const fetchBaseSubjects = async () => {
+      setBaseSubjectsLoading(true);
+      setBaseSubjectsError(null);
+      try {
+        const data = await subjectService.getBaseSubjects();
+        // Normalize PascalCase from backend to camelCase for frontend
+        const normalizedData = data.map(item => ({
+          id: item.Id,
+          name: item.Name,
+          code: item.Code,
+          gradeLevel: item.GradeLevel,
+          categories: item.CategoriesJson ? JSON.parse(item.CategoriesJson) : []
+        }));
+        setBaseSubjects(normalizedData);
+      } catch (error) {
+        console.error('Failed to fetch base subjects:', error);
+        setBaseSubjectsError(error.message);
+      } finally {
+        setBaseSubjectsLoading(false);
+      }
+    };
+
+    if (authService.isLoggedIn()) {
+      fetchBaseSubjects();
+    }
+  }, []);
 
   // Automatic synchronization: When any template changes, update all corresponding class records
   useEffect(() => {
@@ -43,22 +77,61 @@ export function useSubjectManagement(users, setUsers) {
     }));
   };
 
-  const createBaseSubject = (data) => {
-    setBaseSubjects(prev => [...prev, { ...data, id: `base-${Date.now()}`, categories: [] }]);
+  const createBaseSubject = async (data) => {
+    try {
+      const response = await subjectService.createBaseSubject(data);
+      // Normalize the response from PascalCase to camelCase
+      const normalizedBaseSubject = {
+        id: response.Id,
+        name: response.Name,
+        code: response.Code,
+        gradeLevel: response.GradeLevel,
+        categories: response.CategoriesJson ? JSON.parse(response.CategoriesJson) : []
+      };
+      setBaseSubjects(prev => [...prev, normalizedBaseSubject]);
+      return normalizedBaseSubject;
+    } catch (error) {
+      console.error('Failed to create base subject:', error);
+      throw error;
+    }
   };
 
-  const updateBaseSubject = (id, data) => {
-    setBaseSubjects(prev => prev.map(b => {
-      if (b.id === id) {
-        const updated = { ...b, ...data };
-        syncInstancesWithTemplate(updated);
-        return updated;
-      }
-      return b;
-    }));
+  const updateBaseSubject = async (id, data) => {
+    try {
+      const response = await subjectService.updateBaseSubject(id, data);
+      // Normalize the response from PascalCase to camelCase
+      const normalizedBaseSubject = {
+        id: response.template?.Id || response.Id,
+        name: response.template?.Name || response.Name,
+        code: response.template?.Code || response.Code,
+        gradeLevel: response.template?.GradeLevel || response.GradeLevel,
+        categories: response.template?.CategoriesJson ? JSON.parse(response.template.CategoriesJson) : 
+                   response.CategoriesJson ? JSON.parse(response.CategoriesJson) : []
+      };
+      setBaseSubjects(prev => prev.map(b => {
+        if (b.id === id) {
+          const updated = { ...b, ...normalizedBaseSubject };
+          syncInstancesWithTemplate(updated);
+          return updated;
+        }
+        return b;
+      }));
+      return normalizedBaseSubject;
+    } catch (error) {
+      console.error('Failed to update base subject:', error);
+      throw error;
+    }
   };
 
-  const deleteBaseSubject = (id) => setBaseSubjects(prev => prev.filter(b => b.id !== id));
+  const deleteBaseSubject = async (id) => {
+    try {
+      await subjectService.deleteBaseSubject(id);
+      setBaseSubjects(prev => prev.filter(b => b.id !== id));
+    } catch (error) {
+      console.error('Failed to delete base subject:', error);
+      throw error;
+    }
+  };
 
   const addSubject = (data) => {
     const base = baseSubjects.find(b => b.id === data.baseSubjectId);
@@ -120,5 +193,18 @@ export function useSubjectManagement(users, setUsers) {
     }
   };
 
-  return { subjects, setSubjects, baseSubjects, setBaseSubjects, createBaseSubject, updateBaseSubject, deleteBaseSubject, addSubject, deleteSubject, updateSubject };
+  return { 
+    subjects, 
+    setSubjects, 
+    baseSubjects, 
+    setBaseSubjects, 
+    baseSubjectsLoading, 
+    baseSubjectsError,
+    createBaseSubject, 
+    updateBaseSubject, 
+    deleteBaseSubject, 
+    addSubject, 
+    deleteSubject, 
+    updateSubject 
+  };
 }

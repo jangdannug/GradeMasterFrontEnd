@@ -2,8 +2,7 @@ import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
-import { useGradeManagement } from './hooks/useGradeManagement';
-import { INITIAL_SECTION } from './mockData';
+import { useGradeManagement } from './hooks/useGradeManagement'; // Assuming this is the correct path
 import { ShieldAlert, Loader2 } from 'lucide-react';
 import ProtectedRoute from './components/ProtectedRoute'; // UPDATED
 import authService from './services/authService'; // UPDATED
@@ -22,6 +21,15 @@ const StudentManagementView = lazy(() => import('./components/layout/StudentMana
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
 export default function App() {
+  // MOVED UP: Initialize currentUser first so we can pass it to grade management hooks
+  const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
+
+  const [selectedQuarter, setSelectedQuarter] = useState(1);
+  const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
+    const user = authService.getProfile();
+    return (user?.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
+  });
+
   const { 
     students, 
     subjects, 
@@ -43,7 +51,7 @@ export default function App() {
     deleteSubject,
     updateUser,
     deleteUser,
-    registerUser,
+    // registerUser, // Removed as registration is now handled by API directly in Login.jsx
     approveRegistration,
     rejectRegistration,
     transmutationTable,
@@ -69,17 +77,9 @@ export default function App() {
     assignStudentToSection,
     updateStudent, // Pass updateStudent
     enrollStudentOverall // New
-  } = useGradeManagement();
+  } = useGradeManagement(currentUser); // UPDATED: Pass currentUser context
 
-  const [selectedQuarter, setSelectedQuarter] = useState(1);
-  // UPDATED: Now uses authService profile retrieval
-  const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
-
-  const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
-    const user = authService.getProfile();
-    return (user?.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
-  });
-
+  const defaultSection = sections[0] || {};
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const userHasSubjects = useMemo(() => {
@@ -149,7 +149,7 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         {!currentUser ? (
           <Login // UPDATED: Removed mock users/registrations props
-            onRegister={registerUser}
+            // onRegister prop is no longer needed as Login.jsx handles API registration internally
             onLogin={(user) => {
               setCurrentUser(user);
               if (user.assignedSubjectIds && user.assignedSubjectIds.length > 0) {
@@ -176,7 +176,7 @@ export default function App() {
               // UPDATED: All routes except login are protected
               <ProtectedRoute roles={['admin', 'teacher', 'adviser']}>
                 <Header 
-                  section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
+                  section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                   userName={currentUser.name}
                 />
                 <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -187,7 +187,7 @@ export default function App() {
                       savedClassRecords={savedClassRecords}
                     transmutationTable={transmutationTable}
                     descriptors={descriptors}
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     allSections={sections}
                     users={users}
                     onSelectSubject={setSelectedSubjectId}
@@ -208,7 +208,7 @@ export default function App() {
               <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -239,7 +239,7 @@ export default function App() {
               <ProtectedRoute roles={['teacher', 'adviser']}>
                 <>
                   <Header 
-                    section={sections.find(s => s.id === selectedSubject?.sectionId) || INITIAL_SECTION}
+                    section={sections.find(s => s.id === selectedSubject?.sectionId) || defaultSection}
                     userName={currentUser.name}
                     extraContent={
                       <div className="flex items-center gap-3">
@@ -276,7 +276,7 @@ export default function App() {
                         subject={selectedSubject} 
                         transmutationTable={transmutationTable}
                         descriptors={descriptors}
-                        section={sections.find(sec => sec.id === selectedSubject.sectionId) || INITIAL_SECTION} 
+                        section={sections.find(sec => sec.id === selectedSubject.sectionId) || defaultSection} 
                         userRole={currentUser.role}
                         currentUser={currentUser}
                         quarter={selectedQuarter}
@@ -305,7 +305,7 @@ export default function App() {
               <ProtectedRoute roles={['teacher', 'adviser']}>
                 <>
                   <Header 
-                    section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
+                    section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -331,7 +331,7 @@ export default function App() {
               <ProtectedRoute roles={['admin', 'adviser']}>
                 <>
                   <Header 
-                    section={sections.find(s => s.id === currentUser.assignedSectionId) || INITIAL_SECTION}
+                    section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -340,7 +340,7 @@ export default function App() {
                       subjects={reportSubjects} 
                       transmutationTable={transmutationTable}
                       descriptors={descriptors}
-                    section={sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0] || INITIAL_SECTION} 
+                    section={sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0] || defaultSection} 
                     savedClassRecords={savedClassRecords}
                     />
                   </div>
@@ -352,7 +352,7 @@ export default function App() {
               <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -366,7 +366,7 @@ export default function App() {
               <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -380,7 +380,7 @@ export default function App() {
               <ProtectedRoute roles={['admin']}>
                 <>
                   <Header 
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -405,7 +405,7 @@ export default function App() {
               <ProtectedRoute roles={['admin', 'adviser']}>
                 <>
                   <Header 
-                    section={INITIAL_SECTION} 
+                    section={defaultSection} 
                     userName={currentUser.name}
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">

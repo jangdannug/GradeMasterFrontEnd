@@ -27,6 +27,33 @@ export const submitClassRecord = async (data) => {
     }
 };
 
+export const requestEditClassRecord = async (recordId, teacherId, teacherName, reason) => {
+    try {
+        const response = await api.post(`/classrecord/${recordId}/request-edit`, { teacherId, teacherName, reason });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to request edit';
+    }
+};
+
+export const approveEditRequest = async (recordId, adviserId, adviserName, reason) => {
+    try {
+        const response = await api.put(`/classrecord/${recordId}/approve-edit`, { adviserId, adviserName, reason });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to approve edit request';
+    }
+};
+
+export const rejectEditRequest = async (recordId, adviserId, adviserName, reason) => {
+    try {
+        const response = await api.put(`/classrecord/${recordId}/reject-edit`, { adviserId, adviserName, reason });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to reject edit request';
+    }
+};
+
 export const verifyClassRecord = async (id, isVerified, reason = "") => {
     try {
         const response = await api.put(`/classrecord/${id}/verify`, { isVerified, reason });
@@ -63,4 +90,4 @@ export const calculateGrades = async (gradesJson, categoriesJson) => {
     }
 };
 
-export default { getClassRecords, getClassRecordById, submitClassRecord, verifyClassRecord, lockClassRecord, getClassRecordLogs, calculateGrades };
+export default { getClassRecords, getClassRecordById, submitClassRecord, requestEditClassRecord, approveEditRequest, rejectEditRequest, verifyClassRecord, lockClassRecord, getClassRecordLogs, calculateGrades };

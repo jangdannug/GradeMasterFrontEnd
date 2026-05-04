@@ -7,7 +7,7 @@ import {
   Shield, 
   User, 
   GraduationCap, 
-  Plus, 
+  Plus,
   History, 
   Check, 
   X,
@@ -18,7 +18,8 @@ import {
   Mail,
   Clock,
   Users,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { SectionCard } from './admin/components/SectionCard';
 import { RegistrationCard } from './admin/components/RegistrationCard';
@@ -113,21 +114,63 @@ export function AdminPanel({
   const sortedBaseGrades = Object.keys(groupedBaseSubjects).sort((a, b) => parseInt(a) - parseInt(b));
 
   const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
+  const [isCreatingBaseSubject, setIsCreatingBaseSubject] = React.useState(false);
+  const [isUpdatingBaseSubject, setIsUpdatingBaseSubject] = React.useState(false);
+  const [deletingBaseSubjectId, setDeletingBaseSubjectId] = React.useState(null);
 
-  const handleAddBaseSubject = (e) => {
+  const handleAddBaseSubject = async (e) => {
     e.preventDefault();
-    onCreateBaseSubject(baseSubjectForm);
-    setBaseSubjectForm({ name: '', code: '', gradeLevel: '7' });
+    setIsCreatingBaseSubject(true);
+    try {
+      const data = {
+        Name: baseSubjectForm.name.toUpperCase(),
+        Code: baseSubjectForm.code,
+        GradeLevel: baseSubjectForm.gradeLevel,
+        CategoriesJson: JSON.stringify([])
+      };
+      await onCreateBaseSubject(data);
+      setBaseSubjectForm({ name: '', code: '', gradeLevel: '7' });
+    } catch (error) {
+      console.error('Failed to create base subject:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setIsCreatingBaseSubject(false);
+    }
   };
 
-  const handleUpdateBaseSubject = (id) => {
+  const handleUpdateBaseSubject = async (id) => {
     if (!baseEditFormData.name || !baseEditFormData.code) return;
-    onUpdateBaseSubject(id, {
-      name: baseEditFormData.name.toUpperCase(),
-      code: baseEditFormData.code.toUpperCase(),
-      gradeLevel: baseEditFormData.gradeLevel
-    });
-    setEditingBaseSubjectId(null);
+    setIsUpdatingBaseSubject(true);
+    try {
+      const data = {
+        Name: baseEditFormData.name.toUpperCase(),
+        Code: baseEditFormData.code.toUpperCase(),
+        GradeLevel: baseEditFormData.gradeLevel,
+        CategoriesJson: JSON.stringify([]), // TODO: Get actual categories from base subject
+        PushToInstances: false // TODO: Add UI option to push changes to instances
+      };
+      await onUpdateBaseSubject(id, data);
+      setEditingBaseSubjectId(null);
+    } catch (error) {
+      console.error('Failed to update base subject:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setIsUpdatingBaseSubject(false);
+    }
+  };
+
+  const handleDeleteBaseSubject = async (id) => {
+    if (window.confirm('Are you sure you want to delete this base subject? This action cannot be undone.')) {
+      setDeletingBaseSubjectId(id);
+      try {
+        await onDeleteBaseSubject(id);
+      } catch (error) {
+        console.error('Failed to delete base subject:', error);
+        // You might want to show an error message to the user here
+      } finally {
+        setDeletingBaseSubjectId(null);
+      }
+    }
   };
 
   return (
@@ -326,7 +369,13 @@ export function AdminPanel({
                   >
                     {['7','8','9','10','11','12'].map(g => <option key={g} value={g}>G{g}</option>)}
                   </select>
-                  <button type="submit" className="bg-indigo-600 text-white p-2 rounded-xl"><Plus size={20}/></button>
+                  <button 
+                    type="submit" 
+                    disabled={isCreatingBaseSubject}
+                    className="bg-indigo-600 text-white p-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreatingBaseSubject ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+                  </button>
                 </div>
               </form>
               <div className="space-y-6">
@@ -402,8 +451,12 @@ export function AdminPanel({
                             >
                               <Settings size={16} />
                             </button>
-                            <button onClick={() => onDeleteBaseSubject(base.id)} className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
-                              <X size={16} />
+                            <button 
+                              onClick={() => handleDeleteBaseSubject(base.id)} 
+                              disabled={deletingBaseSubjectId === base.id}
+                              className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                            >
+                              {deletingBaseSubjectId === base.id ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
                             </button>
                           </div>
                         </div>

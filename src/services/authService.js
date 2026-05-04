@@ -16,6 +16,52 @@ export const login = async (username, password) => {
     }
 };
 
+export const register = async (userData) => {
+    try {
+        // UPDATED: Path matches ProfilesController in backend
+        const response = await api.post('profiles/register', userData);
+        return response.data; // Return data from the successful registration
+    } catch (error) {
+        throw error.response?.data?.message || 'Registration failed. Please try again.';
+    }
+};
+
+export const getRegistrations = async () => {
+    try {
+        const response = await api.get('profiles/registrations');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to fetch registrations';
+    }
+};
+
+export const approveRegistration = async (id, approvalData) => {
+    try {
+        const response = await api.put(`profiles/registrations/${id}/approve`, approvalData);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Approval failed';
+    }
+};
+
+export const rejectRegistration = async (id, reason = "") => {
+    try {
+        const response = await api.put(`profiles/registrations/${id}/reject`, { reason });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Rejection failed';
+    }
+};
+
+export const getAllProfiles = async () => {
+    try {
+        const response = await api.get('profiles');
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to fetch profiles';
+    }
+};
+
 export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('profile');
@@ -34,4 +80,4 @@ export const isLoggedIn = () => {
     return !!localStorage.getItem('token');
 };
 
-export default { login, logout, getProfile, getToken, isLoggedIn };
+export default { login, register, getRegistrations, approveRegistration, rejectRegistration, getAllProfiles, logout, getProfile, getToken, isLoggedIn };

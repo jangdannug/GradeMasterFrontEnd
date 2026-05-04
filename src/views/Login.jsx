@@ -8,7 +8,7 @@ import { RegistrationView } from './RegistrationView';
 import authService from '../services/authService';
 
 export function Login({ onLogin, onRegister }) {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // The onRegister prop is no longer needed here
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +16,8 @@ export function Login({ onLogin, onRegister }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => { // UPDATED: Async login flow
+    // ... existing login logic ...
+
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -37,12 +39,33 @@ export function Login({ onLogin, onRegister }) {
     }
   };
 
+  // NEW: State for registration process
+  const [registrationError, setRegistrationError] = useState('');
+  const [isRegisteringUser, setIsRegisteringUser] = useState(false);
+
+  // NEW: Function to handle registration submission from RegistrationView
+  const handleRegistrationSubmit = async (registrationData) => {
+    setRegistrationError('');
+    setIsRegisteringUser(true);
+    try {
+      await authService.register(registrationData);
+      alert('Registration successful! Please wait for admin approval.');
+      setIsRegistering(false); // Go back to login form after successful registration
+    } catch (err) {
+      setRegistrationError(err);
+    } finally {
+      setIsRegisteringUser(false);
+    }
+  };
+
   if (isRegistering) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <RegistrationView 
-          onRegister={onRegister} 
           onBack={() => setIsRegistering(false)} 
+          onRegister={handleRegistrationSubmit} // Pass the new handler
+          isLoading={isRegisteringUser} // Pass loading state to RegistrationView
+          error={registrationError} // Pass error state to RegistrationView
         />
       </div>
     );

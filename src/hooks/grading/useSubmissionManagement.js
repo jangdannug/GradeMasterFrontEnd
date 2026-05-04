@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
-
+import classRecordService from '../../services/classRecordService';
 export function useSubmissionManagement() {
-  const [savedClassRecords, setSavedClassRecords] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_savedClassRecords')) || []);
-  const [classRecordLogs, setClassRecordLogs] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_classRecordLogs')) || []);
-
-  useEffect(() => localStorage.setItem('gradeMaster_savedClassRecords', JSON.stringify(savedClassRecords)), [savedClassRecords]);
-  useEffect(() => localStorage.setItem('gradeMaster_classRecordLogs', JSON.stringify(classRecordLogs)), [classRecordLogs]);
+  const [savedClassRecords, setSavedClassRecords] = useState([]);
+  const [classRecordLogs, setClassRecordLogs] = useState([]);
 
   const submitClassRecord = ({ subject, section, teacher, students, quarter }) => {
     const now = new Date().toISOString();

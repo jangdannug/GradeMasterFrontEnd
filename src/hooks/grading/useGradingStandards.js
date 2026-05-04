@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-
+import standardsService from '../../services/standardsService';
+import authService from '../../services/authService';
 const INITIAL_TRANSMUTATION = [
   { min: 99.50, max: 100.00, transmutedValue: 100 },
   { min: 97.50, max: 99.49, transmutedValue: 99 },
@@ -52,12 +53,50 @@ const INITIAL_DESCRIPTORS = [
   { min: 0, max: 64, label: 'Emerging', color: 'text-rose-600' },
 ];
 
-export function useGradingStandards() {
-  const [transmutationTable, setTransmutationTable] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_transmutation')) || INITIAL_TRANSMUTATION);
-  const [descriptors, setDescriptors] = useState(() => JSON.parse(localStorage.getItem('gradeMaster_descriptors')) || INITIAL_DESCRIPTORS);
+export function useGradingStandards(currentUser) {
+  const [transmutationTable, setTransmutationTable] = useState([]);
+  const [descriptors, setDescriptors] = useState([]);
 
-  useEffect(() => localStorage.setItem('gradeMaster_transmutation', JSON.stringify(transmutationTable)), [transmutationTable]);
-  useEffect(() => localStorage.setItem('gradeMaster_descriptors', JSON.stringify(descriptors)), [descriptors]);
+  // Helper to normalize PascalCase keys from C# to camelCase for the frontend
+  const normalize = (data) => {
+    if (!data) return data;
+    const transform = (obj) => Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
+    );
+    return Array.isArray(data) ? data.map(transform) : transform(data);
+  };
 
-  return { transmutationTable, setTransmutationTable, descriptors, setDescriptors };
+  useEffect(() => {
+    const fetchStandards = async () => {
+      const activeUser = currentUser || authService.getProfile();
+      if (activeUser && authService.isLoggedIn()) {
+        try {
+          const [fetchedTransmutation, fetchedDescriptors] = await Promise.all([
+            standardsService.getTransmutationTable(),
+            standardsService.getDescriptors()
+          ]);
+          setTransmutationTable(normalize(fetchedTransmutation));
+          setDescriptors(normalize(fetchedDescriptors));
+        } catch (error) {
+          console.error("Failed to fetch grading standards:", error);
+          // Fallback to initial mock data if API fails
+          setTransmutationTable(INITIAL_TRANSMUTATION);
+          setDescriptors(INITIAL_DESCRIPTORS);
+        }
+      }
+    };
+    fetchStandards();
+  }, [currentUser]);
+
+  const updateTransmutationTableAPI = async (data) => {
+    const updated = await standardsService.updateTransmutationTable(data);
+    setTransmutationTable(normalize(updated));
+  };
+
+  const updateDescriptorsAPI = async (data) => {
+    const updated = await standardsService.updateDescriptors(data);
+    setDescriptors(normalize(updated));
+  };
+
+  return { transmutationTable, setTransmutationTable: updateTransmutationTableAPI, descriptors, setDescriptors: updateDescriptorsAPI };
 }

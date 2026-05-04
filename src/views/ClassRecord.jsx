@@ -2,7 +2,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Trash2, Send, Maximize2, Minimize2, ShieldAlert } from 'lucide-react';
+import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2 } from 'lucide-react';
+import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
 
@@ -53,6 +54,8 @@ export function ClassRecord({
 
   const containerRef = React.useRef(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [calculatedGrades, setCalculatedGrades] = React.useState({});
+  const [calculatingGrades, setCalculatingGrades] = React.useState(false);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -71,6 +74,49 @@ export function ClassRecord({
     document.addEventListener('fullscreenchange', handleFSChange);
     return () => document.removeEventListener('fullscreenchange', handleFSChange);
   }, []);
+
+  // Calculate grades using API when students or subject data changes
+  React.useEffect(() => {
+    const calculateAllGrades = async () => {
+      if (!students.length || !subject) return;
+
+      setCalculatingGrades(true);
+      try {
+        const batchData = {
+          subjectCategories: subject.categories || [],
+          transmutationTable,
+          descriptors,
+          studentGrades: students.map(student => ({
+            studentId: student.id,
+            grades: student.grades[subject.id]?.[quarter] || null
+          }))
+        };
+
+        const results = await gradingService.calculateBatchGrades(batchData);
+
+        const gradesMap = {};
+        results.forEach(result => {
+          gradesMap[result.studentId] = result;
+        });
+
+        setCalculatedGrades(gradesMap);
+      } catch (error) {
+        console.error('Failed to calculate grades:', error);
+        // Fallback to local calculation
+        const localGrades = {};
+        students.forEach(student => {
+          const sg = student.grades[subject.id]?.[quarter];
+          // Use local calculation as fallback
+          localGrades[student.id] = calculateSubjectResult(sg, subject, transmutationTable, descriptors);
+        });
+        setCalculatedGrades(localGrades);
+      } finally {
+        setCalculatingGrades(false);
+      }
+    };
+
+    calculateAllGrades();
+  }, [students, subject, quarter, transmutationTable, descriptors]);
 
   return (
     <motion.div 
@@ -219,7 +265,7 @@ export function ClassRecord({
 
             {students.map((student, sIdx) => {
               const sg = student.grades[subject.id]?.[quarter];
-              const results = calculateSubjectResult(sg, subject, transmutationTable, descriptors);
+              const results = calculatedGrades[student.id] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
               
               return (
                 <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-slate-50/50 transition-colors divide-x divide-slate-200">
@@ -267,16 +313,32 @@ export function ClassRecord({
                   
                   {/* Final results */}
                   <td className="p-2 text-center font-black bg-slate-100 text-slate-800">{results.initial.toFixed(2)}</td>
-                  <td className="p-2 text-center font-bold bg-slate-50 text-slate-600 border-l border-slate-200">{results.quarterly}</td>
+                  <td className="p-2 text-center font-bold bg-slate-50 text-slate-600 border-l border-slate-200">
+                    {calculatingGrades ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 size={14} className="animate-spin text-slate-400" />
+                      </div>
+                    ) : (
+                      results.quarterly
+                    )}
+                  </td>
                   <td className={`p-2 text-center font-black bg-slate-50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor.color}`}>
                     {results.descriptor.label}
                   </td>
                   <td className="p-3 bg-slate-900 text-white sticky right-0 z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.2)]">
                     <div className="flex flex-col items-center justify-center gap-0.5">
-                      <span className="text-base font-black leading-none">{results.quarterly}</span>
-                      <span className={`text-[7px] font-black uppercase tracking-[0.2em] opacity-90 brightness-150 ${results.descriptor.color}`}>
-                        {results.descriptor.label}
-                      </span>
+                      {calculatingGrades ? (
+                        <div className="flex items-center justify-center">
+                          <Loader2 size={16} className="animate-spin text-white/70" />
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-base font-black leading-none">{results.quarterly}</span>
+                          <span className={`text-[7px] font-black uppercase tracking-[0.2em] opacity-90 brightness-150 ${results.descriptor.color}`}>
+                            {results.descriptor.label}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
