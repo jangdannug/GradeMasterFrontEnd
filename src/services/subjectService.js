@@ -45,6 +45,15 @@ export const getSubjects = async () => {
     }
 };
 
+export const updateSubject = async (id, data) => {
+    try {
+        const response = await api.put(`/subjects/${id}`, data);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to update subject';
+    }
+};
+
 export const createSubject = async (data) => {
     try {
         const response = await api.post('/subjects', data);
@@ -56,4 +65,4 @@ export const createSubject = async (data) => {
 
 // Assuming updateSubject and deleteSubject are handled by the existing update/delete methods in the hook
 
-export default { getBaseSubjects, createBaseSubject, updateBaseSubject, deleteBaseSubject, getSubjects, createSubject };
+export default { getBaseSubjects, createBaseSubject, updateBaseSubject, deleteBaseSubject, getSubjects, createSubject, updateSubject };

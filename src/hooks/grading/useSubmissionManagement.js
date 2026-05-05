@@ -1,10 +1,35 @@
 import { useState, useEffect } from 'react';
 import classRecordService from '../../services/classRecordService';
+
 export function useSubmissionManagement() {
   const [savedClassRecords, setSavedClassRecords] = useState([]);
   const [classRecordLogs, setClassRecordLogs] = useState([]);
+  const [error, setError] = useState(null);
 
-  const submitClassRecord = ({ subject, section, teacher, students, quarter }) => {
+  // Helper to normalize PascalCase keys from C# to camelCase for the frontend
+  const normalize = (data) => {
+    if (!data) return data;
+    const transform = (obj) => Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
+    );
+    return Array.isArray(data) ? data.map(transform) : transform(data);
+  };
+
+  const syncSubmissions = async () => {
+    setError(null);
+    try {
+      const records = await classRecordService.getClassRecords();
+      setSavedClassRecords(normalize(records));
+      // Assuming a separate endpoint for all logs or fetching logs per record
+      // For now, we'll just fetch records. Logs will be fetched per record as needed.
+    } catch (err) {
+      console.error("Failed to fetch class records or logs:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  const submitClassRecord = async ({ subject, section, teacher, students, quarter }) => {
     const now = new Date().toISOString();
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
     
@@ -14,7 +39,7 @@ export function useSubmissionManagement() {
       return { success: false, message: `Quarter ${quarter} for ${subject.name} has already been verified and cannot be resubmitted.` };
     }
 
-    const savedRecord = {
+    const newRecordData = {
       id: recordId,
       sectionId: section.id,
       sectionName: section.name,
@@ -29,87 +54,102 @@ export function useSubmissionManagement() {
       teacherName: teacher.name,
       studentSnapshots: students.map(s => ({ ...s, grades: s.grades[subject.id]?.[quarter] || null }))
     };
-
-    setSavedClassRecords(prev => [savedRecord, ...prev.filter(r => r.id !== recordId)]);
-    setClassRecordLogs(prev => {
-      // Ensure any lingering pending requests are resolved upon submission
-      const updatedLogs = prev.map(log => 
-        (log.recordId === recordId && log.action === 'edit_requested' && log.status === 'pending')
-          ? { ...log, status: 'resolved' }
-          : log
-      );
-      return [{
-        id: `log-${Date.now()}`,
-        recordId,
+    
+    try {
+      setError(null);
+      const submittedRecord = await classRecordService.submitClassRecord(newRecordData);
+      setSavedClassRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
+      
+      // Log the submission
+      const logEntry = {
+        recordId: submittedRecord.id,
         action: 'submitted',
-        submittedBy: teacher.name,
-        submittedAt: now
-      }, ...updatedLogs];
-    });
+        actorName: teacher.name,
+        status: 'resolved' // Assuming submission is a resolved action
+      };
+      // Assuming classRecordService.createLog or similar exists
+      // await classRecordService.createLog(logEntry); 
+      setClassRecordLogs(prev => [normalize(logEntry), ...prev]);
 
-    return { success: true, message: 'Class record submitted successfully.' };
+      return { success: true, message: 'Class record submitted successfully.' };
+    } catch (error) {
+      console.error("Error submitting class record:", error);
+      setError(error);
+      return { success: false, message: error.message || 'Failed to submit class record.' };
+    }
   };
 
-  const requestEditClassRecord = (recordId, teacherId, teacherName, reason) => {
-    setClassRecordLogs(prev => [{
-      id: `log-${Date.now()}`,
-      recordId,
-      action: 'edit_requested',
-      requestedBy: teacherName,
-      requestedAt: new Date().toISOString(),
-      reason,
-      status: 'pending'
-    }, ...prev]);
+  const requestEditClassRecord = async (recordId, teacherId, teacherName, reason) => {
+    try {
+      setError(null);
+      const log = await classRecordService.requestEditClassRecord(recordId, teacherId, teacherName, reason);
+      setClassRecordLogs(prev => [normalize(log), ...prev]);
+    } catch (err) {
+      console.error("Failed to request edit:", err);
+      setError(err);
+      throw err;
+    }
   };
 
-  const approveEditRequest = (recordId, adviserId, adviserName, reason) => {
-    setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: false } : r));
-    setClassRecordLogs(prev => {
-      // Update the status of the specific pending request to 'approved'
-      const updatedLogs = prev.map(log => 
-        (log.recordId === recordId && log.action === 'edit_requested' && log.status === 'pending')
-          ? { ...log, status: 'approved' }
-          : log
-      );
-      return [{
-        id: `log-${Date.now()}`,
+  const approveEditRequest = async (recordId, adviserId, adviserName, reason) => {
+    try {
+      // Unlock the record
+      setError(null);
+      await classRecordService.lockClassRecord(recordId, false);
+      setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: false } : r));
+
+      // Log the approval
+      const log = await classRecordService.approveEditRequest(recordId, adviserId, adviserName, reason);
+      setClassRecordLogs(prev => [normalize(log), ...prev.map(l => 
+        (l.recordId === recordId && l.action === 'edit_requested' && l.status === 'pending')
+          ? { ...l, status: 'approved' } : l
+      )]);
+    } catch (err) {
+      console.error("Failed to approve edit request:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  const rejectEditRequest = async (recordId, adviserId, adviserName, reason) => {
+    try {
+      const log = await classRecordService.rejectEditRequest(recordId, adviserId, adviserName, reason);
+      setError(null);
+      setClassRecordLogs(prev => [normalize(log), ...prev.map(l => 
+        (l.recordId === recordId && l.action === 'edit_requested' && l.status === 'pending')
+          ? { ...l, status: 'rejected' } : l
+      )]);
+    } catch (err) {
+      console.error("Failed to reject edit request:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  const lockClassRecord = async (recordId, adviserId, adviserName) => {
+    try {
+      await classRecordService.lockClassRecord(recordId, true); // Lock the record
+      setError(null);
+      // Assuming verification also happens on lock
+      await classRecordService.verifyClassRecord(recordId, true);
+
+      setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: true, isVerified: true } : r));
+      
+      const logEntry = {
         recordId,
-        action: 'edit_approved',
-        approvedBy: adviserName,
-        approvedAt: new Date().toISOString(),
-        reason,
-        status: 'approved'
-      }, ...updatedLogs];
-    });
+        action: 'locked',
+        actorName: adviserName,
+        status: 'resolved'
+      };
+      // Assuming classRecordService.createLog or similar exists
+      // await classRecordService.createLog(logEntry);
+      setClassRecordLogs(prev => [normalize(logEntry), ...prev]);
+    } catch (err) {
+      console.error("Failed to lock class record:", err);
+      setError(err);
+      throw err;
+    }
   };
 
-  const rejectEditRequest = (recordId, adviserId, adviserName, reason) => {
-    setClassRecordLogs(prev => {
-      // Update the status of the specific pending request to 'rejected'
-      const updatedLogs = prev.map(log => 
-        (log.recordId === recordId && log.action === 'edit_requested' && log.status === 'pending')
-          ? { ...log, status: 'rejected' }
-          : log
-      );
-      return [{
-        id: `log-${Date.now()}`,
-        recordId,
-        action: 'edit_rejected',
-        rejectedBy: adviserName,
-        rejectedAt: new Date().toISOString(),
-        reason,
-        status: 'rejected'
-      }, ...updatedLogs];
-    });
-  };
-
-  const lockClassRecord = (recordId, adviserId, adviserName) => {
-    setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: true, isVerified: true } : r));
-    setClassRecordLogs(prev => [{
-      id: `log-${Date.now()}`,
-      recordId, action: 'locked', lockedBy: adviserName, lockedAt: new Date().toISOString()
-    }, ...prev]);
-  };
-
-  return { savedClassRecords, classRecordLogs, submitClassRecord, requestEditClassRecord, approveEditRequest, rejectEditRequest, lockClassRecord };
+  return { savedClassRecords, classRecordLogs, syncSubmissions, submitClassRecord, requestEditClassRecord, approveEditRequest, rejectEditRequest, lockClassRecord, error };
 }

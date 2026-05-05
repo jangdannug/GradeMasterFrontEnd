@@ -21,6 +21,7 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
+import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 import { SectionCard } from './admin/components/SectionCard';
 import { RegistrationCard } from './admin/components/RegistrationCard';
 
@@ -40,33 +41,77 @@ export function AdminPanel({
   onDeleteBaseSubject,
   onUpdateUser,
   onDeleteUser,
-  currentUserId
+  currentUserId,
+  syncError,
+  syncAuthData, // Function to sync auth data
+  syncSections, // Function to sync sections data
+  syncSubjects, // Function to sync subjects/templates
+  authLoading, // Loading state from auth hook
+  sectionsLoading, // Loading state from sections hook
+  subjectsLoading // Loading state from subjects hook
 }) {
-  const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');
-  const pendingRegistrations = registrations.filter(r => r.status === 'pending');
-  const [isCreating, setIsCreating] = React.useState(false);
+  // HOOKS MUST BE CALLED AT THE TOP LEVEL
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = React.useState('sections'); // 'sections' | 'templates' | 'users' | 'registrations'
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [isSectionCreatingOrUpdating, setIsSectionCreatingOrUpdating] = React.useState(false); 
+  const [isBaseSubjectCreatingOrUpdating, setIsBaseSubjectCreatingOrUpdating] = React.useState(false);
   const [editingSectionId, setEditingSectionId] = React.useState(null);
   const [editingBaseSubjectId, setEditingBaseSubjectId] = React.useState(null);
   const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7' });
-  const [activeTab, setActiveTab] = React.useState('sections'); // 'sections' | 'templates' | 'users' | 'registrations'
   const [approvalForms, setApprovalForms] = React.useState({});
+  const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
+  const [isCreatingBaseSubject, setIsCreatingBaseSubject] = React.useState(false);
+  const [isUpdatingBaseSubject, setIsUpdatingBaseSubject] = React.useState(false);
+  const [deletingBaseSubjectId, setDeletingBaseSubjectId] = React.useState(null);
+  
+  const [formData, setFormData] = React.useState({
+    name: '',
+    gradeLevel: '7',
+    schoolYear: '2025-2026',
+    schoolId: '123456',
+    schoolName: 'STO. NINO HIGH SCHOOL',
+    region: 'REGION II',
+    division: 'CAGAYAN VALLEY'
+  });
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      await Promise.all([
+        syncAuthData?.(), // Call syncAuthData if it exists
+        syncSections?.(), // Call syncSections if it exists
+        syncSubjects?.()  // Call syncSubjects to fetch templates
+      ]);
+    };
+    fetchData();
+  }, []);
+
+  // EARLY RETURNS MUST HAPPEN AFTER ALL HOOKS ARE DEFINED
+  if (syncError) return <ApiConnectionErrorDisplay />;
+
+  const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');
+  const pendingRegistrations = registrations.filter(r => r.status === 'pending');
 
   const handleUpdateSection = (id) => {
     if (!formData.name || !formData.gradeLevel) return;
-    onUpdateSection(id, {
-      name: formData.name.toUpperCase(),
-      gradeLevel: formData.gradeLevel
-    });
-    setEditingSectionId(null);
+    setIsSectionCreatingOrUpdating(true);
+    try {
+      onUpdateSection(id, {
+        name: formData.name.toUpperCase(),
+        gradeLevel: formData.gradeLevel
+      });
+      setEditingSectionId(null);
+    } finally {
+      setIsSectionCreatingOrUpdating(false);
+    }
     setFormData({ 
       name: '', 
       gradeLevel: '7',
       schoolYear: '2025-2026',
       schoolId: '123456',
-      schoolName: 'MABINI HIGH SCHOOL',
-      region: 'REGION I',
-      division: 'PANGASINAN II'
+      schoolName: 'STO. NINO HIGH SCHOOL',
+      region: 'REGION II',
+      division: 'CAGAYAN VALLEY'
     });
   };
 
@@ -74,24 +119,24 @@ export function AdminPanel({
     const reg = registrations.find(r => r.id === regId);
     // Default to 'teacher' and no section if the admin hasn't interacted with the form yet
     const form = approvalForms[regId] || { role: reg?.requestedRole || 'teacher', sectionId: '' };
-    onApproveRegistration(regId, form.role, form.sectionId);
+    // Assuming onApproveRegistration handles its own loading/error
+    try {
+      onApproveRegistration(regId, form.role, form.sectionId);
+    } catch (error) {
+      console.error("Error approving registration:", error);
+    }
   };
-
-  const [formData, setFormData] = React.useState({
-    name: '',
-    gradeLevel: '7',
-    schoolYear: '2025-2026',
-    schoolId: '123456',
-    schoolName: 'MABINI HIGH SCHOOL',
-    region: 'REGION I',
-    division: 'PANGASINAN II'
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onCreateSection(formData);
-    setIsCreating(false);
-    setFormData({ ...formData, name: '' });
+    setIsSectionCreatingOrUpdating(true);
+    try {
+      onCreateSection(formData);
+      setIsCreating(false);
+      setFormData({ ...formData, name: '' });
+    } finally {
+      setIsSectionCreatingOrUpdating(false);
+    }
   };
 
   // Group sections by grade level
@@ -113,14 +158,9 @@ export function AdminPanel({
   }, {});
   const sortedBaseGrades = Object.keys(groupedBaseSubjects).sort((a, b) => parseInt(a) - parseInt(b));
 
-  const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
-  const [isCreatingBaseSubject, setIsCreatingBaseSubject] = React.useState(false);
-  const [isUpdatingBaseSubject, setIsUpdatingBaseSubject] = React.useState(false);
-  const [deletingBaseSubjectId, setDeletingBaseSubjectId] = React.useState(null);
-
   const handleAddBaseSubject = async (e) => {
     e.preventDefault();
-    setIsCreatingBaseSubject(true);
+    setIsBaseSubjectCreatingOrUpdating(true);
     try {
       const data = {
         Name: baseSubjectForm.name.toUpperCase(),
@@ -132,15 +172,15 @@ export function AdminPanel({
       setBaseSubjectForm({ name: '', code: '', gradeLevel: '7' });
     } catch (error) {
       console.error('Failed to create base subject:', error);
-      // You might want to show an error message to the user here
+      // Error will be caught by syncError, or specific error message can be displayed
     } finally {
-      setIsCreatingBaseSubject(false);
+      setIsBaseSubjectCreatingOrUpdating(false);
     }
   };
 
   const handleUpdateBaseSubject = async (id) => {
     if (!baseEditFormData.name || !baseEditFormData.code) return;
-    setIsUpdatingBaseSubject(true);
+    setIsBaseSubjectCreatingOrUpdating(true);
     try {
       const data = {
         Name: baseEditFormData.name.toUpperCase(),
@@ -153,9 +193,9 @@ export function AdminPanel({
       setEditingBaseSubjectId(null);
     } catch (error) {
       console.error('Failed to update base subject:', error);
-      // You might want to show an error message to the user here
+      // Error will be caught by syncError, or specific error message can be displayed
     } finally {
-      setIsUpdatingBaseSubject(false);
+      setIsBaseSubjectCreatingOrUpdating(false);
     }
   };
 
@@ -166,7 +206,7 @@ export function AdminPanel({
         await onDeleteBaseSubject(id);
       } catch (error) {
         console.error('Failed to delete base subject:', error);
-        // You might want to show an error message to the user here
+        // Error will be caught by syncError, or specific error message can be displayed
       } finally {
         setDeletingBaseSubjectId(null);
       }
@@ -245,6 +285,13 @@ export function AdminPanel({
               </button>
             </div>
 
+            {(authLoading || sectionsLoading) && (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="animate-spin mr-2" size={20} />
+                <span className="text-sm font-medium">Loading sections...</span>
+              </div>
+            )}
+
             {isCreating && (
               <motion.form 
                 initial={{ opacity: 0, height: 0 }}
@@ -297,7 +344,10 @@ export function AdminPanel({
                     />
                   </div>
                 </div>
-                <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all">
+                <button 
+                  type="submit" 
+                  disabled={isSectionCreatingOrUpdating}
+                  className="w-full py-3 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   Confirm & Save Section
                 </button>
               </motion.form>
@@ -344,6 +394,13 @@ export function AdminPanel({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
           >
+            {(subjectsLoading || isBaseSubjectCreatingOrUpdating) && (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="animate-spin mr-2" size={20} />
+                <span className="text-sm font-medium">Loading subject templates...</span>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
               <h3 className="text-lg font-black uppercase italic text-slate-800 mb-6 flex items-center gap-3">
                 <BookOpen className="text-indigo-600" /> Global Subject Templates
@@ -371,7 +428,7 @@ export function AdminPanel({
                   </select>
                   <button 
                     type="submit" 
-                    disabled={isCreatingBaseSubject}
+                    disabled={isBaseSubjectCreatingOrUpdating}
                     className="bg-indigo-600 text-white p-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isCreatingBaseSubject ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
@@ -405,7 +462,7 @@ export function AdminPanel({
                         <div className="flex gap-2">
                           <button 
                             onClick={() => handleUpdateBaseSubject(base.id)}
-                            className="px-2 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase rounded hover:bg-indigo-700 transition-colors"
+                            className="px-2 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase rounded hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Save
                           </button>
@@ -477,6 +534,13 @@ export function AdminPanel({
             exit={{ opacity: 0, scale: 0.98 }}
             className="space-y-6"
           >
+            {authLoading && (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="animate-spin mr-2" size={20} />
+                <span className="text-sm font-medium">Loading users...</span>
+              </div>
+            )}
+          >
             <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {users.map(user => (
@@ -535,6 +599,13 @@ export function AdminPanel({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="space-y-4"
+          >
+            {authLoading && (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="animate-spin mr-2" size={20} />
+                <span className="text-sm font-medium">Loading registrations...</span>
+              </div>
+            )}
           >
             <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
               <Clock size={14} /> Pending Registrations ({pendingRegistrations.length})

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthManagement } from './useAuthManagement';
-import { useGradingStandards } from './grading/useGradingStandards'; // Import useGradingStandards
+import { useGradingStandards } from './grading/useGradingStandards';
+import authService from '../services/authService';
 import { useSectionManagement } from './grading/useSectionManagement';
 import { useSubjectManagement } from './grading/useSubjectManagement';
 import { useSubmissionManagement } from './grading/useSubmissionManagement';
@@ -8,7 +9,7 @@ import { useStudentGrades } from './grading/useStudentGrades';
 
 export function useGradeManagement(currentUser) {
   // Centralized State Composition
-  const authState = useAuthManagement(currentUser);
+  const authState = useAuthManagement(currentUser); // Pass currentUser
   const standardsState = useGradingStandards(currentUser);
   const subjectsState = useSubjectManagement(authState.users, authState.setUsers);
 
@@ -20,6 +21,15 @@ export function useGradeManagement(currentUser) {
     currentUser
   );
 
+  // Centralized refreshers for UI triggers
+  const refreshGlobalData = async () => {
+    await Promise.all([
+      sectionsState.syncSections?.(),
+      subjectsState.syncSubjects?.(),
+      gradingState.syncStudents?.()
+    ]);
+  };
+
   const submissionsState = useSubmissionManagement();
   const gradingState = useStudentGrades(
     subjectsState.subjects, 
@@ -28,18 +38,35 @@ export function useGradeManagement(currentUser) {
     currentUser
   );
 
-  const deleteUser = (id) => {
+  const deleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user? This will unassign them from all classes and subjects.')) {
-      authState.setUsers(prev => prev.filter(u => u.id !== id));
-      // Cleanup references in sections
-      sectionsState.setSections(prev => prev.map(sec => sec.adviserId === id ? { ...sec, adviserId: '' } : sec));
-      // Cleanup references in subjects
-      subjectsState.setSubjects(prev => prev.map(sub => sub.teacherId === id 
-        ? { ...sub, teacherId: '', teacherName: 'Unassigned' } 
-        : sub
-      ));
+      try {
+        // NEW: Call the API to delete the user from the database
+        await authService.deleteProfile(id);
+
+        // Update local state only after successful API deletion
+        authState.setUsers(prev => prev.filter(u => u.id !== id));
+        // Cleanup references in sections
+        sectionsState.setSections(prev => prev.map(sec => sec.adviserId === id ? { ...sec, adviserId: '' } : sec));
+        // Cleanup references in subjects
+        subjectsState.setSubjects(prev => prev.map(sub => sub.teacherId === id 
+          ? { ...sub, teacherId: '', teacherName: 'Unassigned' } 
+          : sub
+        ));
+      } catch (error) {
+        alert(`Delete failed: ${error}`);
+      }
     }
   };
+
+  // Aggregate errors from critical sync hooks to detect API connectivity issues
+  const syncError = 
+    authState.error || 
+    sectionsState.error || 
+    subjectsState.subjectsError || // Use subjectsError from useSubjectManagement
+    standardsState.error || 
+    gradingState.error ||
+    submissionsState.error;
 
   return { 
     // Auth State
@@ -47,11 +74,14 @@ export function useGradeManagement(currentUser) {
     registrations: authState.registrations,
     registerUser: authState.registerUser,
     updateUser: authState.updateUser,
+    syncAuthData: authState.syncAuthData,
     deleteUser,
     rejectRegistration: authState.rejectRegistration,
 
     // Standards
     transmutationTable: standardsState.transmutationTable,
+    syncStandards: standardsState.syncStandards,
+    standardsLoading: standardsState.loading,
     setTransmutationTable: standardsState.setTransmutationTable,
     descriptors: standardsState.descriptors,
     setDescriptors: standardsState.setDescriptors,
@@ -62,11 +92,13 @@ export function useGradeManagement(currentUser) {
     updateSection: sectionsState.updateSection,
     deleteSection: sectionsState.deleteSection,
     assignAdviser: sectionsState.assignAdviser,
+    syncSections: sectionsState.syncSections || (() => {}),
     approveRegistration: sectionsState.approveRegistration,
 
     // Subjects
     subjects: subjectsState.subjects || [],
     baseSubjects: subjectsState.baseSubjects || [],
+    syncSubjects: subjectsState.syncSubjects,
     createBaseSubject: subjectsState.createBaseSubject,
     updateBaseSubject: subjectsState.updateBaseSubject,
     deleteBaseSubject: subjectsState.deleteBaseSubject,
@@ -77,6 +109,7 @@ export function useGradeManagement(currentUser) {
     // Submissions
     savedClassRecords: submissionsState.savedClassRecords,
     classRecordLogs: submissionsState.classRecordLogs,
+    syncSubmissions: submissionsState.syncSubmissions,
     submitClassRecord: submissionsState.submitClassRecord,
     requestEditClassRecord: submissionsState.requestEditClassRecord,
     approveEditRequest: submissionsState.approveEditRequest,
@@ -85,6 +118,7 @@ export function useGradeManagement(currentUser) {
 
     // Grading/Students
     students: gradingState.students || [],
+    syncStudents: gradingState.syncStudents,
     updateGrade: gradingState.updateGrade,
     updateCategoryTitle: gradingState.updateCategoryTitle,
     updateCategoryWeight: gradingState.updateCategoryWeight,
@@ -99,5 +133,9 @@ export function useGradeManagement(currentUser) {
     assignStudentToSection: gradingState.assignStudentToSection,
     updateStudent: gradingState.updateStudent, // Expose updateStudent
     enrollStudentOverall: gradingState.enrollStudentOverall, // New overall enrollment
+
+    // Error state
+    syncError,
+    refreshGlobalData
   };
 }

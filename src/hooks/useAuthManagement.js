@@ -4,36 +4,36 @@ import authService from '../services/authService';
 export function useAuthManagement(currentUser) {
   const [users, setUsers] = useState([]);
   const [registrations, setRegistrations] = useState([]);
+  const [error, setError] = useState(null);
 
   // Fetch profiles and registrations if user is admin to sync with backend
-  useEffect(() => {
-    const syncWithBackend = async () => {
-      // Use currentUser prop or get from service
-      const activeUser = currentUser || authService.getProfile();
-      
-      if (activeUser?.role === 'admin' && authService.isLoggedIn()) {
-        try {
-          const [allUsers, allRegs] = await Promise.all([
-            authService.getAllProfiles(),
-            authService.getRegistrations()
-          ]);
+  const syncAuthData = async () => {
+    // Use currentUser prop or get from service
+    const activeUser = currentUser || authService.getProfile();
+    
+    if (activeUser?.role === 'admin' && authService.isLoggedIn()) {
+      setError(null); // Clear previous errors
+      try {
+        const [allUsers, allRegs] = await Promise.all([
+          authService.getAllProfiles(),
+          authService.getRegistrations()
+        ]);
 
-          // Helper to normalize PascalCase keys from C# to camelCase for the frontend
-          const normalize = (data) => Array.isArray(data) 
-            ? data.map(item => Object.fromEntries(
-                Object.entries(item).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
-              ))
-            : data;
+        // Helper to normalize PascalCase keys from C# to camelCase for the frontend
+        const normalize = (data) => Array.isArray(data) 
+          ? data.map(item => Object.fromEntries(
+              Object.entries(item).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
+            ))
+          : data;
 
-          setUsers(normalize(allUsers));
-          setRegistrations(normalize(allRegs));
-        } catch (error) {
-          console.error("Auth management sync failed:", error);
-        }
+        setUsers(normalize(allUsers));
+        setRegistrations(normalize(allRegs));
+      } catch (err) {
+        console.error("Auth management sync failed:", err);
+        setError(err);
       }
-    };
-    syncWithBackend();
-  }, [currentUser]); // Re-run sync when the current user state changes
+    }
+  };
 
   useEffect(() => {
     localStorage.removeItem('gradeMaster_registrations');
@@ -53,5 +53,5 @@ export function useAuthManagement(currentUser) {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
   };
 
-  return { users, setUsers, registrations, setRegistrations, rejectRegistration, updateUser };
+  return { users, setUsers, registrations, setRegistrations, syncAuthData, rejectRegistration, updateUser, error };
 }

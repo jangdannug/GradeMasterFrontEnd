@@ -1,33 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import studentService from '../../services/studentService';
 import subjectService from '../../services/subjectService';
 import authService from '../../services/authService';
 
+// Helper to normalize Student properties (bridging C# PascalCase/snake_case to frontend camelCase)
+const normalizeStudent = (item) => {
+  if (!item) return null;
+  return {
+    ...item,
+    id: item.id || item.Id,
+    name: item.name || item.Name,
+    gender: item.gender || item.Gender,
+    gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+    schoolYear: item.schoolYear || item.SchoolYear || item.school_year,
+    sectionId: item.sectionId || item.SectionId || item.section_id,
+    grades: (typeof item.grades === 'string' ? JSON.parse(item.grades) : (item.grades || item.Grades)) || {}
+  };
+};
+
 export function useStudentGrades(subjects, setSubjects, setBaseSubjects, currentUser) {
   const [students, setStudents] = useState([]);
+  const [error, setError] = useState(null);
 
-  // Helper to normalize PascalCase keys from C# to camelCase for the frontend
-  const normalize = (data) => {
-    if (!data) return data;
-    const transform = (obj) => Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
-    );
-    return Array.isArray(data) ? data.map(transform) : transform(data);
-  };
-
-  useEffect(() => {
-    const fetchStudents = async () => {
-      const activeUser = currentUser || authService.getProfile();
-      if (activeUser && authService.isLoggedIn()) {
-        try {
-          const data = await studentService.getStudents();
-          setStudents(normalize(data));
-        } catch (error) {
-          console.error("Failed to fetch students:", error);
-        }
+  const syncStudents = useCallback(async () => {
+    const activeUser = currentUser || authService.getProfile();
+    if (activeUser && authService.isLoggedIn()) {
+      setError(null);
+      try {
+        const data = await studentService.getStudents();
+        setStudents(Array.isArray(data) ? data.map(normalizeStudent) : []);
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+        setError(error);
       }
-    };
-    fetchStudents();
+    }
   }, [currentUser]);
 
   const updateGrade = (studentId, subjectId, categoryId, type, index, value, quarter) => {
@@ -63,249 +69,99 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }));
   };
 
-  const updateCategoryTitle = async (subjectId, categoryId, title) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const updateCategoryTitle = (subjectId, categoryId, title) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, name: title } : c) };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, name: title } : c) };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to update category title via API:", error);
-      }
-    }
   };
 
-  const updateCategoryWeight = async (subjectId, categoryId, weight) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const updateCategoryWeight = (subjectId, categoryId, weight) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c) };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c) };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to update category weight via API:", error);
-      }
-    }
   };
 
-  const updateColumnName = async (subjectId, categoryId, index, name) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const updateColumnName = (subjectId, categoryId, index, name) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.map(c => {
+        return { ...baseSub, categories: baseSub.categories.map(c => {
           if (c.id !== categoryId) return c;
           const names = [...(c.columnNames || [])];
           names[index] = name;
           return { ...c, columnNames: names };
         }) };
-        updatedSubject = updated;
-        return updated;
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to update column name via API:", error);
-      }
-    }
   };
 
-  const addCategory = async (subjectId) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const addCategory = (subjectId) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: [...baseSub.categories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }] };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: [...baseSub.categories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }] };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to add category via API:", error);
-      }
-    }
   };
 
-  const removeCategory = async (subjectId, categoryId) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const removeCategory = (subjectId, categoryId) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.filter(c => c.id !== categoryId) };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: baseSub.categories.filter(c => c.id !== categoryId) };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to remove category via API:", error);
-      }
-    }
   };
 
-  const addColumnToCategory = async (subjectId, categoryId) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const addColumnToCategory = (subjectId, categoryId) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c) };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c) };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to add column via API:", error);
-      }
-    }
   };
 
-  const removeColumnFromCategory = async (subjectId, categoryId) => {
-    // Update local state first for immediate UI feedback
-    let updatedSubject = null;
+  const removeColumnFromCategory = (subjectId, categoryId) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        const updated = { ...baseSub, categories: baseSub.categories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c) };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: baseSub.categories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c) };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(subjectId, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(updatedSubject.categories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to remove column via API:", error);
-      }
-    }
   };
 
-  const resetSubjectTemplate = async (id) => {
+  const resetSubjectTemplate = (id) => {
     const defaultCategories = [
       { id: `cat-ww-${Date.now()}`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
       { id: `cat-pt-${Date.now()}`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
       { id: `cat-qa-${Date.now()}`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['1'] },
     ];
 
-    // Get the subject being reset to access its name, code, gradeLevel
-    let updatedSubject = null;
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === id) {
-        const updated = { ...baseSub, categories: defaultCategories };
-        updatedSubject = updated;
-        return updated;
+        return { ...baseSub, categories: defaultCategories };
       }
       return baseSub;
     }));
-
-    // Persist to backend with complete template data
-    if (updatedSubject) {
-      try {
-        await subjectService.updateBaseSubject(id, {
-          name: updatedSubject.name,
-          code: updatedSubject.code,
-          gradeLevel: updatedSubject.gradeLevel,
-          categoriesJson: JSON.stringify(defaultCategories),
-          pushToInstances: false
-        });
-      } catch (error) {
-        console.error("Failed to reset subject template via API:", error);
-      }
-    }
   };
 
   // Function for enrolling a student to a specific section (used by AdvisoryDashboardView)
   const addStudentToSection = async (name, gender, sectionId) => {
     try {
+      setError(null);
       const newStudent = await studentService.createStudent({ name, gender, sectionId, grades: {} });
-      setStudents(prev => [...prev, normalize(newStudent)]);
+      setStudents(prev => [...prev, normalizeStudent(newStudent)]);
     } catch (error) {
       console.error("Failed to add student to section:", error);
-      throw error;
+      setError(error);
+      throw error; // Re-throw to allow UI to handle
     }
   };
 
@@ -313,11 +169,13 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     try {
       await studentService.deleteStudent(id);
       setStudents(prev => prev.filter(s => s.id !== id));
-    } catch (error) {
-      console.error("Failed to remove student:", error);
-      throw error;
+    } catch (err) {
+      console.error("Failed to remove student:", err);
+      setError(err);
+      throw err; // Re-throw to allow UI to handle
     }
   };
+
 
   // New function for overall student registration (not necessarily assigned to a section yet)
   const enrollStudentOverall = async (lastName, firstName, middleName, gender, gradeLevel, schoolYear) => {
@@ -331,36 +189,42 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
       grades: {}
     };
     try {
+      setError(null);
       const createdStudent = await studentService.createStudent(newStudent);
-      setStudents(prev => [...prev, normalize(createdStudent)]);
+      setStudents(prev => [...prev, normalizeStudent(createdStudent)]);
     } catch (error) {
       console.error("Failed to enroll student:", error);
-      throw error;
+      setError(error);
+      throw error; // Re-throw to allow UI to handle
     }
   };
 
   const assignStudentToSection = async (studentId, sectionId) => {
     try {
       const updatedStudent = await studentService.assignStudentToSection(studentId, sectionId);
-      setStudents(prev => prev.map(s => s.id === studentId ? normalize(updatedStudent) : s));
-    } catch (error) {
-      console.error("Failed to assign student to section:", error);
-      throw error;
+      setStudents(prev => prev.map(s => s.id === studentId ? normalizeStudent(updatedStudent) : s));
+    } catch (err) {
+      console.error("Failed to assign student to section:", err);
+      setError(err);
+      throw err; // Re-throw to allow UI to handle
     }
   };
 
   const updateStudent = async (studentId, data) => {
     try {
+      setError(null);
       const updatedStudent = await studentService.updateStudent(studentId, data);
-      setStudents(prev => prev.map(s => s.id === studentId ? normalize(updatedStudent) : s));
-    } catch (error) {
-      console.error("Failed to update student:", error);
-      throw error;
+      setStudents(prev => prev.map(s => s.id === studentId ? normalizeStudent(updatedStudent) : s));
+    } catch (err) {
+      console.error("Failed to update student:", err);
+      setError(err);
+      throw err; // Re-throw to allow UI to handle
     }
   };
 
-  return { 
-    students, updateGrade, updateCategoryTitle, updateCategoryWeight, updateColumnName, addCategory, removeCategory, addColumnToCategory, removeColumnFromCategory, resetSubjectTemplate, 
-    addStudentToSection, removeStudent, enrollStudentOverall, assignStudentToSection, updateStudent
+  return {
+    students, syncStudents, updateGrade, updateCategoryTitle, updateCategoryWeight, updateColumnName, addCategory, removeCategory, addColumnToCategory, removeColumnFromCategory, resetSubjectTemplate,
+    addStudentToSection, removeStudent, enrollStudentOverall, assignStudentToSection, updateStudent,
+    error // Expose error state
   };
 }

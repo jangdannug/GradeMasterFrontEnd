@@ -62,6 +62,15 @@ export const getAllProfiles = async () => {
     }
 };
 
+export const deleteProfile = async (id) => {
+    try {
+        const response = await api.delete(`profiles/${id}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to delete profile';
+    }
+};
+
 export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('profile');
@@ -80,4 +89,4 @@ export const isLoggedIn = () => {
     return !!localStorage.getItem('token');
 };
 
-export default { login, register, getRegistrations, approveRegistration, rejectRegistration, getAllProfiles, logout, getProfile, getToken, isLoggedIn };
+export default { login, register, getRegistrations, approveRegistration, rejectRegistration, getAllProfiles, deleteProfile, logout, getProfile, getToken, isLoggedIn };

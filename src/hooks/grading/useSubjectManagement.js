@@ -1,56 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import authService from '../../services/authService';
 import subjectService from '../../services/subjectService';
+
+// Helper to safely get categories as an array
+const getCategoriesAsArray = (item) => {
+  // Check all variations: lowercase, PascalCase, and with 'Json' suffix
+  const raw = item.categories ?? item.Categories ?? item.categoriesJson ?? item.CategoriesJson;
+
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    try {
+      let parsed = JSON.parse(raw);
+      // Handle potential double-stringification from backend serializers
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to parse categories string:", raw, e);
+    }
+  }
+  return [];
+};
+
+// Helper to normalize Base Subject (Template) properties
+const normalizeBaseSubject = (item) => ({
+  ...item,
+  id: item.id || item.Id,
+  name: item.name || item.Name,
+  code: item.code || item.Code,
+  gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+  categories: getCategoriesAsArray(item)
+});
+
+// Helper to normalize Subject Instance properties
+const normalizeSubject = (item) => ({
+  ...item,
+  id: item.id || item.Id,
+  baseSubjectId: item.baseSubjectId || item.BaseSubjectId || item.base_subject_id,
+  sectionId: item.sectionId || item.SectionId || item.section_id,
+  teacherId: item.teacherId || item.TeacherId || item.teacher_id,
+  teacherName: item.teacherName || item.TeacherName || item.teacher_name,
+  name: item.name || item.Name,
+  code: item.code || item.Code,
+  gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+  categories: getCategoriesAsArray(item)
+});
 
 export function useSubjectManagement(users, setUsers) {
   const [subjects, setSubjects] = useState([]);
   const [baseSubjects, setBaseSubjects] = useState([]);
-  const [baseSubjectsLoading, setBaseSubjectsLoading] = useState(false);
-  const [baseSubjectsError, setBaseSubjectsError] = useState(null);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Add a general loading state for the hook
+  const [subjectsError, setSubjectsError] = useState(null); // Combined error for subjects and baseSubjects
 
-  useEffect(() => {
-    localStorage.removeItem('gradeMaster_subjects');
-    localStorage.removeItem('gradeMaster_baseSubjects');
-  }, []);
+  const syncSubjects = useCallback(async () => {
+    if (!authService.isLoggedIn()) return;
+    setSubjectsLoading(true);
+    setSubjectsError(null);
+    try {
+      setLoading(true); // Set general loading state
+      const data = await subjectService.getBaseSubjects();
+      setBaseSubjects(data.map(normalizeBaseSubject));
 
-  // Fetch base subjects from API on mount only when authenticated
-  useEffect(() => {
-    const fetchBaseSubjects = async () => {
-      setBaseSubjectsLoading(true);
-      setBaseSubjectsError(null);
-      try {
-        const data = await subjectService.getBaseSubjects();
-        // Normalize PascalCase from backend to camelCase for frontend
-        const normalizedData = data.map(item => ({
-          id: item.id || item.Id,
-          name: item.name || item.Name,
-          code: item.code || item.Code,
-          gradeLevel: item.gradeLevel || item.GradeLevel,
-          categories: item.categoriesJson ? JSON.parse(item.categoriesJson) : (item.categories ? (typeof item.categories === 'string' ? JSON.parse(item.categories) : item.categories) : (item.CategoriesJson ? JSON.parse(item.CategoriesJson) : []))
-        }));
-        setBaseSubjects(normalizedData);
-      } catch (error) {
-        console.error('Failed to fetch base subjects:', error);
-        setBaseSubjectsError(error.message);
-      } finally {
-        setBaseSubjectsLoading(false);
-      }
-    };
-
-    if (authService.isLoggedIn()) {
-      fetchBaseSubjects();
+      const fetchedSubjects = await subjectService.getSubjects();
+      setSubjects(fetchedSubjects.map(normalizeSubject));
+    } catch (error) {
+      console.error('Failed to fetch subjects data:', error);
+      setSubjectsError(error.message);
+    } finally {
+      setLoading(false); // Reset general loading state
+      setSubjectsLoading(false);
     }
   }, []);
 
   // Automatic synchronization: When any template changes, update all corresponding class records
   useEffect(() => {
-    if (!baseSubjects || baseSubjects.length === 0) return;
+    if (!baseSubjects || subjectsLoading) return; // Don't sync if still loading base subjects
 
     setSubjects(prevSubjects => {
       let hasStructuralChanges = false;
       const syncedSubjects = prevSubjects.map(sub => {
         // Match template by code and grade level
-        const template = baseSubjects.find(b => b.code === sub.code && b.gradeLevel === sub.gradeLevel);
+        const template = baseSubjects.find(b => String(b.id) === String(sub.baseSubjectId));
         if (!template) return sub;
 
         // Compare structure (categories and name) to avoid unnecessary re-renders
@@ -70,7 +102,7 @@ export function useSubjectManagement(users, setUsers) {
 
   const syncInstancesWithTemplate = (updatedBase) => {
     setSubjects(prev => prev.map(sub => {
-      if (sub.code === updatedBase.code && sub.gradeLevel === updatedBase.gradeLevel) {
+      if (sub.baseSubjectId === updatedBase.id) { // Match by baseSubjectId
         return { ...sub, categories: JSON.parse(JSON.stringify(updatedBase.categories)), name: updatedBase.name };
       }
       return sub;
@@ -79,64 +111,55 @@ export function useSubjectManagement(users, setUsers) {
 
   const createBaseSubject = async (data) => {
     try {
-      const response = await subjectService.createBaseSubject(data);
-      // Normalize the response from backend to camelCase (handle both PascalCase and camelCase)
-      const normalizedBaseSubject = {
-        id: response.id || response.Id,
-        name: response.name || response.Name,
-        code: response.code || response.Code,
-        gradeLevel: response.gradeLevel || response.GradeLevel,
-        categories: response.categories ? (typeof response.categories === 'string' ? JSON.parse(response.categories) : response.categories) : (response.CategoriesJson ? JSON.parse(response.CategoriesJson) : [])
-      };
-      setBaseSubjects(prev => [...prev, normalizedBaseSubject]);
-      return normalizedBaseSubject;
-    } catch (error) {
-      console.error('Failed to create base subject:', error);
-      throw error;
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
+      await subjectService.createBaseSubject(data);
+      
+      // Re-fetch all subjects to ensure state consistency with the database
+      await syncSubjects();
+    } catch (err) {
+      console.error('Failed to create base subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
   const updateBaseSubject = async (id, data) => {
     try {
-      const response = await subjectService.updateBaseSubject(id, data);
-      // Normalize the response from backend to camelCase (handle both PascalCase and camelCase)
-      const normalizedBaseSubject = {
-        id: response.id || response.template?.id || response.Id || response.template?.Id,
-        name: response.name || response.template?.name || response.Name || response.template?.Name,
-        code: response.code || response.template?.code || response.Code || response.template?.Code,
-        gradeLevel: response.gradeLevel || response.template?.gradeLevel || response.GradeLevel || response.template?.GradeLevel,
-        categories: (response.categories ? (typeof response.categories === 'string' ? JSON.parse(response.categories) : response.categories) : null) ||
-                   (response.template?.categories ? (typeof response.template.categories === 'string' ? JSON.parse(response.template.categories) : response.template.categories) : null) ||
-                   (response.CategoriesJson ? JSON.parse(response.CategoriesJson) : null) ||
-                   (response.template?.CategoriesJson ? JSON.parse(response.template.CategoriesJson) : null) ||
-                   []
-      };
-      setBaseSubjects(prev => prev.map(b => {
-        if (b.id === id) {
-          const updated = { ...b, ...normalizedBaseSubject };
-          syncInstancesWithTemplate(updated);
-          return updated;
-        }
-        return b;
-      }));
-      return normalizedBaseSubject;
-    } catch (error) {
-      console.error('Failed to update base subject:', error);
-      throw error;
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
+      await subjectService.updateBaseSubject(id, data);
+      
+      // Re-fetch to ensure the UI has the correct structure from the DB
+      // This automatically triggers the useEffect that syncs active instances
+      await syncSubjects();
+    } catch (err) {
+      console.error('Failed to update base subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
   const deleteBaseSubject = async (id) => {
     try {
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
       await subjectService.deleteBaseSubject(id);
       setBaseSubjects(prev => prev.filter(b => b.id !== id));
-    } catch (error) {
-      console.error('Failed to delete base subject:', error);
-      throw error;
+    } catch (err) {
+      console.error('Failed to delete base subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
-  const addSubject = (data) => {
+  const addSubject = async (data) => {
     const base = baseSubjects.find(b => b.id === data.baseSubjectId);
     if (!base) return;
 
@@ -161,38 +184,71 @@ export function useSubjectManagement(users, setUsers) {
       categories: JSON.parse(JSON.stringify(base.categories || []))
     };
 
-    setSubjects(prev => [...prev, newSub]);
-
-    if (data.teacherId) {
-      setUsers(prev => prev.map(user => {
-        if (user.id !== data.teacherId) return user;
-        return { ...user, assignedSubjectIds: [...(user.assignedSubjectIds || []), newSub.id] };
-      }));
+    try {
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
+      const response = await subjectService.createSubject(newSub); 
+      // FIX: Apply normalization to the newly created subject
+      const normalizedSubject = normalizeSubject(response);
+      
+      setSubjects(prev => [...prev, normalizedSubject]);
+      if (data.teacherId) {
+        setUsers(prev => prev.map(user => {
+          if (user.id !== data.teacherId) return user;
+          return { ...user, assignedSubjectIds: [...(user.assignedSubjectIds || []), normalizedSubject.id] };
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to add subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
-  const deleteSubject = (id) => {
+  const deleteSubject = async (id) => {
     const sub = subjects.find(s => s.id === id);
-    setSubjects(prev => prev.filter(s => s.id !== id));
-
-    if (sub?.teacherId) {
-      setUsers(prev => prev.map(u => u.id === sub.teacherId 
-        ? { ...u, assignedSubjectIds: (u.assignedSubjectIds || []).filter(sid => sid !== id) } 
-        : u));
+    try {
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
+      await subjectService.deleteSubject(id);
+      setSubjects(prev => prev.filter(s => s.id !== id));
+      if (sub?.teacherId) {
+        setUsers(prev => prev.map(u => u.id === sub.teacherId 
+          ? { ...u, assignedSubjectIds: (u.assignedSubjectIds || []).filter(sid => sid !== id) } 
+          : u));
+      }
+    } catch (err) {
+      console.error('Failed to delete subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
-  const updateSubject = (id, data) => {
+  const updateSubject = async (id, data) => {
     const old = subjects.find(s => s.id === id);
-    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
-
-    if (data.teacherId) {
-      setUsers(prev => prev.map(u => {
-        let sids = new Set(u.assignedSubjectIds || []);
-        if (u.id === data.teacherId) sids.add(id);
-        else if (u.id === old?.teacherId) sids.delete(id);
-        return { ...u, assignedSubjectIds: Array.from(sids) };
-      }));
+    try {
+      setLoading(true); // Set loading for this specific action
+      setSubjectsError(null);
+      const updatedSubject = await subjectService.updateSubject(id, data);
+      setSubjects(prev => prev.map(s => s.id === id ? updatedSubject : s)); // Assuming updatedSubject is normalized by service
+      if (data.teacherId) {
+        setUsers(prev => prev.map(u => {
+          let sids = new Set(u.assignedSubjectIds || []);
+          if (u.id === data.teacherId) sids.add(id);
+          else if (u.id === old?.teacherId) sids.delete(id);
+          return { ...u, assignedSubjectIds: Array.from(sids) };
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to update subject:', err);
+      setSubjectsError(err.message);
+      throw err;
+    } finally {
+      setLoading(false); // Reset loading
     }
   };
 
@@ -200,9 +256,11 @@ export function useSubjectManagement(users, setUsers) {
     subjects, 
     setSubjects, 
     baseSubjects, 
-    setBaseSubjects, 
-    baseSubjectsLoading, 
-    baseSubjectsError,
+    setBaseSubjects,
+    syncSubjects,
+    subjectsLoading, 
+    subjectsError,
+    loading, // Expose general loading state
     createBaseSubject, 
     updateBaseSubject, 
     deleteBaseSubject, 

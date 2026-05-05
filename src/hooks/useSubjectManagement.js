@@ -7,7 +7,7 @@ export function useSubjectManagement(users, setUsers) {
 
   const syncInstancesWithTemplate = (updatedBase) => {
     setSubjects(prev => prev.map(sub => {
-      if (sub.code === updatedBase.code && sub.gradeLevel === updatedBase.gradeLevel) {
+      if (sub.baseSubjectId === updatedBase.id) { // Match by baseSubjectId
         return { ...sub, categories: [...updatedBase.categories], name: updatedBase.name };
       }
       return sub;
@@ -18,15 +18,21 @@ export function useSubjectManagement(users, setUsers) {
     setBaseSubjects(prev => [...prev, { ...data, id: `base-${Date.now()}`, categories: [] }]);
   };
 
-  const updateBaseSubject = (id, data) => {
-    setBaseSubjects(prev => prev.map(b => {
-      if (b.id === id) {
-        const updated = { ...b, ...data };
-        syncInstancesWithTemplate(updated);
-        return updated;
-      }
-      return b;
-    }));
+  const updateBaseSubject = async (id, data) => {
+    try {
+      const updatedSubject = await subjectService.updateBaseSubject(id, data);
+      setBaseSubjects(prev => prev.map(b => {
+        if (b.id === id) {
+          const updated = { ...b, ...updatedSubject };
+          syncInstancesWithTemplate(updated);
+          return updated;
+        }
+        return b;
+      }));
+    } catch (error) {
+      console.error("Failed to update base subject:", error);
+      throw error;
+    }
   };
 
   const deleteBaseSubject = (id) => setBaseSubjects(prev => prev.filter(b => b.id !== id));
@@ -45,6 +51,7 @@ export function useSubjectManagement(users, setUsers) {
     };
 
     setSubjects(prev => [...prev, newSub]);
+    // TODO: Add API call to create subject instance
 
     if (data.teacherId) {
       setUsers(prev => prev.map(user => {
@@ -55,6 +62,7 @@ export function useSubjectManagement(users, setUsers) {
   };
 
   const deleteSubject = (id) => {
+    // TODO: Add API call to delete subject instance
     const sub = subjects.find(s => s.id === id);
     setSubjects(prev => prev.filter(s => s.id !== id));
 
@@ -65,6 +73,7 @@ export function useSubjectManagement(users, setUsers) {
     }
   };
 
+  // TODO: Add API call to update subject instance
   const updateSubject = (id, data) => {
     const old = subjects.find(s => s.id === id);
     setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));

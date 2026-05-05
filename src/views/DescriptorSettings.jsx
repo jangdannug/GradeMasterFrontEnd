@@ -1,14 +1,21 @@
-
 import React from 'react';
 import { motion } from 'motion/react';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 
-export function DescriptorSettings({ data, onSave }) {
-  const [localData, setLocalData] = React.useState([...data]);
+export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syncError }) {
+  const [localData, setLocalData] = React.useState([]);
+
+  React.useEffect(() => {
+    syncStandards?.();
+  }, []);
 
   React.useEffect(() => {
     setLocalData([...data]);
   }, [data]);
+
+  // Handle early returns after hooks are initialized
+  if (syncError) return <ApiConnectionErrorDisplay />;
 
   const handleUpdate = (index, field, value) => {
     const next = [...localData];
@@ -42,6 +49,13 @@ export function DescriptorSettings({ data, onSave }) {
           <Save size={14} /> Save Changes
         </button>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">
+          <Loader2 className="animate-spin mr-2" size={24} />
+          <span className="font-bold uppercase tracking-widest text-xs">Loading Descriptors...</span>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
         <table className="w-full text-left">

@@ -1,10 +1,24 @@
-
 import React from 'react';
 import { motion } from 'motion/react';
-import { Save, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { Save, RefreshCw, Trash2, Plus, Loader2 } from 'lucide-react';
+import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 
-export function TransmutationSettings({ data, onSave }) {
-  const [localData, setLocalData] = React.useState([...data].sort((a, b) => b.min - a.min));
+export function TransmutationSettings({ data, onSave, syncStandards, isLoading, syncError }) {
+  const [localData, setLocalData] = React.useState([]);
+
+  React.useEffect(() => {
+    syncStandards?.();
+  }, []);
+
+  // Keep local state in sync when data prop updates from API
+  React.useEffect(() => {
+    if (data && data.length > 0) {
+      setLocalData([...data].sort((a, b) => b.min - a.min));
+    }
+  }, [data]);
+
+  // Handle early returns after hooks are initialized
+  if (syncError) return <ApiConnectionErrorDisplay />;
 
   const handleUpdate = (index, field, value) => {
     const next = [...localData];
@@ -50,6 +64,13 @@ export function TransmutationSettings({ data, onSave }) {
           </button>
         </div>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">
+          <Loader2 className="animate-spin mr-2" size={24} />
+          <span className="font-bold uppercase tracking-widest text-xs">Loading Transmutation Table...</span>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
         <table className="w-full text-left">

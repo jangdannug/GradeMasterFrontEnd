@@ -9,7 +9,8 @@ export function StudentManagementView({
   schoolYears = [], 
   students = [], // All students
   onUpdateStudent,
-  onRemoveStudent
+  onRemoveStudent,
+  onSync
 }) {
   const [formData, setFormData] = useState({
     lastName: '',
@@ -25,6 +26,11 @@ export function StudentManagementView({
   const [gradeFilter, setGradeFilter] = useState('all');
   const [genderFilter, setGenderFilter] = useState('all');
   const [editingStudentId, setEditingStudentId] = useState(null);
+
+  React.useEffect(() => {
+    onSync?.();
+  }, [onSync]);
+
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (formData.lastName.trim() && formData.firstName.trim()) {

@@ -2,8 +2,8 @@ import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
-import { useGradeManagement } from './hooks/useGradeManagement'; // Assuming this is the correct path
-import { ShieldAlert, Loader2 } from 'lucide-react';
+import { useGradeManagement } from './hooks/useGradeManagement';
+import { ShieldAlert, Loader2 } from 'lucide-react'; // Removed WifiOff, RefreshCw as they are now in ApiConnectionErrorDisplay
 import ProtectedRoute from './components/ProtectedRoute'; // UPDATED
 import authService from './services/authService'; // UPDATED
 import { theme } from './theme';
@@ -17,6 +17,7 @@ const TransmutationSettings = lazy(() => import('./views/TransmutationSettings')
 const DescriptorSettings = lazy(() => import('./views/DescriptorSettings').then(m => ({ default: m.DescriptorSettings })));
 const TemplatesView = lazy(() => import('./views/TemplatesView').then(m => ({ default: m.TemplatesView })));
 const SubmittedRecords = lazy(() => import('./views/SubmittedRecords').then(m => ({ default: m.SubmittedRecords })));
+const ApiConnectionErrorDisplay = lazy(() => import('./components/ApiConnectionErrorDisplay').then(m => ({ default: m.ApiConnectionErrorDisplay }))); // NEW
 const StudentManagementView = lazy(() => import('./components/layout/StudentManagementView').then(m => ({ default: m.StudentManagementView }))); // Renamed
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
@@ -36,7 +37,17 @@ export default function App() {
     baseSubjects,
     savedClassRecords,
     classRecordLogs,
+    authLoading,
+    sectionsLoading,
+    subjectsLoading,
+    standardsLoading,
     users,
+    syncAuthData,
+    syncSections,
+    syncSubmissions,
+    syncStudents,
+    syncSubjects,
+    syncStandards,
     registrations,
     sections,
     assignAdviser,
@@ -76,14 +87,28 @@ export default function App() {
     removeStudent,
     assignStudentToSection,
     updateStudent, // Pass updateStudent
-    enrollStudentOverall // New
+    enrollStudentOverall, // New
+    syncError, // New: Propagate API sync errors
+    refreshGlobalData
   } = useGradeManagement(currentUser); // UPDATED: Pass currentUser context
 
-  const defaultSection = sections[0] || {};
+  // Provide a robust default section object to prevent crashes if sections are empty
+  const defaultSection = sections[0] || { 
+    id: 'default', 
+    name: 'N/A', 
+    gradeLevel: 'N/A', 
+    schoolYear: 'N/A', 
+    region: 'N/A', 
+    division: 'N/A', 
+    schoolId: 'N/A', 
+    schoolName: 'N/A' 
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const userHasSubjects = useMemo(() => {
     if (!currentUser) return false;
+    // If there's a sync error, assume no subjects can be loaded
+    if (syncError) return false;
     if (currentUser.role === 'admin') return false;
     
     const mySubjects = subjects.filter(s =>
@@ -100,6 +125,8 @@ export default function App() {
 
   const filteredSubjects = useMemo(() => {
     if (!currentUser) return [];
+    // If there's a sync error, no subjects can be filtered
+    if (syncError) return [];
     if (currentUser.role === 'admin') return [];
 
     const myTeachingLoad = subjects.filter(s =>
@@ -120,21 +147,22 @@ export default function App() {
     }
 
     return displayLoad;
-  }, [currentUser, subjects, savedClassRecords]);
+  }, [currentUser, subjects, savedClassRecords, syncError]);
 
   const reportSubjects = useMemo(() => {
     if (!currentUser) return [];
+    if (syncError) return [];
     if (currentUser.role === 'admin') return subjects;
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
       return subjects.filter(s => s.sectionId === currentUser.assignedSectionId);
     }
     return [];
-  }, [currentUser, subjects]);
+  }, [currentUser, subjects, syncError]);
 
   const selectedSubject = useMemo(() => {
     const found = filteredSubjects.find(s => s.id === selectedSubjectId);
     return found || filteredSubjects[0] || null;
-  }, [selectedSubjectId, filteredSubjects, subjects]);
+  }, [selectedSubjectId, filteredSubjects, subjects, syncError]);
 
   // Loading fallback component
   const PageLoader = () => (
@@ -178,6 +206,7 @@ export default function App() {
                 <Header 
                   section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                   userName={currentUser.name}
+                  syncError={syncError} // Pass syncError to Header if it needs to display anything
                 />
                 <div className="flex-1 overflow-auto p-4 md:p-8">
                   <Dashboard 
@@ -198,6 +227,8 @@ export default function App() {
                     onAssignStudent={assignStudentToSection}
                     onAddSubject={addSubject}
                     onUpdateSubject={updateSubject}
+                    syncError={syncError} // Pass syncError to Dashboard
+                    onRefresh={refreshGlobalData}
                     onDeleteSubject={deleteSubject}
                   />
                 </div>
@@ -210,6 +241,7 @@ export default function App() {
                   <Header 
                     section={defaultSection} 
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <AdminPanel 
@@ -229,6 +261,13 @@ export default function App() {
                       onUpdateUser={updateUser}
                       onDeleteUser={deleteUser}
                       currentUserId={currentUser.id}
+                      syncAuthData={syncAuthData}
+                      syncSections={syncSections}
+                      syncSubjects={syncSubjects}
+                      authLoading={authLoading}
+                      sectionsLoading={sectionsLoading}
+                      subjectsLoading={subjectsLoading}
+                      syncError={syncError} // Pass syncError to AdminPanel
                     />
                   </div>
                 </>
@@ -283,6 +322,7 @@ export default function App() {
                         isReadOnly={selectedSubject.teacherId !== currentUser.id}
                         savedRecord={savedClassRecords.find(record => record.id === `${selectedSubject.sectionId}-${selectedSubject.id}-Q${selectedQuarter}`)}
                         updateGrade={updateGrade}
+                        syncError={syncError} // Pass syncError to ClassRecord
                         onSubmitClassRecord={(data) => {
                           const result = submitClassRecord({ ...data, quarter: selectedQuarter });
                           if (!result.success) alert(result.message);
@@ -307,6 +347,7 @@ export default function App() {
                   <Header 
                     section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <SubmittedRecords 
@@ -320,6 +361,8 @@ export default function App() {
                       onApproveEdit={approveEditRequest}
                       onRejectEdit={rejectEditRequest}
                       onLockRecord={lockClassRecord}
+                      onSync={syncSubmissions}
+                      syncError={syncError} // Pass syncError to SubmittedRecords
                       onSelectSubject={setSelectedSubjectId}
                     />
                   </div>
@@ -333,6 +376,7 @@ export default function App() {
                   <Header 
                     section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <ProgressReport 
@@ -342,6 +386,7 @@ export default function App() {
                       descriptors={descriptors}
                     section={sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0] || defaultSection} 
                     savedClassRecords={savedClassRecords}
+                    syncError={syncError} // Pass syncError to ProgressReport
                     />
                   </div>
                 </>
@@ -354,9 +399,16 @@ export default function App() {
                   <Header 
                     section={defaultSection} 
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
-                    <TransmutationSettings data={transmutationTable} onSave={setTransmutationTable} />
+                    <TransmutationSettings 
+                      data={transmutationTable} 
+                      onSave={setTransmutationTable} 
+                      syncStandards={syncStandards}
+                      isLoading={standardsLoading}
+                      syncError={syncError} // Pass syncError to TransmutationSettings
+                    />
                   </div>
                 </>
               </ProtectedRoute>
@@ -368,9 +420,16 @@ export default function App() {
                   <Header 
                     section={defaultSection} 
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
-                    <DescriptorSettings data={descriptors} onSave={setDescriptors} />
+                    <DescriptorSettings 
+                      data={descriptors} 
+                      onSave={setDescriptors} 
+                      syncStandards={syncStandards}
+                      isLoading={standardsLoading}
+                      syncError={syncError} // Pass syncError to DescriptorSettings
+                    />
                   </div>
                 </>
               </ProtectedRoute>
@@ -382,6 +441,7 @@ export default function App() {
                   <Header 
                     section={defaultSection} 
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <TemplatesView 
@@ -395,6 +455,10 @@ export default function App() {
                       addColumnToCategory={addColumnToCategory}
                       removeColumnFromCategory={removeColumnFromCategory}
                       updateColumnName={updateColumnName}
+                      onUpdateBaseSubject={updateBaseSubject}
+                      syncError={syncError} // Pass syncError to TemplatesView
+                      syncSubjects={syncSubjects} // Pass sync function
+                      isLoading={subjectsLoading} // Pass loading state
                     />
                   </div>
                 </>
@@ -407,6 +471,7 @@ export default function App() {
                   <Header 
                     section={defaultSection} 
                     userName={currentUser.name}
+                    syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <StudentManagementView
@@ -415,6 +480,8 @@ export default function App() {
                       schoolYears={['2025-2026', '2026-2027', '2027-2028']} // Example school years
                       students={students} // Pass students for the new management tab
                       onUpdateStudent={updateStudent} // Pass updateStudent for editing
+                      onSync={syncStudents}
+                      syncError={syncError} // Pass syncError to StudentManagementView
                       onRemoveStudent={removeStudent} // Pass removeStudent for deleting
                     />
                   </div>

@@ -4,6 +4,7 @@ import sectionService from '../../services/sectionService';
 
 export function useSectionManagement(users, setUsers, registrations, setRegistrations, currentUser) {
   const [sections, setSections] = useState([]);
+  const [error, setError] = useState(null);
 
   // Helper to normalize PascalCase keys from C# to camelCase for the frontend
   const normalize = (data) => {
@@ -14,21 +15,19 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
     return Array.isArray(data) ? data.map(transform) : transform(data);
   };
 
-  // Fetch sections from API on mount or when user changes
-  useEffect(() => {
-    const syncSections = async () => {
-      const activeUser = currentUser || authService.getProfile();
-      if (activeUser && authService.isLoggedIn()) {
-        try {
-          const data = await sectionService.getSections();
-          setSections(normalize(data));
-        } catch (error) {
-          console.error("Failed to sync sections from API:", error);
-        }
+  const syncSections = async () => {
+    const activeUser = currentUser || authService.getProfile();
+    if (activeUser && authService.isLoggedIn()) {
+      setError(null);
+      try {
+        const data = await sectionService.getSections();
+        setSections(normalize(data));
+      } catch (err) {
+        console.error("Failed to sync sections from API:", err);
+        setError(err);
       }
-    };
-    syncSections();
-  }, [currentUser]);
+    }
+  };
 
   const createSection = async (data) => {
     try {
@@ -74,6 +73,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
       }));
     } catch (error) {
       console.error("Assign adviser failed:", error);
+      setError(error);
       throw error;
     }
   };
@@ -81,6 +81,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
   const approveRegistration = async (regId, role, sectionId, subjectIds = []) => {
     try {
       // UPDATED: Use backend API for approval
+      setError(null);
       const approvedProfile = await authService.approveRegistration(regId, { 
         role, 
         sectionId: sectionId || null, // FIX: Convert empty string to null for .NET nullable types
@@ -88,7 +89,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
       });
 
       // Update local state with the actual profile created by backend
-      setUsers(prev => [...prev, approvedProfile]);
+      setUsers(prev => [...prev, normalize(approvedProfile)]);
       setRegistrations(prev => prev.map(r => r.id === regId ? { ...r, status: 'approved' } : r));
       
       // Sync section adviser if applicable
@@ -99,9 +100,10 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
       }
     } catch (error) {
       console.error("Failed to approve registration:", error);
+      setError(error);
       throw error;
     }
   };
 
-  return { sections: sections || [], setSections, createSection, updateSection, deleteSection, assignAdviser, approveRegistration };
+  return { sections: sections || [], setSections, syncSections, createSection, updateSection, deleteSection, assignAdviser, approveRegistration, error };
 }
