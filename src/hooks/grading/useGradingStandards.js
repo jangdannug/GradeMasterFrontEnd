@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import standardsService from '../../services/standardsService';
 import authService from '../../services/authService';
 
@@ -17,7 +17,7 @@ export function useGradingStandards(currentUser) {
     return Array.isArray(data) ? data.map(transform) : transform(data);
   };
 
-  const syncStandards = async () => {
+  const syncStandards = useCallback(async () => {
     const activeUser = currentUser || authService.getProfile();
     if (activeUser && authService.isLoggedIn()) {
       setError(null);
@@ -34,7 +34,7 @@ export function useGradingStandards(currentUser) {
         setError(err);
       }
     }
-  };
+  }, [currentUser]);
 
   const updateTransmutationTableAPI = async (data) => {
     try {

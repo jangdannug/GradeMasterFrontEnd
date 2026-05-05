@@ -11,8 +11,8 @@ export const calculateSubjectResult = (
 ) => {
   const categories = (subject.categories || []).map(cat => {
     const cg = sg?.categoryGrades?.[cat.id];
-    const total = cg?.scores?.reduce((acc, curr) => acc + (curr.points || 0), 0) || 0;
-    const hpsTotal = cg?.hps?.reduce((a, b) => a + b, 0) || 1;
+    const total = (cg?.scores || []).reduce((acc, curr) => acc + ((curr?.points ?? 0)), 0);
+    const hpsTotal = (cg?.hps || []).reduce((a, b) => a + ((b ?? 0)), 0) || 1;
     const ps = roundToTwo((total / hpsTotal) * 100);
     const ws = roundToTwo(ps * (cat.weight || 0));
     

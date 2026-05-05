@@ -17,7 +17,9 @@ export function AdvisoryDashboardView({
   onAddSubject,
   onUpdateSubject,
   onDeleteSubject,
-  activeView = 'students'
+  activeView = 'students',
+  onRefresh, // NEW: Accept onRefresh prop
+  assignedSectionId
 }) {
   const [isAdding, setIsAdding] = React.useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = React.useState('');
@@ -26,8 +28,17 @@ export function AdvisoryDashboardView({
   const [editingSubjectId, setEditingSubjectId] = React.useState(null);
   const [subjectFormData, setSubjectFormData] = React.useState({ baseSubjectId: '', teacherId: '' });
 
-  const adviserSection = allSections.find(s => s.adviserId === currentTeacherId);
-  const myStudents = adviserSection ? students.filter(s => s.sectionId === adviserSection.id) : [];
+  // Robust lookup: prioritization of profile's assignedSectionId then section's adviserId
+  const adviserSection = React.useMemo(() => 
+    allSections.find(s => 
+      (assignedSectionId && String(s.id) === String(assignedSectionId)) || 
+      (s.adviserId || s.adviser_id) === currentTeacherId
+    ),
+    [allSections, currentTeacherId, assignedSectionId]
+  );
+
+  // Use String() conversion for filtering to prevent type-mismatch bugs (Number vs String)
+  const myStudents = adviserSection ? students.filter(s => String(s.sectionId) === String(adviserSection.id)) : [];
   const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');
 
   const availableStudents = React.useMemo(() => {
@@ -84,7 +95,7 @@ export function AdvisoryDashboardView({
 
   const assignedCodes = React.useMemo(() => {
     if (!adviserSection) return new Set();
-    return new Set(subjects.filter(s => s.sectionId === adviserSection.id).map(s => s.code));
+    return new Set(subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).map(s => s.code));
   }, [subjects, adviserSection]);
 
   const subjectOptions = baseSubjects
@@ -96,7 +107,19 @@ export function AdvisoryDashboardView({
     label: t.name 
   }));
 
-  if (!adviserSection) return null;
+  if (!adviserSection) {
+    const isLoading = allSections.length === 0;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400 gap-4 bg-white rounded-2xl border border-slate-200">
+        <div className={`size-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 ${isLoading ? 'animate-pulse' : ''}`}>
+          <Users size={32} />
+        </div>
+        <p className="font-black uppercase tracking-widest text-[10px] italic">
+          {isLoading ? 'Fetching Advisory Data...' : 'No assigned advisory section found.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -261,7 +284,7 @@ export function AdvisoryDashboardView({
             </AnimatePresence>
 
             <div className="space-y-3">
-              {subjects.filter(s => s.sectionId === adviserSection.id).map(sub => (
+              {subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).map(sub => (
                 <div key={sub.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all">
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-3">{sub.name}</h4>

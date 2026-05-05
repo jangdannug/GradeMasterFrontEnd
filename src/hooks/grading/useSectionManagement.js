@@ -1,38 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import authService from '../../services/authService';
 import sectionService from '../../services/sectionService';
+
+// Helper to normalize Section properties (bridging database naming to frontend)
+const normalizeSection = (item) => ({
+  ...item,
+  id: item.id || item.Id,
+  name: item.name || item.Name,
+  gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+  adviserId: item.adviserId || item.AdviserId || item.adviser_id,
+  schoolYear: item.schoolYear || item.SchoolYear || item.school_year,
+  region: item.region || item.Region,
+  division: item.division || item.Division,
+  schoolId: item.schoolId || item.Id || item.school_id,
+  schoolName: item.schoolName || item.SchoolName || item.school_name
+});
 
 export function useSectionManagement(users, setUsers, registrations, setRegistrations, currentUser) {
   const [sections, setSections] = useState([]);
   const [error, setError] = useState(null);
 
-  // Helper to normalize PascalCase keys from C# to camelCase for the frontend
-  const normalize = (data) => {
-    if (!data) return data;
-    const transform = (obj) => Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
-    );
-    return Array.isArray(data) ? data.map(transform) : transform(data);
-  };
-
-  const syncSections = async () => {
+  const syncSections = useCallback(async () => {
     const activeUser = currentUser || authService.getProfile();
     if (activeUser && authService.isLoggedIn()) {
       setError(null);
       try {
         const data = await sectionService.getSections();
-        setSections(normalize(data));
+        setSections(Array.isArray(data) ? data.map(normalizeSection) : []);
       } catch (err) {
         console.error("Failed to sync sections from API:", err);
         setError(err);
       }
     }
-  };
+  }, [currentUser]);
 
   const createSection = async (data) => {
     try {
       const newSection = await sectionService.createSection(data);
-      setSections(prev => [...prev, normalize(newSection)]);
+      setSections(prev => [...prev, normalizeSection(newSection)]);
     } catch (error) {
       console.error("Create section failed:", error);
       throw error;
@@ -42,7 +47,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
   const updateSection = async (id, data) => {
     try {
       const updated = await sectionService.updateSection(id, data);
-      setSections(prev => prev.map(s => s.id === id ? normalize(updated) : s));
+      setSections(prev => prev.map(s => s.id === id ? normalizeSection(updated) : s));
     } catch (error) {
       console.error("Update section failed:", error);
       throw error;
@@ -63,7 +68,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
     try {
       const updatedSection = await sectionService.assignAdviser(sectionId, { adviserId: teacherId });
       setSections(prev => prev.map(sec => 
-        sec.id === sectionId ? normalize(updatedSection) : sec
+        sec.id === sectionId ? normalizeSection(updatedSection) : sec
       ));
 
       setUsers(prev => prev.map(u => {
@@ -89,7 +94,7 @@ export function useSectionManagement(users, setUsers, registrations, setRegistra
       });
 
       // Update local state with the actual profile created by backend
-      setUsers(prev => [...prev, normalize(approvedProfile)]);
+      setUsers(prev => [...prev, normalizeSection(approvedProfile)]);
       setRegistrations(prev => prev.map(r => r.id === regId ? { ...r, status: 'approved' } : r));
       
       // Sync section adviser if applicable

@@ -441,7 +441,7 @@ function StudentCard({ student, onUpdateStudent, onRemoveStudent, sections, getS
           )}
         </div>
       </div>
-
+      
       <div className="flex justify-end gap-1 mt-auto pt-2">
         {isEditing ? (
           <>

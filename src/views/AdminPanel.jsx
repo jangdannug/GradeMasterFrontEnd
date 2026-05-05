@@ -69,10 +69,10 @@ export function AdminPanel({
     name: '',
     gradeLevel: '7',
     schoolYear: '2025-2026',
-    schoolId: '123456',
-    schoolName: 'STO. NINO HIGH SCHOOL',
-    region: 'REGION II',
-    division: 'CAGAYAN VALLEY'
+    schoolId: '123456', // Assuming this is a string ID
+    schoolName: 'MABINI HIGH SCHOOL',
+    region: 'REGION I',
+    division: 'PANGASINAN II'
   });
 
   React.useEffect(() => {

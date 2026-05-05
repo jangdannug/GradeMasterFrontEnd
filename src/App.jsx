@@ -21,6 +21,7 @@ const ApiConnectionErrorDisplay = lazy(() => import('./components/ApiConnectionE
 const StudentManagementView = lazy(() => import('./components/layout/StudentManagementView').then(m => ({ default: m.StudentManagementView }))); // Renamed
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
+// Global state for current user, selected quarter, and selected subject
 export default function App() {
   // MOVED UP: Initialize currentUser first so we can pass it to grade management hooks
   const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
@@ -74,6 +75,9 @@ export default function App() {
     approveEditRequest,
     rejectEditRequest,
     lockClassRecord,
+    saveDraftClassRecord,
+    loadClassRecordDraft,
+    applyClassRecordDraft,
     updateCategoryWeight, 
     updateCategoryTitle,
     addCategory,
@@ -160,9 +164,26 @@ export default function App() {
   }, [currentUser, subjects, syncError]);
 
   const selectedSubject = useMemo(() => {
-    const found = filteredSubjects.find(s => s.id === selectedSubjectId);
+    const found = filteredSubjects.find(s => String(s.id) === String(selectedSubjectId));
     return found || filteredSubjects[0] || null;
-  }, [selectedSubjectId, filteredSubjects, subjects, syncError]);
+  }, [selectedSubjectId, filteredSubjects]);
+
+  // NEW: Memoize the students filtered for the specific class record to prevent infinite re-renders
+  const classRecordStudents = useMemo(() => {
+    if (!selectedSubject) return [];
+    const sectionId = selectedSubject.sectionId;
+    return students.filter(s => String(s.sectionId) === String(sectionId));
+  }, [students, selectedSubject]);
+
+  // Set initial selectedSubjectId if currently empty or invalid
+  React.useEffect(() => {
+    if (filteredSubjects.length > 0) {
+      const currentExists = filteredSubjects.some(s => String(s.id) === String(selectedSubjectId));
+      if (!selectedSubjectId || !currentExists) {
+        setSelectedSubjectId(filteredSubjects[0].id);
+      }
+    }
+  }, [filteredSubjects, selectedSubjectId]);
 
   // Loading fallback component
   const PageLoader = () => (
@@ -222,6 +243,7 @@ export default function App() {
                     onSelectSubject={setSelectedSubjectId}
                     role={currentUser.role}
                     currentTeacherId={currentUser.id}
+                    assignedSectionId={currentUser.assignedSectionId}
                     onAddStudent={addStudent}
                     onRemoveStudent={removeStudent}
                     onAssignStudent={assignStudentToSection}
@@ -311,8 +333,9 @@ export default function App() {
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     {filteredSubjects.length > 0 && selectedSubject ? (
                       <ClassRecord 
-                        students={students.filter(s => s.sectionId === selectedSubject.sectionId)} 
+                        students={classRecordStudents} 
                         subject={selectedSubject} 
+                        baseSubjects={baseSubjects}
                         transmutationTable={transmutationTable}
                         descriptors={descriptors}
                         section={sections.find(sec => sec.id === selectedSubject.sectionId) || defaultSection} 
@@ -323,6 +346,10 @@ export default function App() {
                         savedRecord={savedClassRecords.find(record => record.id === `${selectedSubject.sectionId}-${selectedSubject.id}-Q${selectedQuarter}`)}
                         updateGrade={updateGrade}
                         syncError={syncError} // Pass syncError to ClassRecord
+                        saveDraftClassRecord={saveDraftClassRecord}
+                        loadClassRecordDraft={loadClassRecordDraft}
+                        applyClassRecordDraft={applyClassRecordDraft}
+                        onRefresh={refreshGlobalData}
                         onSubmitClassRecord={(data) => {
                           const result = submitClassRecord({ ...data, quarter: selectedQuarter });
                           if (!result.success) alert(result.message);

@@ -43,7 +43,7 @@ export const bulkUploadStudents = async (file, schoolYear, sectionId) => {
 
 export const updateStudent = async (id, data) => {
     try {
-        const response = await api.put(`/students/${id}`, data);
+        const response = await api.put(`/students/${String(id)}`, data);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to update student';
@@ -52,7 +52,7 @@ export const updateStudent = async (id, data) => {
 
 export const deleteStudent = async (id) => {
     try {
-        const response = await api.delete(`/students/${id}`);
+        const response = await api.delete(`/students/${String(id)}`);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to delete student';
@@ -62,7 +62,7 @@ export const deleteStudent = async (id) => {
 export const assignStudentToSection = async (studentId, sectionId) => {
     try {
         // Assuming a PATCH or PUT endpoint to update a student's section
-        const response = await api.put(`/students/${studentId}/assign-section`, { sectionId });
+        const response = await api.put(`/students/${String(studentId)}/assign-section`, { sectionId: String(sectionId) });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to assign student to section';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuthManagement } from './useAuthManagement';
 import { useGradingStandards } from './grading/useGradingStandards';
 import authService from '../services/authService';
@@ -21,15 +21,6 @@ export function useGradeManagement(currentUser) {
     currentUser
   );
 
-  // Centralized refreshers for UI triggers
-  const refreshGlobalData = async () => {
-    await Promise.all([
-      sectionsState.syncSections?.(),
-      subjectsState.syncSubjects?.(),
-      gradingState.syncStudents?.()
-    ]);
-  };
-
   const submissionsState = useSubmissionManagement();
   const gradingState = useStudentGrades(
     subjectsState.subjects, 
@@ -37,6 +28,23 @@ export function useGradeManagement(currentUser) {
     subjectsState.setBaseSubjects,
     currentUser
   );
+
+  // Centralized refreshers for UI triggers
+  const refreshGlobalData = useCallback(async () => {
+    await Promise.all([
+      authState.syncAuthData?.(),
+      sectionsState.syncSections?.(),
+      subjectsState.syncSubjects?.(),
+      gradingState.syncStudents?.(),
+      standardsState.syncStandards?.()
+    ]);
+  }, [
+    authState.syncAuthData, 
+    sectionsState.syncSections, 
+    subjectsState.syncSubjects, 
+    gradingState.syncStudents,
+    standardsState.syncStandards
+  ]);
 
   const deleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user? This will unassign them from all classes and subjects.')) {
@@ -111,6 +119,8 @@ export function useGradeManagement(currentUser) {
     classRecordLogs: submissionsState.classRecordLogs,
     syncSubmissions: submissionsState.syncSubmissions,
     submitClassRecord: submissionsState.submitClassRecord,
+    saveDraftClassRecord: submissionsState.saveDraftClassRecord,
+    loadClassRecordDraft: submissionsState.loadClassRecordDraft,
     requestEditClassRecord: submissionsState.requestEditClassRecord,
     approveEditRequest: submissionsState.approveEditRequest,
     rejectEditRequest: submissionsState.rejectEditRequest,
@@ -119,6 +129,8 @@ export function useGradeManagement(currentUser) {
     // Grading/Students
     students: gradingState.students || [],
     syncStudents: gradingState.syncStudents,
+    setStudents: gradingState.setStudents,
+    applyClassRecordDraft: gradingState.applyClassRecordDraft,
     updateGrade: gradingState.updateGrade,
     updateCategoryTitle: gradingState.updateCategoryTitle,
     updateCategoryWeight: gradingState.updateCategoryWeight,

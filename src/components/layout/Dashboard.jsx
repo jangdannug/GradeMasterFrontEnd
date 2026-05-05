@@ -20,18 +20,29 @@ export function Dashboard({
   onSelectSubject, 
   role, 
   currentTeacherId, 
+  assignedSectionId,
   onAddStudent, 
   onRemoveStudent,
   onAssignStudent,
   onUpdateStudent, // Pass updateStudent
   onAddSubject,
   onUpdateSubject,
-  onDeleteSubject
+  onDeleteSubject,
+  onRefresh
 }) {
   const [activeTab, setActiveTab] = React.useState('teaching');
   
   const navigate = useNavigate();
-  const adviserSection = allSections.find(s => s.adviserId === currentTeacherId);
+
+  // Fetch all necessary context data as soon as the dashboard mounts
+  React.useEffect(() => {
+    onRefresh?.();
+  }, [onRefresh]);
+
+  const adviserSection = allSections.find(s => 
+    (assignedSectionId && String(s.id) === String(assignedSectionId)) || 
+    (s.adviserId || s.adviser_id) === currentTeacherId
+  );
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -95,6 +106,8 @@ export function Dashboard({
           onAddSubject={onAddSubject}
           onUpdateSubject={onUpdateSubject}
           onDeleteSubject={onDeleteSubject}
+          onRefresh={onRefresh} // NEW: Pass onRefresh to AdvisoryDashboardView
+          assignedSectionId={assignedSectionId}
         />
       )}
     </motion.div>

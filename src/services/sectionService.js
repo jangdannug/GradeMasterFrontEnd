@@ -29,7 +29,7 @@ export const updateSection = async (id, data) => {
 
 export const deleteSection = async (id) => {
     try {
-        const response = await api.delete(`/sections/${id}`);
+        const response = await api.delete(`/sections/${String(id)}`);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to delete section';
@@ -40,7 +40,7 @@ export const deleteSection = async (id) => {
 export const assignAdviser = async (sectionId, adviserData) => {
     try {
         // The backend expects { adviserId: "uuid" }
-        const response = await api.put(`/sections/${sectionId}/assign-adviser`, adviserData);
+        const response = await api.put(`/sections/${String(sectionId)}/assign-adviser`, adviserData);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to assign adviser';

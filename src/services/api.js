@@ -1,33 +1,28 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:10000/api',
-    headers: {
-        'Content-Type': 'application/json',
-    },
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api', // Ensure this matches your backend API URL
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request interceptor: Attach JWT token from localStorage // UPDATED
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-}, (error) => Promise.reject(error));
+// Request interceptor to add the auth token
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Response interceptor: Handle 401 Unauthorized globally // UPDATED
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        // Don't redirect if the 401 comes from the login attempt itself
-        if (error.response && error.response.status === 401 && !error.config.url.includes('auth/login')) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('profile');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+// Response interceptor to log successful responses
+api.interceptors.response.use(response => {
+  console.log(`API Response [${response.status}] ${response.config.method.toUpperCase()} ${response.config.url}:`, response.data);
+  return response;
+}, error => {
+  console.error(`API Error [${error.response?.status || 'N/A'}] ${error.config?.method?.toUpperCase() || 'N/A'} ${error.config?.url || 'N/A'}:`, error.response?.data || error.message);
+  return Promise.reject(error);
+});
 
 export default api;

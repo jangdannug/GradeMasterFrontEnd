@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import classRecordService from '../../services/classRecordService';
 
 export function useSubmissionManagement() {
@@ -9,13 +9,25 @@ export function useSubmissionManagement() {
   // Helper to normalize PascalCase keys from C# to camelCase for the frontend
   const normalize = (data) => {
     if (!data) return data;
-    const transform = (obj) => Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
-    );
+    const transform = (obj) => {
+      if (!obj || typeof obj !== 'object') return obj;
+      const normalized = Object.fromEntries(
+        Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
+      );
+      // Deep normalize student snapshots if they exist
+      if (normalized.studentSnapshots && Array.isArray(normalized.studentSnapshots)) {
+        normalized.studentSnapshots = normalized.studentSnapshots.map(s => ({
+          ...s,
+          id: s.id || s.Id,
+          grades: s.grades || s.Grades || s.gradesJson || s.GradesJson || {}
+        }));
+      }
+      return normalized;
+    };
     return Array.isArray(data) ? data.map(transform) : transform(data);
   };
 
-  const syncSubmissions = async () => {
+  const syncSubmissions = useCallback(async () => {
     setError(null);
     try {
       const records = await classRecordService.getClassRecords();
@@ -27,12 +39,80 @@ export function useSubmissionManagement() {
       setError(err);
       throw err;
     }
+  }, []);
+
+  const saveDraftClassRecord = async ({ subject, section, teacher, students, quarter }) => {
+    const recordId = `${section.id}-${subject.id}-Q${quarter}`;
+    const draftData = {
+      Id: String(recordId), // This is the text unique key (e.g. 5-2-Q1)
+      SectionId: String(section.id), // String is safer for both int and Guid DTOs
+      SectionName: section.name || '',
+      GradeLevel: section.gradeLevel || '',
+      SubjectId: String(subject.id),
+      SubjectName: subject.name || '',
+      Quarter: quarter,
+      UpdatedAt: new Date().toISOString(),
+      IsLocked: false,
+      IsDraft: true,
+      TeacherId: String(teacher.id),
+      TeacherName: teacher.name || '',
+      StudentSnapshots: students.map(s => ({
+        Id: String(s.id),
+        Name: s.name || '',
+        Gender: s.gender || '',
+        GradeLevel: s.gradeLevel || '',
+        SchoolYear: s.schoolYear || '',
+        SectionId: s.sectionId ? String(s.sectionId) : null,
+        Grades: s.grades[subject.id]?.[quarter] || {} // Send as raw object for JsonDocument
+      }))
+    };
+
+    try {
+      setError(null);
+      const savedDraft = await classRecordService.saveClassRecordDraft(recordId, draftData);
+      setSavedClassRecords(prev => [normalize(savedDraft), ...prev.filter(r => r.id !== recordId)]);
+      return { success: true, message: 'Draft saved successfully.' };
+    } catch (error) {
+      console.error('Error saving draft class record:', error);
+      setError(error);
+      return { success: false, message: error.message || 'Failed to save draft class record.' };
+    }
+  };
+
+  const loadClassRecordDraft = async (recordId) => {
+    try {
+      setError(null);
+      
+      // Robust parsing for "sectionId-subjectId-Qquarter" (handles dashes in UUIDs)
+      const parts = recordId.split('-Q');
+      const quarter = parts[1];
+      const ids = parts[0].split('-');
+      
+      // The last element before -Q is always the subjectId
+      const subjectId = ids.pop();
+      // Everything else before that is the sectionId (handles UUIDs correctly)
+      const sectionId = ids.join('-');
+
+      const draftRecord = await classRecordService.getClassRecordByCompositeKey({
+        sectionId: String(sectionId),
+        subjectId: String(subjectId),
+        quarter: Number(quarter)
+      });
+      return normalize(draftRecord);
+    } catch (error) {
+      if (error.response?.status === 404 || error.message?.includes('Failed to fetch class record')) {
+        return null;
+      }
+      console.error('Failed to load class record draft:', error);
+      setError(error);
+      return null;
+    }
   };
 
   const submitClassRecord = async ({ subject, section, teacher, students, quarter }) => {
     const now = new Date().toISOString();
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
-    
+
     // Validation: Prevent re-submission if the quarter's record is already verified
     const existingVerifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
     if (existingVerifiedRecord) {
@@ -40,19 +120,26 @@ export function useSubmissionManagement() {
     }
 
     const newRecordData = {
-      id: recordId,
-      sectionId: section.id,
-      sectionName: section.name,
-      gradeLevel: section.gradeLevel,
-      subjectId: subject.id,
-      subjectName: subject.name,
-      quarter: quarter,
-      submittedAt: now,
-      isLocked: true,
-      isVerified: false,
-      teacherId: teacher.id,
-      teacherName: teacher.name,
-      studentSnapshots: students.map(s => ({ ...s, grades: s.grades[subject.id]?.[quarter] || null }))
+      SectionId: Number(section.id),
+      SectionName: section.name || '',
+      GradeLevel: section.gradeLevel || '',
+      SubjectId: Number(subject.id),
+      SubjectName: subject.name || '',
+      Quarter: quarter,
+      SubmittedAt: now,
+      IsLocked: true,
+      IsVerified: false,
+      TeacherId: Number(teacher.id),
+      TeacherName: teacher.name || '',
+      StudentSnapshots: students.map(s => ({
+        Id: Number(s.id),
+        Name: s.name || '',
+        Gender: s.gender || '',
+        GradeLevel: s.gradeLevel || '',
+        SchoolYear: s.schoolYear || '',
+        SectionId: s.sectionId ? Number(s.sectionId) : null,
+        Grades: s.grades[subject.id]?.[quarter] || {}
+      }))
     };
     
     try {
@@ -151,5 +238,5 @@ export function useSubmissionManagement() {
     }
   };
 
-  return { savedClassRecords, classRecordLogs, syncSubmissions, submitClassRecord, requestEditClassRecord, approveEditRequest, rejectEditRequest, lockClassRecord, error };
+  return { savedClassRecords, classRecordLogs, syncSubmissions, saveDraftClassRecord, loadClassRecordDraft, submitClassRecord, requestEditClassRecord, approveEditRequest, rejectEditRequest, lockClassRecord, error };
 }

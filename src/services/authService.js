@@ -1,11 +1,25 @@
 import api from './api';
 
+// Helper to bridge database naming conventions to frontend camelCase
+const normalizeProfile = (p) => {
+    if (!p) return null;
+    return {
+        ...p,
+        id: p.id || p.Id,
+        name: p.name || p.Name,
+        username: p.username || p.Username,
+        role: p.role || p.Role,
+        assignedSectionId: p.assignedSectionId || p.AssignedSectionId || p.assigned_section_id,
+        assignedSubjectIds: p.assignedSubjectIds || p.AssignedSubjectIds || p.assigned_subject_ids || []
+    };
+};
+
 export const login = async (username, password) => {
     try {
         const response = await api.post('auth/login', { username, password }); // FIXED: Removed leading slash for correct path resolution
-        const { token, profile } = response.data;
+        const { token, profile: rawProfile } = response.data;
+        const profile = normalizeProfile(rawProfile);
 
-        // Save to localStorage as requested // UPDATED
         localStorage.setItem('token', token);
         localStorage.setItem('profile', JSON.stringify(profile));
 
@@ -37,7 +51,7 @@ export const getRegistrations = async () => {
 
 export const approveRegistration = async (id, approvalData) => {
     try {
-        const response = await api.put(`profiles/registrations/${id}/approve`, approvalData);
+        const response = await api.put(`profiles/registrations/${String(id)}/approve`, approvalData);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Approval failed';
@@ -46,7 +60,7 @@ export const approveRegistration = async (id, approvalData) => {
 
 export const rejectRegistration = async (id, reason = "") => {
     try {
-        const response = await api.put(`profiles/registrations/${id}/reject`, { reason });
+        const response = await api.put(`profiles/registrations/${String(id)}/reject`, { reason });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Rejection failed';
@@ -64,7 +78,7 @@ export const getAllProfiles = async () => {
 
 export const deleteProfile = async (id) => {
     try {
-        const response = await api.delete(`profiles/${id}`);
+        const response = await api.delete(`profiles/${String(id)}`);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to delete profile';
@@ -78,7 +92,8 @@ export const logout = () => {
 
 export const getProfile = () => {
     const profile = localStorage.getItem('profile');
-    return profile ? JSON.parse(profile) : null;
+    if (!profile) return null;
+    return normalizeProfile(JSON.parse(profile));
 };
 
 export const getToken = () => {

@@ -31,31 +31,50 @@ function AutoResizeTextarea({ value, onChange, className }) {
 export function ClassRecord({ 
   students, 
   subject, 
+  baseSubjects = [],
   section, 
   transmutationTable,
   descriptors,
   updateGrade, 
+  saveDraftClassRecord,
+  loadClassRecordDraft,
+  applyClassRecordDraft,
   userRole,
   quarter,
   isReadOnly = false,
   savedRecord = null,
   onSubmitClassRecord = null,
-  currentUser = null
+  currentUser = null,
+  onRefresh = null
 }) {
   const location = useLocation();
+
+  React.useEffect(() => {
+    onRefresh?.();
+  }, [onRefresh]);
+
   const isSummaryOnly = location.state?.summaryOnly || false;
   const isAdviser = userRole === 'adviser';
   const isAdmin = userRole === 'admin';
   const isSubmitted = savedRecord?.isLocked;
   const isEditable = !isReadOnly && !isSubmitted;
   const effectiveSummaryOnly = isSummaryOnly || (isAdviser && isReadOnly);
-  
-  const totalWeight = (subject.categories || []).reduce((acc, cat) => acc + cat.weight, 0);
+
+  // Find the template associated with this subject to ensure we have the categories
+  const template = React.useMemo(() => 
+    baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId)), 
+    [baseSubjects, subject.baseSubjectId]
+  );
+  const effectiveCategories = React.useMemo(() => (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []), [subject.categories, template]);
+
+  const totalWeight = (effectiveCategories).reduce((acc, cat) => acc + cat.weight, 0);
 
   const containerRef = React.useRef(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [calculatedGrades, setCalculatedGrades] = React.useState({});
   const [calculatingGrades, setCalculatingGrades] = React.useState(false);
+  const [draftStatus, setDraftStatus] = React.useState('saved');
+  const [draftLoaded, setDraftLoaded] = React.useState(false);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -75,40 +94,95 @@ export function ClassRecord({
     return () => document.removeEventListener('fullscreenchange', handleFSChange);
   }, []);
 
+  React.useEffect(() => {
+    if (!subject || !section || !students.length || draftLoaded) return;
+
+    const recordId = `${section.id}-${subject.id}-Q${quarter}`;
+    const loadDraft = async () => {
+        const draft = await loadClassRecordDraft(recordId);
+        if (draft && !draft.isLocked && draft.studentSnapshots?.length > 0) {
+            applyClassRecordDraft(draft, subject.id, quarter);
+        }
+        setDraftLoaded(true);
+    };
+
+    loadDraft();
+  }, [subject, section, quarter, students.length, loadClassRecordDraft, applyClassRecordDraft, draftLoaded]);
+
+  React.useEffect(() => {
+    if (!isEditable || !saveDraftClassRecord || !currentUser || !subject || !section || !draftLoaded) return;
+    if (!students.length) return;
+
+    // Ensure we are only saving students belonging to this subject's section
+    const relevantStudents = students.filter(s => String(s.sectionId) === String(subject.sectionId));
+    const draftSaver = setTimeout(async () => {
+      setDraftStatus('saving');
+      const result = await saveDraftClassRecord({ subject, section, teacher: currentUser, students: relevantStudents, quarter });
+      if (!result.success) console.error("Draft Auto-save failed:", result.message);
+      setDraftStatus(result.success ? 'saved' : 'error');
+    }, 750);
+
+    return () => clearTimeout(draftSaver);
+  }, [students, subject, section, quarter, currentUser, saveDraftClassRecord, isEditable, draftLoaded]);
+
   // Calculate grades using API when students or subject data changes
   React.useEffect(() => {
     const calculateAllGrades = async () => {
       if (!students.length || !subject) return;
 
       setCalculatingGrades(true);
-      try {
-        const batchData = {
-          subjectCategories: subject.categories || [],
-          transmutationTable,
-          descriptors,
-          studentGrades: students.map(student => ({
-            studentId: student.id,
-            grades: student.grades[subject.id]?.[quarter] || null
-          }))
-        };
+      const localGrades = {};
+      students.forEach(student => {
+        const sg = student.grades[subject.id]?.[quarter];
+        localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
+      });
 
-        const results = await gradingService.calculateBatchGrades(batchData);
+      try {
+        const batchData = students.map(student => ({
+          studentId: student.id,
+          grades: student.grades[subject.id]?.[quarter] || null,
+          categories: effectiveCategories
+        }));
+
+        const apiResults = await gradingService.calculateBatchGrades(batchData);
 
         const gradesMap = {};
-        results.forEach(result => {
-          gradesMap[result.studentId] = result;
+        apiResults.forEach(result => {
+          const sId = String(result.studentId ?? result.StudentId ?? '');
+          const fallback = localGrades[sId] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
+
+          // The backend calculation might not return the full breakdown for each category.
+          // We keep the local calculation results (Total, PS, WS) if the API response is missing them.
+          const apiCats = result.categories || result.Categories;
+          const categories = (Array.isArray(apiCats) && apiCats.length > 0)
+            ? apiCats.map(c => ({
+                categoryId: c.categoryId ?? c.CategoryId ?? '',
+                total: c.total ?? c.Total ?? 0,
+                ps: c.ps ?? c.Ps ?? c.PS ?? 0,
+                ws: c.ws ?? c.Ws ?? c.WS ?? 0
+              }))
+            : fallback.categories;
+
+          gradesMap[sId] = {
+            initial: result.initial ?? result.initialGrade ?? result.InitialGrade ?? fallback.initial,
+            quarterly: result.quarterly ?? result.transmutedGrade ?? result.TransmutedGrade ?? fallback.quarterly,
+            descriptor: {
+              label: result.descriptor?.label ?? result.descriptorLabel ?? result.DescriptorLabel ?? fallback.descriptor?.label ?? '',
+              color: result.descriptor?.color ?? result.descriptorColor ?? result.DescriptorColor ?? fallback.descriptor?.color ?? 'text-slate-400'
+            },
+            categories
+          };
+        });
+
+        // Ensure every student has a grade entry even if the API returned nothing for them.
+        students.forEach(student => {
+          const sId = String(student.id);
+          gradesMap[sId] = gradesMap[sId] || localGrades[sId];
         });
 
         setCalculatedGrades(gradesMap);
       } catch (error) {
         console.error('Failed to calculate grades:', error);
-        // Fallback to local calculation
-        const localGrades = {};
-        students.forEach(student => {
-          const sg = student.grades[subject.id]?.[quarter];
-          // Use local calculation as fallback
-          localGrades[student.id] = calculateSubjectResult(sg, subject, transmutationTable, descriptors);
-        });
         setCalculatedGrades(localGrades);
       } finally {
         setCalculatingGrades(false);
@@ -116,7 +190,7 @@ export function ClassRecord({
     };
 
     calculateAllGrades();
-  }, [students, subject, quarter, transmutationTable, descriptors]);
+  }, [students, subject, quarter, transmutationTable, descriptors, effectiveCategories]);
 
   return (
     <motion.div 
@@ -155,6 +229,7 @@ export function ClassRecord({
           <div className={`grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-black/10 ${theme.styles.radiusSm}`}>
             <RecordMeta label="Teacher" value={subject.teacherName} />
             <RecordMeta label="Subject" value={subject.name} italic />
+            <RecordMeta label="Template" value={template?.code || 'N/A'} />
             <RecordMeta label="Grade & Section" value={`${section.gradeLevel} - ${section.name}`} />
             <RecordMeta label="Grading Period" value={`${quarter}${quarter === 1 ? 'st' : quarter === 2 ? 'nd' : quarter === 3 ? 'rd' : 'th'} Quarter`} />
             <div className="flex flex-col">
@@ -172,7 +247,7 @@ export function ClassRecord({
             {/* Category Header */}
             <tr className="bg-slate-100 text-xs font-black text-slate-600 uppercase divide-x divide-slate-300 border-b border-slate-300">
               <th rowSpan={2} className="p-4 text-left w-64 min-w-[250px] sticky left-0 bg-slate-100 z-20 shadow-[2px_0_4px_rgba(0,0,0,0.05)] border-r border-slate-300">LEARNERS' NAMES</th>
-              {!effectiveSummaryOnly && (subject.categories || []).map((cat, idx) => {
+              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const count = cat.columnNames?.length || 5;
                 return (
                   <th key={cat.id} colSpan={count + 3} className={`p-4 text-center ${idx % 2 === 0 ? 'bg-blue-100/50' : 'bg-emerald-100/50'}`}>
@@ -195,7 +270,7 @@ export function ClassRecord({
             </tr>
             {/* Sub-header (1-5, Total, PS, WS) */}
             <tr className="bg-slate-50 text-[10px] font-bold text-slate-500 divide-x divide-slate-200 border-b border-slate-300">
-              {!effectiveSummaryOnly && (subject.categories || []).map((cat, idx) => {
+              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const columnNames = cat.columnNames || Array(5).fill(0).map((_, i) => (i + 1).toString());
                 
                 return (
@@ -219,7 +294,7 @@ export function ClassRecord({
               <td className="p-3 sticky left-0 bg-slate-900 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)] border-r border-slate-700 uppercase">
                  {effectiveSummaryOnly ? 'Standard Weights' : 'Highest Possible Score'}
               </td>
-              {!effectiveSummaryOnly && (subject.categories || []).map((cat, idx) => {
+              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const hpsValues = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[cat.id]?.hps || [];
                 const count = cat.columnNames?.length || 5;
 
@@ -252,7 +327,7 @@ export function ClassRecord({
                   </React.Fragment>
                 );
               })}
-              {effectiveSummaryOnly && (subject.categories || []).map((cat, idx) => (
+              {effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => (
                 <td key={`weight-${cat.id}`} className="p-3 text-center bg-slate-800">
                   <div className={`p-1 font-black text-[10px] rounded ${idx % 2 === 0 ? 'bg-blue-900/50 text-blue-300' : 'bg-emerald-900/50 text-emerald-300'}`}>
                     {Math.round(cat.weight * 100)}% {cat.name.split(' ')[0]}
@@ -276,7 +351,7 @@ export function ClassRecord({
                     </div>
                   </td>
                   
-                  {!effectiveSummaryOnly && (subject.categories || []).map((cat, idx) => {
+                  {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                     const cg = sg?.categoryGrades?.[cat.id];
                     const catRes = (results.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
                     const count = cat.columnNames?.length || 5;
@@ -312,18 +387,18 @@ export function ClassRecord({
                   })}
                   
                   {/* Final results */}
-                  <td className="p-2 text-center font-black bg-slate-100 text-slate-800">{results.initial.toFixed(2)}</td>
+                  <td className="p-2 text-center font-black bg-slate-100 text-slate-800">{(results.initial || 0).toFixed(2)}</td>
                   <td className="p-2 text-center font-bold bg-slate-50 text-slate-600 border-l border-slate-200">
                     {calculatingGrades ? (
                       <div className="flex items-center justify-center">
                         <Loader2 size={14} className="animate-spin text-slate-400" />
                       </div>
                     ) : (
-                      results.quarterly
+                      results.quarterly || 0
                     )}
                   </td>
-                  <td className={`p-2 text-center font-black bg-slate-50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor.color}`}>
-                    {results.descriptor.label}
+                  <td className={`p-2 text-center font-black bg-slate-50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor?.color || ''}`}>
+                    {results.descriptor?.label || ''}
                   </td>
                   <td className="p-3 bg-slate-900 text-white sticky right-0 z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.2)]">
                     <div className="flex flex-col items-center justify-center gap-0.5">
@@ -333,9 +408,9 @@ export function ClassRecord({
                         </div>
                       ) : (
                         <>
-                          <span className="text-base font-black leading-none">{results.quarterly}</span>
-                          <span className={`text-[7px] font-black uppercase tracking-[0.2em] opacity-90 brightness-150 ${results.descriptor.color}`}>
-                            {results.descriptor.label}
+                          <span className="text-base font-black leading-none">{results.quarterly || 0}</span>
+                          <span className={`text-[7px] font-black uppercase tracking-[0.2em] opacity-90 brightness-150 ${results.descriptor?.color || ''}`}>
+                            {results.descriptor?.label || ''}
                           </span>
                         </>
                       )}

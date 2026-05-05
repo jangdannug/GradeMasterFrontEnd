@@ -20,7 +20,7 @@ export const createBaseSubject = async (data) => {
 
 export const updateBaseSubject = async (id, data) => {
     try {
-        const response = await api.put(`/subjects/templates/${id}`, data);
+        const response = await api.put(`/subjects/templates/${String(id)}`, data);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to update base subject';
@@ -29,7 +29,7 @@ export const updateBaseSubject = async (id, data) => {
 
 export const deleteBaseSubject = async (id) => {
     try {
-        const response = await api.delete(`/subjects/templates/${id}`);
+        const response = await api.delete(`/subjects/templates/${String(id)}`);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to delete base subject';
@@ -47,7 +47,7 @@ export const getSubjects = async () => {
 
 export const updateSubject = async (id, data) => {
     try {
-        const response = await api.put(`/subjects/${id}`, data);
+        const response = await api.put(`/subjects/${String(id)}`, data);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to update subject';

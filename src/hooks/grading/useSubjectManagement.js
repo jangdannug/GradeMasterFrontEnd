@@ -14,7 +14,7 @@ const getCategoriesAsArray = (item) => {
     try {
       let parsed = JSON.parse(raw);
       // Handle potential double-stringification from backend serializers
-      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      if (typeof parsed === 'string' && parsed.trim() !== '') parsed = JSON.parse(parsed); // Double parse if needed
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.error("Failed to parse categories string:", raw, e);
@@ -38,7 +38,7 @@ const normalizeSubject = (item) => ({
   ...item,
   id: item.id || item.Id,
   baseSubjectId: item.baseSubjectId || item.BaseSubjectId || item.base_subject_id,
-  sectionId: item.sectionId || item.SectionId || item.section_id,
+  sectionId: item.sectionId ?? item.SectionId ?? item.section_id ?? null,
   teacherId: item.teacherId || item.TeacherId || item.teacher_id,
   teacherName: item.teacherName || item.TeacherName || item.teacher_name,
   name: item.name || item.Name,
@@ -72,7 +72,7 @@ export function useSubjectManagement(users, setUsers) {
       setLoading(false); // Reset general loading state
       setSubjectsLoading(false);
     }
-  }, []);
+  }, [authService.isLoggedIn]);
 
   // Automatic synchronization: When any template changes, update all corresponding class records
   useEffect(() => {
@@ -100,14 +100,14 @@ export function useSubjectManagement(users, setUsers) {
     });
   }, [baseSubjects]);
 
-  const syncInstancesWithTemplate = (updatedBase) => {
+  const syncInstancesWithTemplate = useCallback((updatedBase) => { // Memoize this function
     setSubjects(prev => prev.map(sub => {
       if (sub.baseSubjectId === updatedBase.id) { // Match by baseSubjectId
         return { ...sub, categories: JSON.parse(JSON.stringify(updatedBase.categories)), name: updatedBase.name };
       }
       return sub;
     }));
-  };
+  }, []); // No dependencies needed if setSubjects is stable
 
   const createBaseSubject = async (data) => {
     try {
@@ -234,7 +234,10 @@ export function useSubjectManagement(users, setUsers) {
       setLoading(true); // Set loading for this specific action
       setSubjectsError(null);
       const updatedSubject = await subjectService.updateSubject(id, data);
-      setSubjects(prev => prev.map(s => s.id === id ? updatedSubject : s)); // Assuming updatedSubject is normalized by service
+      
+      // Apply normalization to the updated subject response to ensure camelCase consistency
+      const normalized = normalizeSubject(updatedSubject);
+      setSubjects(prev => prev.map(s => String(s.id) === String(id) ? normalized : s));
       if (data.teacherId) {
         setUsers(prev => prev.map(u => {
           let sids = new Set(u.assignedSubjectIds || []);
@@ -257,7 +260,7 @@ export function useSubjectManagement(users, setUsers) {
     setSubjects, 
     baseSubjects, 
     setBaseSubjects,
-    syncSubjects,
+    syncSubjects, // Pass the stable syncSubjects function
     subjectsLoading, 
     subjectsError,
     loading, // Expose general loading state
