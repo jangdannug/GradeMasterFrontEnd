@@ -72,7 +72,13 @@ export function SubmittedRecords({
   };
 
   const getPendingEditRequest = (recordId) => {
-    return getRecordLogs(recordId).find(log => log.action === 'edit_requested' && log.status === 'pending');
+    const logs = getRecordLogs(recordId);
+    if (logs.length === 0) return null;
+    
+    // An edit request is ONLY active if it is the most recent activity.
+    // Once an adviser approves/rejects or a teacher resubmits, the request is closed.
+    const latestLog = logs[0];
+    return (latestLog.action === 'edit_requested' && latestLog.status === 'pending') ? latestLog : null;
   };
 
   return (
