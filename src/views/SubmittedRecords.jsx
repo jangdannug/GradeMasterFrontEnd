@@ -16,7 +16,8 @@ export function SubmittedRecords({
   onLockRecord = null,
   onSelectSubject = null,
   onSync = null,
-  mode = 'submitted' // 'submitted' (pending) | 'verified' (finalized)
+  mode = 'submitted', // 'submitted' (pending) | 'verified' (finalized)
+  maxQuarters = 4
 }) {
   const [expandedRecord, setExpandedRecord] = useState(null);
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ export function SubmittedRecords({
                  className="bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all min-w-[140px]"
                >
                  <option key="all-q" value="all">ALL QUARTERS</option>
-                 {[1, 2, 3, 4].map(q => <option key={q} value={q}>QUARTER {q}</option>)}
+                 {Array.from({ length: maxQuarters }, (_, i) => i + 1).map(q => <option key={q} value={q}>QUARTER {q}</option>)}
                </select>
              </div>
 

@@ -14,7 +14,8 @@ export function ProgressReport({
   allSections = [],
   transmutationTable, 
   descriptors,
-  savedClassRecords = [] 
+  savedClassRecords = [],
+  maxQuarters = 4
 }) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -77,7 +78,7 @@ export function ProgressReport({
             const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
             const effectiveCategories = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
 
-            const quarterGrades = [1, 2, 3, 4].map(q => {
+            const quarterGrades = Array.from({ length: maxQuarters }, (_, i) => i + 1).map(q => {
               const recordId = `${student.sectionId}-${subject.id}-Q${q}`;
               const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
               
@@ -141,11 +142,11 @@ export function ProgressReport({
                </div>
                
                <div className="p-6 md:p-8 bg-white">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                    {subjectResults.map((res, i) => (
                      <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow space-y-4">
                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">{res.name}</p>
-                       <div className="grid grid-cols-4 gap-2">
+                       <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
                          {res.quarterlyGrades.map(q => (
                            <div key={q.quarter} className={`text-center py-1.5 rounded-lg border ${q.score === null ? 'border-transparent' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
                              <p className="text-[6px] text-slate-400 font-black uppercase mb-0.5">Q{q.quarter}</p>

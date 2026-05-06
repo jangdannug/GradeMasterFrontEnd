@@ -27,6 +27,9 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
 
   const [selectedQuarter, setSelectedQuarter] = useState(1);
+  const [maxQuarters, setMaxQuarters] = useState(() => {
+    return parseInt(localStorage.getItem('gradeMaster_maxQuarters')) || 4;
+  });
   const [selectedSubjectId, setSelectedSubjectId] = useState(() => {
     const user = authService.getProfile();
     return (user?.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
@@ -42,6 +45,12 @@ export default function App() {
       return confirmed;
     }
     return true;
+  };
+
+  const handleMaxQuartersChange = (val) => {
+    const num = parseInt(val);
+    setMaxQuarters(num);
+    localStorage.setItem('gradeMaster_maxQuarters', num);
   };
 
   // Global Navigation Guard: Intercepts internal link clicks (Sidebar, etc.)
@@ -340,6 +349,8 @@ export default function App() {
                       sectionsLoading={sectionsLoading}
                       subjectsLoading={subjectsLoading}
                       syncError={syncError} // Pass syncError to AdminPanel
+                      maxQuarters={maxQuarters}
+                      onMaxQuartersChange={handleMaxQuartersChange}
                     />
                   </div>
                 </>

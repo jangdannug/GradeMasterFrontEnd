@@ -47,8 +47,10 @@ export function AdminPanel({
   syncSections, // Function to sync sections data
   syncSubjects, // Function to sync subjects/templates
   authLoading, // Loading state from auth hook
-  sectionsLoading, // Loading state from sections hook
-  subjectsLoading // Loading state from subjects hook
+  sectionsLoading, 
+  subjectsLoading,
+  maxQuarters,
+  onMaxQuartersChange
 }) {
   // HOOKS MUST BE CALLED AT THE TOP LEVEL
   const navigate = useNavigate();
@@ -242,6 +244,12 @@ export function AdminPanel({
             onClick={() => setActiveTab('users')}
             icon={<Users size={14} />}
             label="Users"
+          />
+          <TabButton 
+            active={activeTab === 'settings'} 
+            onClick={() => setActiveTab('settings')}
+            icon={<Settings size={14} />}
+            label="Settings"
           />
           {pendingRegistrations.length > 0 && (
             <TabButton 
@@ -597,6 +605,37 @@ export function AdminPanel({
                   </div>
                 </div>
               ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'settings' && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-2xl"
+          >
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+              <h3 className="text-lg font-black uppercase italic text-slate-800 flex items-center gap-3">
+                <Settings className="text-indigo-600" /> System Configuration
+              </h3>
+              
+              <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                <div>
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Grading Periods (Quarters)</label>
+                  <select 
+                    value={maxQuarters}
+                    onChange={(e) => onMaxQuartersChange(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <option key={num} value={num}>{num} Quarters per Year</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-2 italic font-medium">Changing this will update all dropdowns and report cards across the system.</p>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
