@@ -75,17 +75,6 @@ export function AdminPanel({
     division: 'PANGASINAN II'
   });
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      await Promise.all([
-        syncAuthData?.(), // Call syncAuthData if it exists
-        syncSections?.(), // Call syncSections if it exists
-        syncSubjects?.()  // Call syncSubjects to fetch templates
-      ]);
-    };
-    fetchData();
-  }, []);
-
   // EARLY RETURNS MUST HAPPEN AFTER ALL HOOKS ARE DEFINED
   if (syncError) return <ApiConnectionErrorDisplay />;
 

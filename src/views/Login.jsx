@@ -26,12 +26,8 @@ export function Login({ onLogin, onRegister }) {
       const profile = await authService.login(username, password);
       onLogin(profile);
 
-      // UPDATED: Redirect based on role
-      if (profile.role === 'teacher') {
-        navigate('/record');
-      } else {
-        navigate('/'); // Admin and Adviser go to Dashboard
-      }
+      // Always navigate to Dashboard on login
+      navigate('/');
     } catch (err) {
       setError(err); // UPDATED: Catch service error message
     } finally {

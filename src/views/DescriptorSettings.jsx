@@ -7,10 +7,6 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
   const [localData, setLocalData] = React.useState([]);
 
   React.useEffect(() => {
-    syncStandards?.();
-  }, []);
-
-  React.useEffect(() => {
     setLocalData([...data]);
   }, [data]);
 

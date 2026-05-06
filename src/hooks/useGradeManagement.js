@@ -36,6 +36,7 @@ export function useGradeManagement(currentUser) {
       sectionsState.syncSections?.(),
       subjectsState.syncSubjects?.(),
       gradingState.syncStudents?.(),
+      submissionsState.syncSubmissions?.(),
       standardsState.syncStandards?.()
     ]);
   }, [
@@ -43,6 +44,7 @@ export function useGradeManagement(currentUser) {
     sectionsState.syncSections, 
     subjectsState.syncSubjects, 
     gradingState.syncStudents,
+    submissionsState.syncSubmissions,
     standardsState.syncStandards
   ]);
 

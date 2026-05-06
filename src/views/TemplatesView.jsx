@@ -24,11 +24,6 @@ export function TemplatesView({
   const [editedColumnName, setEditedColumnName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Fetch base subjects on mount
-  useEffect(() => {
-    syncSubjects?.();
-  }, [syncSubjects]);
-
   // Set initial selected subject or update when subjects change
   useEffect(() => {
     if (subjects && subjects.length > 0) {

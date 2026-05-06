@@ -1,5 +1,5 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { useGradeManagement } from './hooks/useGradeManagement';
@@ -124,6 +124,21 @@ export default function App() {
     syncError, // New: Propagate API sync errors
     refreshGlobalData
   } = useGradeManagement(currentUser); // UPDATED: Pass currentUser context
+
+  // Initial data fetch on mount or login to ensure deep links work
+  React.useEffect(() => {
+    const fetchData = async () => {
+      await Promise.all([
+        syncAuthData?.(),
+        syncSections?.(),
+        syncSubjects?.(),
+        syncStudents?.(),
+        syncSubmissions?.(),
+        syncStandards?.()
+      ]);
+    };
+    if (currentUser) fetchData();
+  }, [currentUser, syncAuthData, syncSections, syncSubjects, syncStudents, syncSubmissions, syncStandards]);
 
   // Provide a robust default section object to prevent crashes if sections are empty
   const defaultSection = sections[0] || { 

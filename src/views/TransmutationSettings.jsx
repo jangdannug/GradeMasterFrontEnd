@@ -6,10 +6,6 @@ import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDispl
 export function TransmutationSettings({ data, onSave, syncStandards, isLoading, syncError }) {
   const [localData, setLocalData] = React.useState([]);
 
-  React.useEffect(() => {
-    syncStandards?.();
-  }, []);
-
   // Keep local state in sync when data prop updates from API
   React.useEffect(() => {
     if (data && data.length > 0) {

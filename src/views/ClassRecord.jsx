@@ -80,11 +80,13 @@ export function ClassRecord({
   const [draftLoaded, setDraftLoaded] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   const initialStudentsRef = React.useRef(null); // Will store stringified students after load/save
+  const hasInitialBatchCalculated = React.useRef(false);
 
   // Reset draft loaded status when subject, section, or quarter changes
   React.useEffect(() => {
     setDraftLoaded(false);
     setIsApplyingDraft(false);
+    hasInitialBatchCalculated.current = false;
     initialStudentsRef.current = null; // Clear the ref to force re-initialization on next load
     setHasUnsavedChanges(false); // No unsaved changes when changing context
     onDirtyChange?.(false);
@@ -121,7 +123,8 @@ export function ClassRecord({
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
     const loadDraft = async () => {
         const draft = await loadClassRecordDraft(recordId);
-        if (draft && !draft.isLocked && draft.studentSnapshots?.length > 0) {
+        // Populate data if a draft or submitted record exists
+        if (draft && draft.studentSnapshots?.length > 0) {
             setIsApplyingDraft(true); // Flag that we are waiting for the parent to update students prop
             applyClassRecordDraft(draft, subject.id, quarter);
         }
@@ -193,19 +196,24 @@ export function ClassRecord({
     }
   }, [isEditable, saveDraftClassRecord, currentUser, subject, section, students, quarter, draftStatus, hasUnsavedChanges, onDirtyChange]);
 
-  // Calculate grades using API when students or subject data changes
+  // Handle Grade Calculations
   React.useEffect(() => {
-    const calculateAllGrades = async () => {
-      if (!students.length || !subject) return;
+    if (!students.length || !subject) return;
 
+    // 1. ALWAYS perform immediate local calculation so the UI updates instantly
+    const localGrades = {};
+    students.forEach(student => {
+      const sg = student.grades?.[subject.id]?.[quarter];
+      localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
+    });
+
+    // 2. If the draft just finished loading, sync once with the API to ensure 100% accuracy
+    if (draftLoaded && !hasInitialBatchCalculated.current) {
+      hasInitialBatchCalculated.current = true;
       setCalculatingGrades(true);
-      const localGrades = {};
-      students.forEach(student => {
-        const sg = student.grades?.[subject.id]?.[quarter];
-        localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
-      });
-
-      try {
+      
+      const syncWithApi = async () => {
+        try {
         const batchData = students.map(student => ({
           studentId: student.id,
           grades: student.grades?.[subject.id]?.[quarter] || null,
@@ -255,10 +263,13 @@ export function ClassRecord({
       } finally {
         setCalculatingGrades(false);
       }
-    };
-
-    calculateAllGrades();
-  }, [students, subject, quarter, transmutationTable, descriptors, effectiveCategories]);
+      };
+      syncWithApi();
+    } else {
+      // Use local results for real-time updates while typing
+      setCalculatedGrades(localGrades);
+    }
+  }, [students, subject, quarter, transmutationTable, descriptors, effectiveCategories, draftLoaded]);
 
   return (
     <motion.div 
@@ -393,13 +404,13 @@ export function ClassRecord({
                           value={(hpsValues[i] === undefined || hpsValues[i] === null || isNaN(Number(hpsValues[i]))) ? '' : Number(hpsValues[i])}
                           onChange={(e) => {
                             if (!isEditable) return;
-                            const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                            const finalVal = isNaN(raw) || raw < 0 ? 0 : raw;
-                            e.target.value = finalVal.toString(); // Force display normalization (08 -> 8)
-                            updateGrade('HPS', subject.id, cat.id, 'hps', i, finalVal, quarter);
+                            let val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                            if (isNaN(val) || val < 0) val = 0;
+                            e.target.value = val.toString(); // Strip leading zeros (08 -> 8)
+                            updateGrade('HPS', subject.id, cat.id, 'hps', i, val, quarter);
                           }}
                           disabled={!isEditable}
-                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isEditable ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-transparent focus:bg-slate-800'}`}
+                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isEditable ? 'bg-slate-800/50 cursor-not-allowed opacity-30 select-none' : 'bg-transparent focus:bg-slate-800 transition-colors'}`}
                           placeholder="0"
                         />
                       </td>
@@ -456,34 +467,31 @@ export function ClassRecord({
                                 value={(cg?.scores[colIdx]?.points === null || cg?.scores[colIdx]?.points === undefined || isNaN(Number(cg?.scores[colIdx]?.points))) ? '' : Number(cg?.scores[colIdx]?.points)}
                                 onChange={(e) => {
                                   if (isEditable) {
-                                    const raw = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                    let finalScore = raw;
-                                    if (finalScore !== null) {
-                                      if (isNaN(finalScore) || finalScore < 0) finalScore = 0;
-                                      if (hps > 0 && finalScore > hps) finalScore = hps;
-                                      e.target.value = finalScore.toString(); // Force display normalization
-                                    } else {
-                                      e.target.value = '';
+                                    let val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                    if (val !== null) {
+                                      if (isNaN(val) || val < 0) val = 0;
+                                      if (hps > 0 && val > hps) val = hps;
+                                      e.target.value = val.toString(); // Strip leading zeros (08 -> 8)
                                     }
-                                    updateGrade(student.id, subject.id, cat.id, 'points', colIdx, finalScore, quarter);
+                                    updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
                                   }
                                 }}
-                                className={`w-full h-full py-2 px-1 text-center outline-none text-slate-900 font-bold ${hps === 0 || !isEditable ? 'bg-slate-100/50 cursor-not-allowed opacity-50' : 'bg-white/40 focus:bg-white focus:ring-1 focus:ring-inset focus:ring-indigo-500'}`}
+                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'}`}
                                 disabled={hps === 0 || !isEditable}
                               />
                             </td>
                           );
                         })}
-                        <td className={`p-2 text-center font-bold text-slate-800 ${idx % 2 === 0 ? 'bg-blue-50/30' : 'bg-emerald-50/30'}`}>{catRes.total}</td>
-                        <td className={`p-2 text-center font-bold ${idx % 2 === 0 ? 'text-blue-600 bg-blue-50/40' : 'text-emerald-600 bg-emerald-50/40'}`}>{catRes.ps.toFixed(2)}</td>
-                        <td className={`p-2 text-center font-black ${idx % 2 === 0 ? 'text-blue-700 bg-blue-100/30' : 'text-emerald-700 bg-emerald-100/30'}`}>{catRes.ws.toFixed(2)}</td>
+                        <td className={`p-2 text-center font-bold text-slate-500 select-none cursor-default ${idx % 2 === 0 ? 'bg-blue-50/30' : 'bg-emerald-50/30'}`}>{catRes.total}</td>
+                        <td className={`p-2 text-center font-bold select-none cursor-default ${idx % 2 === 0 ? 'text-blue-400 bg-blue-50/40' : 'text-emerald-400 bg-emerald-50/40'}`}>{catRes.ps.toFixed(2)}</td>
+                        <td className={`p-2 text-center font-black select-none cursor-default ${idx % 2 === 0 ? 'text-blue-500 bg-blue-100/30' : 'text-emerald-500 bg-emerald-100/30'}`}>{catRes.ws.toFixed(2)}</td>
                       </React.Fragment>
                     );
                   })}
                   
                   {/* Final results */}
-                  <td className="p-2 text-center font-black bg-slate-100 text-slate-800">{(results.initial || 0).toFixed(2)}</td>
-                  <td className="p-2 text-center font-bold bg-slate-50 text-slate-600 border-l border-slate-200">
+                  <td className="p-2 text-center font-black bg-slate-200/50 text-slate-500 select-none cursor-default">{(results.initial || 0).toFixed(2)}</td>
+                  <td className="p-2 text-center font-bold bg-slate-100/50 text-slate-400 border-l border-slate-200 select-none cursor-default">
                     {calculatingGrades ? (
                       <div className="flex items-center justify-center">
                         <Loader2 size={14} className="animate-spin text-slate-400" />
@@ -504,9 +512,6 @@ export function ClassRecord({
                       ) : (
                         <>
                           <span className="text-base font-black leading-none">{results.quarterly || 0}</span>
-                          <span className={`text-[7px] font-black uppercase tracking-[0.2em] opacity-90 brightness-150 ${results.descriptor?.color || ''}`}>
-                            {results.descriptor?.label || ''}
-                          </span>
                         </>
                       )}
                     </div>
