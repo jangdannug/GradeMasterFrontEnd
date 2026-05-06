@@ -323,7 +323,7 @@ export function ClassRecord({
               </div>
             </div>
           
-          <div className={`grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-black/10 ${theme.styles.radiusSm}`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 p-6 bg-black/10 ${theme.styles.radiusSm}`}>
             <RecordMeta label="Teacher" value={subject.teacherName} />
             <RecordMeta label="Subject" value={subject.name} italic />
             <RecordMeta label="Template" value={template?.code || 'N/A'} />

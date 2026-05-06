@@ -224,7 +224,7 @@ export function AdminPanel({
           </div>
         </div>
         
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full scrollbar-hide">
           <TabButton 
             active={activeTab === 'sections'} 
             onClick={() => setActiveTab('sections')}
@@ -645,7 +645,7 @@ export function TabButton({ active, onClick, icon, label, isAlert }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all ${active ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'} ${isAlert && !active ? 'text-amber-500' : ''}`}
+      className={`flex items-center gap-2 px-3 md:px-6 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase transition-all whitespace-nowrap ${active ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'} ${isAlert && !active ? 'text-amber-500' : ''}`}
     >
       {icon}
       {label}

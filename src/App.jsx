@@ -281,7 +281,7 @@ export default function App() {
                   userName={currentUser.name}
                   syncError={syncError} // Pass syncError to Header if it needs to display anything
                 />
-                <div className="flex-1 overflow-auto p-4 md:p-8">
+                <div className="flex-1 overflow-auto p-3 md:p-8">
                   <Dashboard 
                     students={students}
                     subjects={subjects} 
@@ -317,7 +317,7 @@ export default function App() {
                     userName={currentUser.name}
                     syncError={syncError} // Pass syncError to Header
                   />
-                  <div className="flex-1 overflow-auto p-4 md:p-8">
+                  <div className="flex-1 overflow-auto p-3 md:p-8">
                     <AdminPanel 
                       sections={sections} 
                       users={users} 
