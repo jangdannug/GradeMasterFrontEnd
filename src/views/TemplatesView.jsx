@@ -37,8 +37,15 @@ export function TemplatesView({
 
   const selectedSubject = subjects.find(s => String(s.id) === String(selectedBaseSubjectId));
 
+  const totalWeight = selectedSubject ? (selectedSubject.categories || []).reduce((acc, cat) => acc + (cat.weight || 0), 0) : 0;
+  const isWeightValid = Math.round(totalWeight * 100) === 100;
+
   const handleSave = async () => {
     if (!selectedSubject) return;
+    if (!isWeightValid) {
+      alert(`Cannot save template: The total weight of all categories is ${Math.round(totalWeight * 100)}%. It must be exactly 100% before saving.`);
+      return;
+    }
     setIsSaving(true);
     try {
       await onUpdateBaseSubject(selectedSubject.id, {
@@ -110,6 +117,12 @@ export function TemplatesView({
               <BookOpen size={20} className="text-indigo-600" /> {selectedSubject.name} (G{selectedSubject.gradeLevel})
             </h3>
             <div className="flex gap-2">
+              <div className="hidden md:flex flex-col items-end justify-center mr-4 pr-4 border-r border-slate-200">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Total Weight</span>
+                <span className={`text-sm font-black ${isWeightValid ? 'text-emerald-600' : 'text-rose-500 animate-pulse'}`}>
+                  {Math.round(totalWeight * 100)}%
+                </span>
+              </div>
               <button
                 onClick={() => resetSubjectTemplate(selectedSubject.id)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase hover:bg-slate-200 transition-all"
@@ -125,8 +138,8 @@ export function TemplatesView({
               </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
+                disabled={isSaving || !isWeightValid}
+                className={`flex items-center gap-2 px-4 py-2 text-white rounded-xl text-xs font-black uppercase transition-all shadow-lg disabled:opacity-50 ${isWeightValid ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-slate-400 cursor-not-allowed'}`}
               >
                 {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 {isSaving ? 'Saving...' : 'Save Changes'}

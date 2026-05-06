@@ -396,21 +396,35 @@ export function AdminPanel({
               </h3>
               <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <input 
-                  placeholder="CODE (e.g. G7-MATH)" 
+                  placeholder="AUTO-GENERATED CODE" 
                   value={baseSubjectForm.code}
-                  onChange={e => setBaseSubjectForm({...baseSubjectForm, code: e.target.value.toUpperCase()})}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs" required
+                  readOnly
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs cursor-not-allowed opacity-70" required
                 />
                 <input 
                   placeholder="SUBJECT LABEL" 
                   value={baseSubjectForm.name}
-                  onChange={e => setBaseSubjectForm({...baseSubjectForm, name: e.target.value.toUpperCase()})}
+                  onChange={e => {
+                    const newName = e.target.value.toUpperCase();
+                    setBaseSubjectForm({
+                      ...baseSubjectForm, 
+                      name: newName,
+                      code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
+                    });
+                  }}
                   className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs md:col-span-2" required
                 />
                 <div className="flex gap-2">
                   <select 
                     value={baseSubjectForm.gradeLevel}
-                    onChange={e => setBaseSubjectForm({...baseSubjectForm, gradeLevel: e.target.value})}
+                    onChange={e => {
+                      const newGrade = e.target.value;
+                      setBaseSubjectForm({
+                        ...baseSubjectForm, 
+                        gradeLevel: newGrade,
+                        code: `${newGrade}${baseSubjectForm.name.replace(/\s+/g, '')}`
+                      });
+                    }}
                     className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs"
                   >
                     {['7','8','9','10','11','12'].map(g => <option key={g} value={g}>G{g}</option>)}
@@ -438,13 +452,20 @@ export function AdminPanel({
                       <div className="flex-1 space-y-2 mr-4">
                         <input 
                           value={baseEditFormData.code}
-                          onChange={e => setBaseEditFormData({...baseEditFormData, code: e.target.value.toUpperCase()})}
-                          className="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1 text-[10px] font-black outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          readOnly
+                          className="w-full bg-slate-100 border border-indigo-200 rounded-lg px-2 py-1 text-[10px] font-black outline-none cursor-not-allowed opacity-70"
                           placeholder="CODE"
                         />
                         <input 
                           value={baseEditFormData.name}
-                          onChange={e => setBaseEditFormData({...baseEditFormData, name: e.target.value.toUpperCase()})}
+                          onChange={e => {
+                            const newName = e.target.value.toUpperCase();
+                            setBaseEditFormData({
+                              ...baseEditFormData, 
+                              name: newName,
+                              code: `${baseEditFormData.gradeLevel}${newName.replace(/\s+/g, '')}`
+                            });
+                          }}
                           className="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
                           placeholder="NAME"
                         />
