@@ -9,6 +9,13 @@ const normalize = (data) => {
       Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
     );
 
+    // Ensure 'id' for frontend state is the composite key (for lookups), 
+    // and keep the database primary key as 'dbId' (for API calls).
+    if (normalized.uniqueRecordKey) {
+      normalized.dbId = normalized.id;
+      normalized.id = normalized.uniqueRecordKey;
+    }
+
     // Handle studentSnapshotsJson if it's returned as a string from the API
     if (normalized.studentSnapshotsJson && typeof normalized.studentSnapshotsJson === 'string') {
       try {
@@ -121,53 +128,35 @@ export function useSubmissionManagement() {
     }
   }, []);
 
-  const submitClassRecord = async ({ subject, section, teacher, students, quarter }) => {
-    const now = new Date().toISOString();
+  const submitClassRecord = useCallback(async ({ subject, section, teacher, students, quarter }) => {
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
 
     // Validation: Prevent re-submission if the quarter's record is already verified
-    const existingVerifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
-    if (existingVerifiedRecord) {
+    const existing = savedClassRecords.find(r => r.id === recordId);
+    
+    if (existing && existing.isVerified) {
       return { success: false, message: `Quarter ${quarter} for ${subject.name} has already been verified and cannot be resubmitted.` };
     }
 
-    const newRecordData = {
-      SectionId: Number(section.id),
-      SectionName: section.name || '',
-      GradeLevel: section.gradeLevel || '',
-      SubjectId: Number(subject.id),
-      SubjectName: subject.name || '',
-      Quarter: quarter,
-      SubmittedAt: now,
-      IsLocked: true,
-      IsVerified: false,
-      TeacherId: Number(teacher.id),
-      TeacherName: teacher.name || '',
-      StudentSnapshots: students.map(s => ({
-        Id: Number(s.id),
-        Name: s.name || '',
-        Gender: s.gender || '',
-        GradeLevel: s.gradeLevel || '',
-        SchoolYear: s.schoolYear || '',
-        SectionId: s.sectionId ? Number(s.sectionId) : null,
-        Grades: s.grades[subject.id]?.[quarter] || {}
-      }))
-    };
+    if (!existing || !existing.dbId) {
+      return { success: false, message: "No draft found. Please save your changes as a draft before submitting." };
+    }
     
     try {
       setError(null);
-      const submittedRecord = await classRecordService.submitClassRecord(newRecordData);
+      // Call the lock endpoint as requested: PUT /api/classrecord/{id}/lock
+      const submittedRecord = await classRecordService.lockClassRecord(existing.dbId, true);
+      
       setSavedClassRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
       
-      // Log the submission
+      // Log the submission locally for UI consistency
       const logEntry = {
-        recordId: submittedRecord.id,
+        recordId: existing.dbId,
         action: 'submitted',
         actorName: teacher.name,
-        status: 'resolved' // Assuming submission is a resolved action
+        status: 'resolved',
+        createdAt: new Date().toISOString()
       };
-      // Assuming classRecordService.createLog or similar exists
-      // await classRecordService.createLog(logEntry); 
       setClassRecordLogs(prev => [normalize(logEntry), ...prev]);
 
       return { success: true, message: 'Class record submitted successfully.' };
@@ -176,7 +165,7 @@ export function useSubmissionManagement() {
       setError(error);
       return { success: false, message: error.message || 'Failed to submit class record.' };
     }
-  };
+  }, [savedClassRecords]);
 
   const requestEditClassRecord = async (recordId, teacherId, teacherName, reason) => {
     try {
