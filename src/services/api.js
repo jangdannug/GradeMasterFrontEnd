@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const isProd = true; // Set to true when deploying to Render
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api', // Ensure this matches your backend API URL
+  baseURL: isProd ? 'https://grademasterapi.onrender.com/api' : 'http://localhost:10000/api',
   headers: {
     'Content-Type': 'application/json',
   },
