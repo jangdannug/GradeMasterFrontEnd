@@ -37,6 +37,16 @@ export function AdvisoryDashboardView({
     [allSections, currentTeacherId, assignedSectionId]
   );
 
+  const getStudentInitials = (fullName) => {
+    const parts = fullName.split(',');
+    if (parts.length < 2) return fullName.substring(0, 2).toUpperCase(); // Fallback
+    const lastName = parts[0].trim();
+    const firstNameParts = parts[1].trim().split(' ');
+    const firstName = firstNameParts[0].trim();
+    if (!firstName || !lastName) return fullName.substring(0, 2).toUpperCase(); // Fallback
+    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  };
+
   // Use String() conversion for filtering to prevent type-mismatch bugs (Number vs String)
   const myStudents = adviserSection ? students.filter(s => String(s.sectionId) === String(adviserSection.id)) : [];
   const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');

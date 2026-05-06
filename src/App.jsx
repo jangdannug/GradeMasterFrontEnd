@@ -491,18 +491,19 @@ export default function App() {
               <ProtectedRoute roles={['admin', 'adviser']}>
                 <>
                   <Header 
-                    section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
+                    section={currentUser.role === 'admin' ? { name: 'All Sections', gradeLevel: 'Overview' } : (sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection)}
                     userName={currentUser.name}
                     syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <ProgressReport 
-                    students={students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
+                      students={currentUser.role === 'admin' ? students : students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
                       subjects={reportSubjects} 
                       baseSubjects={baseSubjects}
                       transmutationTable={transmutationTable}
                       descriptors={descriptors}
-                    section={sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0] || defaultSection} 
+                    section={currentUser.role === 'admin' ? null : (sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0])} 
+                    allSections={sections}
                     savedClassRecords={savedClassRecords}
                     syncError={syncError} // Pass syncError to ProgressReport
                     />

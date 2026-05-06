@@ -11,12 +11,23 @@ export function ProgressReport({
   subjects, 
   baseSubjects = [],
   section, 
+  allSections = [],
   transmutationTable, 
   descriptors,
   savedClassRecords = [] 
 }) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  const getStudentInitials = (fullName) => {
+    const parts = fullName.split(',');
+    if (parts.length < 2) return fullName.substring(0, 2).toUpperCase(); // Fallback
+    const lastName = parts[0].trim();
+    const firstNameParts = parts[1].trim().split(' ');
+    const firstName = firstNameParts[0].trim();
+    if (!firstName || !lastName) return fullName.substring(0, 2).toUpperCase(); // Fallback
+    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  };
 
   const filteredStudents = React.useMemo(() => {
     return students.filter(s => 
@@ -33,7 +44,9 @@ export function ProgressReport({
       <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-6 rounded-2xl border border-slate-200 gap-4">
         <div>
           <h2 className={`text-xl ${theme.styles.heading} text-slate-800`}>Progress Report Cards</h2>
-          <p className="text-sm text-slate-500">Summary of all subjects for Section {section.name}</p>
+          <p className="text-sm text-slate-500">
+            {section ? `Summary of all subjects for Section ${section.name}` : "Global Student Progress Overview"}
+          </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
@@ -55,14 +68,17 @@ export function ProgressReport({
 
       <div className="grid grid-cols-1 gap-6">
         {filteredStudents.map(student => {
+          // Filter subjects to only those assigned to the student's section
+          const studentSubjects = subjects.filter(sub => String(sub.sectionId) === String(student.sectionId));
+          
           // Only include results from verified (locked) records
-          const subjectResults = subjects.map(subject => {
+          const subjectResults = studentSubjects.map(subject => {
             // Find template for effective categories (fallback logic)
             const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
             const effectiveCategories = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
 
             const quarterGrades = [1, 2, 3, 4].map(q => {
-              const recordId = `${section.id}-${subject.id}-Q${q}`;
+              const recordId = `${student.sectionId}-${subject.id}-Q${q}`;
               const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
               
               if (!verifiedRecord) return { quarter: q, score: null };
@@ -94,19 +110,23 @@ export function ProgressReport({
             };
           });
 
-          const generalAverage = Math.round(subjectResults.reduce((acc, curr) => acc + curr.finalGrade, 0) / (subjects.length || 1));
+          const generalAverage = subjectResults.length > 0 
+            ? Math.round(subjectResults.reduce((acc, curr) => acc + curr.finalGrade, 0) / subjectResults.length)
+            : 0;
           const avgDescriptor = descriptors.find(d => generalAverage >= d.min && generalAverage <= d.max) || descriptors[descriptors.length - 1];
 
           return (
             <div key={student.id} className={`${theme.styles.card} overflow-hidden group`}>
                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-slate-100/50 transition-colors gap-4">
                  <div className="flex items-center gap-4">
-                   <div className={`size-12 bg-white ${theme.styles.radiusSm} border border-slate-200 flex items-center justify-center font-black text-slate-400 group-hover:text-${theme.styles.primary} transition-colors shrink-0`}>
-                     {student.name.substring(0, 1)}
+                   <div className={`size-12 ${theme.styles.radiusSm} flex items-center justify-center text-sm font-black shadow-sm ${student.gender === 'MALE' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} shrink-0 transition-colors`}>
+                     {getStudentInitials(student.name)}
                    </div>
-                   <div>
-                     <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base">{student.name}</h4>
-                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Learner ID: 102938475</p>
+                   <div className="min-w-0 flex-1">
+                     <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">{student.name}</h4>
+                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate">
+                       {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • ID: {String(student.id).substring(0, 8)}
+                     </p>
                    </div>
                  </div>
                  <div className="text-left sm:text-right">
