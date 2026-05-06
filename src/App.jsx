@@ -31,6 +31,35 @@ export default function App() {
     const user = authService.getProfile();
     return (user?.assignedSubjectIds && user.assignedSubjectIds.length > 0) ? user.assignedSubjectIds[0] : '';
   });
+  const [isClassRecordDirty, setIsClassRecordDirty] = useState(false);
+
+  const confirmNavigation = () => {
+    if (isClassRecordDirty) {
+      const confirmed = window.confirm("You have unsaved changes in your Class Record. Are you sure you want to leave without saving?");
+      if (confirmed) {
+        setIsClassRecordDirty(false);
+      }
+      return confirmed;
+    }
+    return true;
+  };
+
+  // Global Navigation Guard: Intercepts internal link clicks (Sidebar, etc.)
+  // when there are unsaved changes in the Class Record.
+  React.useEffect(() => {
+    const handleInternalNavigation = (e) => {
+      const link = e.target.closest('a');
+      // If a link is clicked and the class record has unsaved changes
+      if (link && isClassRecordDirty) {
+        if (!confirmNavigation()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    document.addEventListener('click', handleInternalNavigation, true);
+    return () => document.removeEventListener('click', handleInternalNavigation, true);
+  }, [isClassRecordDirty]);
 
   const { 
     students, 
@@ -211,9 +240,17 @@ export default function App() {
         <Sidebar 
           isOpen={isSidebarOpen} 
           setIsOpen={setIsSidebarOpen} 
-          onLogout={() => { // UPDATED: Centralized logout
-            authService.logout();
-            setCurrentUser(null);
+          onLogout={() => {
+            if (confirmNavigation()) { // Confirm before logging out
+              authService.logout();
+              setCurrentUser(null);
+            }
+          }}
+          onNavigate={(path) => { // New prop for sidebar navigation
+            if (confirmNavigation()) {
+              return true; // Allow navigation
+            }
+            return false; // Prevent navigation
           }}
           role={currentUser?.role} 
           hasSubjects={userHasSubjects}
@@ -307,7 +344,11 @@ export default function App() {
                         <select 
                           value={selectedQuarter}
                           title="Select Quarter"
-                          onChange={(e) => setSelectedQuarter(parseInt(e.target.value))}
+                          onChange={(e) => {
+                            if (confirmNavigation()) {
+                              setSelectedQuarter(parseInt(e.target.value));
+                            }
+                          }}
                           className="bg-indigo-600 text-white border-none rounded-lg px-2 md:px-4 py-2 text-xs md:text-sm font-black focus:ring-2 focus:ring-indigo-300 outline-none"
                         >
                           {[1, 2, 3, 4].map(q => (
@@ -319,7 +360,11 @@ export default function App() {
                           <select 
                             value={selectedSubjectId}
                             title="Select subject"
-                            onChange={(e) => setSelectedSubjectId(e.target.value)}
+                            onChange={(e) => {
+                              if (confirmNavigation()) {
+                                setSelectedSubjectId(e.target.value);
+                              }
+                            }}
                             className="bg-slate-50 border border-slate-200 rounded-lg px-2 md:px-4 py-2 text-xs md:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none max-w-[120px] md:max-w-none"
                           >
                             {filteredSubjects.map(sub => (
@@ -346,6 +391,7 @@ export default function App() {
                         savedRecord={savedClassRecords.find(record => record.id === `${selectedSubject.sectionId}-${selectedSubject.id}-Q${selectedQuarter}`)}
                         updateGrade={updateGrade}
                         syncError={syncError} // Pass syncError to ClassRecord
+                        onDirtyChange={setIsClassRecordDirty}
                         saveDraftClassRecord={saveDraftClassRecord}
                         loadClassRecordDraft={loadClassRecordDraft}
                         applyClassRecordDraft={applyClassRecordDraft}

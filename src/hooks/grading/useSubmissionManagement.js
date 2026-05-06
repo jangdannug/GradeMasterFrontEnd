@@ -1,31 +1,43 @@
 import { useState, useCallback } from 'react';
 import classRecordService from '../../services/classRecordService';
 
+const normalize = (data) => {
+  if (!data) return data;
+  const transform = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj;
+    const normalized = Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
+    );
+
+    // Handle studentSnapshotsJson if it's returned as a string from the API
+    if (normalized.studentSnapshotsJson && typeof normalized.studentSnapshotsJson === 'string') {
+      try {
+        normalized.studentSnapshots = JSON.parse(normalized.studentSnapshotsJson);
+        delete normalized.studentSnapshotsJson; // Remove the original string property
+      } catch (e) {
+        console.error("Failed to parse studentSnapshotsJson:", e);
+        normalized.studentSnapshots = [];
+      }
+    }
+    // Deep normalize student snapshots if they exist
+    if (normalized.studentSnapshots && Array.isArray(normalized.studentSnapshots)) {
+      normalized.studentSnapshots = normalized.studentSnapshots.map(s => ({
+        ...s,
+        id: s.id || s.Id,
+        grades: (typeof (s.grades || s.Grades || s.gradesJson || s.GradesJson) === 'string' 
+          ? JSON.parse(s.grades || s.Grades || s.gradesJson || s.GradesJson) 
+          : (s.grades || s.Grades || s.gradesJson || s.GradesJson)) || {}
+      }));
+    }
+    return normalized;
+  };
+  return Array.isArray(data) ? data.map(transform) : transform(data);
+};
+
 export function useSubmissionManagement() {
   const [savedClassRecords, setSavedClassRecords] = useState([]);
   const [classRecordLogs, setClassRecordLogs] = useState([]);
   const [error, setError] = useState(null);
-
-  // Helper to normalize PascalCase keys from C# to camelCase for the frontend
-  const normalize = (data) => {
-    if (!data) return data;
-    const transform = (obj) => {
-      if (!obj || typeof obj !== 'object') return obj;
-      const normalized = Object.fromEntries(
-        Object.entries(obj).map(([k, v]) => [k.charAt(0).toLowerCase() + k.slice(1), v])
-      );
-      // Deep normalize student snapshots if they exist
-      if (normalized.studentSnapshots && Array.isArray(normalized.studentSnapshots)) {
-        normalized.studentSnapshots = normalized.studentSnapshots.map(s => ({
-          ...s,
-          id: s.id || s.Id,
-          grades: s.grades || s.Grades || s.gradesJson || s.GradesJson || {}
-        }));
-      }
-      return normalized;
-    };
-    return Array.isArray(data) ? data.map(transform) : transform(data);
-  };
 
   const syncSubmissions = useCallback(async () => {
     setError(null);
@@ -41,7 +53,7 @@ export function useSubmissionManagement() {
     }
   }, []);
 
-  const saveDraftClassRecord = async ({ subject, section, teacher, students, quarter }) => {
+  const saveDraftClassRecord = useCallback(async ({ subject, section, teacher, students, quarter }) => {
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
     const draftData = {
       Id: String(recordId), // This is the text unique key (e.g. 5-2-Q1)
@@ -63,7 +75,7 @@ export function useSubmissionManagement() {
         GradeLevel: s.gradeLevel || '',
         SchoolYear: s.schoolYear || '',
         SectionId: s.sectionId ? String(s.sectionId) : null,
-        Grades: s.grades[subject.id]?.[quarter] || {} // Send as raw object for JsonDocument
+        Grades: s.grades?.[subject.id]?.[quarter] || {} // Send as raw object for JsonDocument
       }))
     };
 
@@ -77,9 +89,9 @@ export function useSubmissionManagement() {
       setError(error);
       return { success: false, message: error.message || 'Failed to save draft class record.' };
     }
-  };
+  }, []);
 
-  const loadClassRecordDraft = async (recordId) => {
+  const loadClassRecordDraft = useCallback(async (recordId) => {
     try {
       setError(null);
       
@@ -107,7 +119,7 @@ export function useSubmissionManagement() {
       setError(error);
       return null;
     }
-  };
+  }, []);
 
   const submitClassRecord = async ({ subject, section, teacher, students, quarter }) => {
     const now = new Date().toISOString();

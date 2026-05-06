@@ -2,7 +2,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2 } from 'lucide-react';
+import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save } from 'lucide-react';
 import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
@@ -45,7 +45,8 @@ export function ClassRecord({
   savedRecord = null,
   onSubmitClassRecord = null,
   currentUser = null,
-  onRefresh = null
+  onRefresh = null,
+  onDirtyChange = null
 }) {
   const location = useLocation();
 
@@ -74,7 +75,27 @@ export function ClassRecord({
   const [calculatedGrades, setCalculatedGrades] = React.useState({});
   const [calculatingGrades, setCalculatingGrades] = React.useState(false);
   const [draftStatus, setDraftStatus] = React.useState('saved');
+  const [isApplyingDraft, setIsApplyingDraft] = React.useState(false);
+  const latestStudentsRef = React.useRef(students); // Ref to hold the latest students prop for event handlers
   const [draftLoaded, setDraftLoaded] = React.useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const initialStudentsRef = React.useRef(null); // Will store stringified students after load/save
+
+  // Reset draft loaded status when subject, section, or quarter changes
+  React.useEffect(() => {
+    setDraftLoaded(false);
+    setIsApplyingDraft(false);
+    initialStudentsRef.current = null; // Clear the ref to force re-initialization on next load
+    setHasUnsavedChanges(false); // No unsaved changes when changing context
+    onDirtyChange?.(false);
+  }, [subject?.id, section?.id, quarter]);
+
+  // Reset dirty status when the component unmounts
+  React.useEffect(() => {
+    return () => {
+      onDirtyChange?.(false);
+    };
+  }, [onDirtyChange]);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -101,6 +122,7 @@ export function ClassRecord({
     const loadDraft = async () => {
         const draft = await loadClassRecordDraft(recordId);
         if (draft && !draft.isLocked && draft.studentSnapshots?.length > 0) {
+            setIsApplyingDraft(true); // Flag that we are waiting for the parent to update students prop
             applyClassRecordDraft(draft, subject.id, quarter);
         }
         setDraftLoaded(true);
@@ -109,21 +131,67 @@ export function ClassRecord({
     loadDraft();
   }, [subject, section, quarter, students.length, loadClassRecordDraft, applyClassRecordDraft, draftLoaded]);
 
+  // Effect to detect unsaved changes
   React.useEffect(() => {
-    if (!isEditable || !saveDraftClassRecord || !currentUser || !subject || !section || !draftLoaded) return;
-    if (!students.length) return;
+    // When draft is loaded for the first time for this subject/quarter,
+    // or when subject/section/quarter changes and draftLoaded becomes true,
+    // capture the current students state as the baseline.
+    if (draftLoaded && (initialStudentsRef.current === null || isApplyingDraft)) {
+      // If we just applied a draft, wait for students prop to change before setting baseline
+      initialStudentsRef.current = JSON.stringify(students);
+      setIsApplyingDraft(false); 
+      setHasUnsavedChanges(false);
+      onDirtyChange?.(false);
+    } else if (draftLoaded && !isApplyingDraft) { // Only check for changes if draft is fully loaded and baseline set
+      const currentStudentsString = JSON.stringify(students);
+      const isDirty = currentStudentsString !== initialStudentsRef.current;
+      setHasUnsavedChanges(isDirty);
+      onDirtyChange?.(isDirty);
+    }
+  }, [students, draftLoaded, onDirtyChange, isApplyingDraft]);
 
-    // Ensure we are only saving students belonging to this subject's section
+  // Update the ref whenever students prop changes
+  React.useEffect(() => {
+    latestStudentsRef.current = students;
+  }, [students]);
+  
+  // Effect to warn user about unsaved changes on page unload
+  React.useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (hasUnsavedChanges) {
+        // Standard way to trigger browser's native confirmation dialog
+        event.preventDefault();
+        event.returnValue = ''; // Required for Chrome to show the prompt
+        return ''; // Required for Firefox to show the prompt
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]); // Re-run effect if hasUnsavedChanges changes
+
+  const handleSaveDraft = React.useCallback(async () => {
+    if (!isEditable || !saveDraftClassRecord || !currentUser || !subject || !section || draftStatus === 'saving' || !hasUnsavedChanges) return;
+    
+    setDraftStatus('saving');
     const relevantStudents = students.filter(s => String(s.sectionId) === String(subject.sectionId));
-    const draftSaver = setTimeout(async () => {
-      setDraftStatus('saving');
+    try {
       const result = await saveDraftClassRecord({ subject, section, teacher: currentUser, students: relevantStudents, quarter });
-      if (!result.success) console.error("Draft Auto-save failed:", result.message);
-      setDraftStatus(result.success ? 'saved' : 'error');
-    }, 750);
-
-    return () => clearTimeout(draftSaver);
-  }, [students, subject, section, quarter, currentUser, saveDraftClassRecord, isEditable, draftLoaded]);
+      if (result.success) {
+        setDraftStatus('saved');
+        initialStudentsRef.current = JSON.stringify(students); // Update saved state
+        setHasUnsavedChanges(false); // Reset unsaved changes
+        onDirtyChange?.(false);
+      } else {
+        setDraftStatus('error');
+      }
+    } catch (error) {
+      setDraftStatus('error');
+    }
+  }, [isEditable, saveDraftClassRecord, currentUser, subject, section, students, quarter, draftStatus, hasUnsavedChanges, onDirtyChange]);
 
   // Calculate grades using API when students or subject data changes
   React.useEffect(() => {
@@ -133,14 +201,14 @@ export function ClassRecord({
       setCalculatingGrades(true);
       const localGrades = {};
       students.forEach(student => {
-        const sg = student.grades[subject.id]?.[quarter];
+        const sg = student.grades?.[subject.id]?.[quarter];
         localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
       });
 
       try {
         const batchData = students.map(student => ({
           studentId: student.id,
-          grades: student.grades[subject.id]?.[quarter] || null,
+          grades: student.grades?.[subject.id]?.[quarter] || null,
           categories: effectiveCategories
         }));
 
@@ -204,6 +272,24 @@ export function ClassRecord({
               <div>
                 <div className="flex items-center gap-4">
                   <h2 className={`text-xl md:text-3xl ${theme.styles.heading}`}>Class Record</h2>
+                  
+                <button 
+                  onClick={handleSaveDraft}
+                  disabled={draftStatus === 'saving' || !isEditable}
+                  className={`flex items-center gap-2 px-4 py-2 border ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed ${
+                    hasUnsavedChanges 
+                      ? 'bg-pink-600 border-pink-400 text-white animate-pulse shadow-lg shadow-pink-500/40' 
+                      : draftStatus === 'error' 
+                        ? 'bg-rose-500/20 border-rose-400 text-white' 
+                        : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+                  }`}
+                >
+                  {draftStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : draftStatus === 'error' ? <ShieldAlert size={18} className="text-rose-300" /> : <Save size={18} />}
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">
+                    {draftStatus === 'saving' ? "Saving..." : draftStatus === 'error' ? "Save Error" : hasUnsavedChanges ? "Save Changes" : "Save Draft"}
+                  </span>
+                </button>
+
                   <button 
                     onClick={toggleFullscreen}
                     className={`flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group`}
@@ -304,12 +390,13 @@ export function ClassRecord({
                       <td key={`hps-${cat.id}-${i}`} className="p-0 text-center">
                         <input 
                           type="number"
-                          value={hpsValues[i] || ''}
+                          value={(hpsValues[i] === undefined || hpsValues[i] === null || isNaN(Number(hpsValues[i]))) ? '' : Number(hpsValues[i])}
                           onChange={(e) => {
-                            if (isEditable) {
-                              const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                              updateGrade('HPS', subject.id, cat.id, 'hps', i, val, quarter);
-                            }
+                            if (!isEditable) return;
+                            const raw = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                            const finalVal = isNaN(raw) || raw < 0 ? 0 : raw;
+                            e.target.value = finalVal.toString(); // Force display normalization (08 -> 8)
+                            updateGrade('HPS', subject.id, cat.id, 'hps', i, finalVal, quarter);
                           }}
                           disabled={!isEditable}
                           className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isEditable ? 'bg-slate-700 cursor-not-allowed opacity-50' : 'bg-transparent focus:bg-slate-800'}`}
@@ -366,11 +453,19 @@ export function ClassRecord({
                                 type="number"
                                 min="0"
                                 max={hps}
-                                value={cg?.scores[colIdx]?.points ?? ''}
+                                value={(cg?.scores[colIdx]?.points === null || cg?.scores[colIdx]?.points === undefined || isNaN(Number(cg?.scores[colIdx]?.points))) ? '' : Number(cg?.scores[colIdx]?.points)}
                                 onChange={(e) => {
                                   if (isEditable) {
-                                    const val = e.target.value === '' ? null : parseInt(e.target.value);
-                                    updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
+                                    const raw = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                    let finalScore = raw;
+                                    if (finalScore !== null) {
+                                      if (isNaN(finalScore) || finalScore < 0) finalScore = 0;
+                                      if (hps > 0 && finalScore > hps) finalScore = hps;
+                                      e.target.value = finalScore.toString(); // Force display normalization
+                                    } else {
+                                      e.target.value = '';
+                                    }
+                                    updateGrade(student.id, subject.id, cat.id, 'points', colIdx, finalScore, quarter);
                                   }
                                 }}
                                 className={`w-full h-full py-2 px-1 text-center outline-none text-slate-900 font-bold ${hps === 0 || !isEditable ? 'bg-slate-100/50 cursor-not-allowed opacity-50' : 'bg-white/40 focus:bg-white focus:ring-1 focus:ring-inset focus:ring-indigo-500'}`}
