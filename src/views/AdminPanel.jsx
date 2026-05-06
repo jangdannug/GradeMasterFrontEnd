@@ -208,12 +208,12 @@ export function AdminPanel({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="size-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
             <Shield size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Admin Control Center</h2>
             <p className="text-xs text-slate-500 font-medium mt-1">
               {activeTab === 'sections' && "Manage class sections and teacher assignments."}
@@ -247,7 +247,7 @@ export function AdminPanel({
             <TabButton 
               active={activeTab === 'registrations'} 
               onClick={() => setActiveTab('registrations')}
-              icon={<Clock size={14} />}
+              icon={<Mail size={14} />}
               label={`Approvals (${pendingRegistrations.length})`}
               isAlert
             />
@@ -394,7 +394,7 @@ export function AdminPanel({
               <h3 className="text-lg font-black uppercase italic text-slate-800 mb-6 flex items-center gap-3">
                 <BookOpen className="text-indigo-600" /> Global Subject Templates
               </h3>
-              <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <input 
                   placeholder="AUTO-GENERATED CODE" 
                   value={baseSubjectForm.code}
@@ -412,7 +412,7 @@ export function AdminPanel({
                       code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
                     });
                   }}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs md:col-span-2" required
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2" required
                 />
                 <div className="flex gap-2">
                   <select 
@@ -615,10 +615,23 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading registrations...</span>
               </div>
             )}
-            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
-              <Clock size={14} /> Pending Registrations ({pendingRegistrations.length})
-            </h3>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="flex items-center gap-3 text-slate-400 mb-6 pb-2 border-b border-slate-100 overflow-hidden">
+            <div className="size-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+              {/* Icon */}
+              <Mail size={16} />
+            </div>
+            {/* Title and Count */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 flex-1 min-w-0">
+              <h3 className="text-sm font-black uppercase tracking-normal sm:tracking-widest truncate flex-1 min-w-0">
+                Pending Registrations
+              </h3>
+              <span className="w-fit bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black border border-amber-200/50 shrink-0 uppercase tracking-tighter">
+                {pendingRegistrations.length} Applications
+              </span>
+            </div>
+          </div>
+            {/* Registration Cards Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               {pendingRegistrations.map(reg => {
                 const form = approvalForms[reg.id] || { role: reg.requestedRole || 'teacher', sectionId: '', subjectIds: [] };
                 return (
@@ -645,7 +658,7 @@ export function TabButton({ active, onClick, icon, label, isAlert }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 md:px-6 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase transition-all whitespace-nowrap ${active ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'} ${isAlert && !active ? 'text-amber-500' : ''}`}
+      className={`flex items-center gap-2 px-3 md:px-6 py-2 rounded-lg text-[10px] md:text-xs font-black uppercase transition-all whitespace-nowrap shrink-0 ${active ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'} ${isAlert && !active ? 'text-amber-500' : ''}`}
     >
       {icon}
       {label}

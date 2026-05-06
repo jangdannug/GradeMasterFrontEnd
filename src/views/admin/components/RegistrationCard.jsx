@@ -15,13 +15,13 @@ export function RegistrationCard({ reg, form, setApprovalForms, sections, onReje
 
   return (
     <div className="bg-white rounded-3xl border-2 border-amber-100 shadow-sm flex flex-col md:flex-row">
-      <div className="p-6 md:w-1/3 bg-amber-50/50 border-b md:border-b-0 md:border-r border-amber-100 space-y-4 rounded-t-3xl md:rounded-tr-none md:rounded-l-3xl">
+      <div className="p-6 md:w-2/5 lg:w-1/3 bg-amber-50/50 border-b md:border-b-0 md:border-r border-amber-100 space-y-4 rounded-t-3xl md:rounded-tr-none md:rounded-l-3xl shrink-0">
         <div className="flex items-center gap-4">
           <div className="size-12 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-amber-100 shrink-0">
             <Mail size={24} />
           </div>
-          <div className="min-w-0">
-            <h4 className="font-black text-slate-800 uppercase italic leading-tight">{reg.name}</h4>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-black text-slate-800 uppercase italic leading-tight break-words whitespace-normal">{reg.name}</h4>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{reg.username}</p>
           </div>
         </div>
