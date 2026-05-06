@@ -70,9 +70,9 @@ export function AdminPanel({
     gradeLevel: '7',
     schoolYear: '2025-2026',
     schoolId: '123456', // Assuming this is a string ID
-    schoolName: 'MABINI HIGH SCHOOL',
-    region: 'REGION I',
-    division: 'PANGASINAN II'
+    schoolName: 'STO. NINO HIGH SCHOOL',
+    region: 'REGION II',
+    division: 'CAGAYAN VALLEY'
   });
 
   // EARLY RETURNS MUST HAPPEN AFTER ALL HOOKS ARE DEFINED
@@ -529,7 +529,6 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading users...</span>
               </div>
             )}
-          >
             <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {users.map(user => (
@@ -595,7 +594,6 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading registrations...</span>
               </div>
             )}
-          >
             <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
               <Clock size={14} /> Pending Registrations ({pendingRegistrations.length})
             </h3>
