@@ -164,8 +164,9 @@ export default function App() {
     );
 
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
-      // Adviser must teach at least one subject in their assigned section to access class records
-      return mySubjects.some(s => s.sectionId === currentUser.assignedSectionId);
+      // Advisers have access to class records if they teach subjects OR if their advisory section has subjects
+      const hasAdvisorySubjects = subjects.some(s => s.sectionId === currentUser.assignedSectionId);
+      return hasAdvisorySubjects || mySubjects.length > 0;
     }
 
     return mySubjects.length > 0;
@@ -185,9 +186,6 @@ export default function App() {
     let displayLoad = myTeachingLoad;
 
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
-      const isTeachingInAdvisory = myTeachingLoad.some(s => s.sectionId === currentUser.assignedSectionId);
-      if (!isTeachingInAdvisory) return [];
-      
       // Advisers also see all subjects in their section (including locked ones for oversight)
       const advisorySubjects = subjects.filter(s => s.sectionId === currentUser.assignedSectionId);
       const combined = [...displayLoad, ...advisorySubjects];
@@ -452,6 +450,36 @@ export default function App() {
                       onLockRecord={lockClassRecord}
                       onSync={syncSubmissions}
                       syncError={syncError} // Pass syncError to SubmittedRecords
+                      onSelectSubject={setSelectedSubjectId}
+                    />
+                  </div>
+                </>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/verified-records" element={
+              <ProtectedRoute roles={['teacher', 'adviser']}>
+                <>
+                  <Header 
+                    section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
+                    userName={currentUser.name}
+                    syncError={syncError}
+                  />
+                  <div className="flex-1 overflow-auto p-4 md:p-8">
+                    <SubmittedRecords 
+                      mode="verified"
+                      savedRecords={savedClassRecords}
+                      classRecordLogs={classRecordLogs}
+                      userRole={currentUser.role}
+                      currentUserId={currentUser.id}
+                      currentUserName={currentUser.name}
+                      sections={sections}
+                      onRequestEdit={requestEditClassRecord}
+                      onApproveEdit={approveEditRequest}
+                      onRejectEdit={rejectEditRequest}
+                      onLockRecord={lockClassRecord}
+                      onSync={syncSubmissions}
+                      syncError={syncError}
                       onSelectSubject={setSelectedSubjectId}
                     />
                   </div>

@@ -15,7 +15,8 @@ export function SubmittedRecords({
   onRejectEdit = null,
   onLockRecord = null,
   onSelectSubject = null,
-  onSync = null
+  onSync = null,
+  mode = 'submitted' // 'submitted' (pending) | 'verified' (finalized)
 }) {
   const [expandedRecord, setExpandedRecord] = useState(null);
   const navigate = useNavigate();
@@ -23,7 +24,6 @@ export function SubmittedRecords({
   const [showApprovalForm, setShowApprovalForm] = useState({});
   const [quarterFilter, setQuarterFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
-  const [verificationFilter, setVerificationFilter] = useState('all');
 
   // Ensure data is fresh when viewing submitted records
   useEffect(() => {
@@ -31,14 +31,17 @@ export function SubmittedRecords({
   }, [onSync]);
 
   const baseRecords = React.useMemo(() => {
+    let filtered = [];
     if (userRole === 'teacher') {
-      return savedRecords.filter(record => record.teacherId === currentUserId && record.isLocked);
+      filtered = savedRecords.filter(record => record.teacherId === currentUserId && record.isLocked);
     } else if (userRole === 'adviser') {
       const adviserSection = sections.find(s => s.adviserId === currentUserId);
-      return savedRecords.filter(record => record.sectionId === adviserSection?.id && record.isLocked);
+      filtered = savedRecords.filter(record => record.sectionId === adviserSection?.id && record.isLocked);
     }
-    return [];
-  }, [savedRecords, userRole, currentUserId, sections]);
+    
+    if (mode === 'verified') return filtered.filter(r => r.isVerified);
+    return filtered.filter(r => !r.isVerified);
+  }, [savedRecords, userRole, currentUserId, sections, mode]);
 
   const availableSubjects = React.useMemo(() => {
     const subs = new Set();
@@ -54,11 +57,8 @@ export function SubmittedRecords({
     if (subjectFilter !== 'all') {
       records = records.filter(r => r.subjectName === subjectFilter);
     }
-    if (verificationFilter !== 'all') {
-      records = records.filter(r => r.isVerified === (verificationFilter === 'verified'));
-    }
     return records;
-  }, [baseRecords, quarterFilter, subjectFilter, verificationFilter]);
+  }, [baseRecords, quarterFilter, subjectFilter]);
 
   const getRecordLogs = (recordId) => {
     return classRecordLogs
@@ -89,7 +89,9 @@ export function SubmittedRecords({
     >
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pb-6 border-b border-slate-100">
-          <h2 className="text-3xl font-black uppercase tracking-tighter">Submitted Records</h2>
+          <h2 className="text-3xl font-black uppercase tracking-tighter">
+            {mode === 'verified' ? 'Verified Records' : 'Submitted Records'}
+          </h2>
           
           <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
              <div className="flex flex-col gap-1.5 flex-1 sm:flex-none">
@@ -115,19 +117,6 @@ export function SubmittedRecords({
                  {availableSubjects.map(sub => (
                    <option key={sub} value={sub}>{sub}</option>
                  ))}
-               </select>
-             </div>
-
-             <div className="flex flex-col gap-1.5 flex-1 sm:flex-none">
-               <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">By Status</label>
-               <select 
-                 value={verificationFilter}
-                 onChange={(e) => setVerificationFilter(e.target.value)}
-                 className="bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all min-w-[160px]"
-               >
-                 <option key="all-v" value="all">ALL STATUSES</option>
-                 <option key="verified-v" value="verified">VERIFIED</option>
-                 <option key="pending-v" value="pending">PENDING VERIFICATION</option>
                </select>
              </div>
           </div>

@@ -13,7 +13,8 @@ import {
   Layout,
   LogOut,
   ShieldAlert,
-  UserPlus
+  UserPlus,
+  CheckCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -84,12 +85,21 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         )}
 
         {(role === 'teacher' || role === 'adviser') && (
-          <SidebarLink 
-            to="/submitted-records"
-            icon={<FileText size={20} />}
-            label="Submitted Records"
-            collapsed={!isOpen}
-          />
+          <>
+            <SidebarLink 
+              to="/submitted-records"
+              icon={<FileText size={20} />}
+              label="Submitted Records"
+              collapsed={!isOpen}
+            />
+
+            <SidebarLink 
+              to="/verified-records"
+              icon={<CheckCircle size={20} />}
+              label="Verified Records"
+              collapsed={!isOpen}
+            />
+          </>
         )}
 
         {(role === 'adviser' || role === 'admin') && (
