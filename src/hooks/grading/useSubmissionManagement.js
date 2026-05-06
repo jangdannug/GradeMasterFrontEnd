@@ -277,22 +277,23 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
   }, [savedClassRecords]);
 
   const lockClassRecord = async (recordId, adviserId, adviserName) => {
+    const existing = savedClassRecords.find(r => r.id === recordId);
+    if (!existing || !existing.dbId) return;
+
     try {
-      await classRecordService.lockClassRecord(recordId, true); // Lock the record
       setError(null);
-      // Assuming verification also happens on lock
-      await classRecordService.verifyClassRecord(recordId, true);
+      // Use the verify endpoint which we updated to also lock the record
+      await classRecordService.verifyClassRecord(existing.dbId, true, 'Verified by Adviser');
 
       setRawRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: true, isVerified: true } : r));
       
       const logEntry = {
-        recordId,
-        action: 'locked',
+        recordId: existing.dbId,
+        action: 'verified',
         actorName: adviserName,
-        status: 'resolved'
+        status: 'resolved',
+        createdAt: new Date().toISOString()
       };
-      // Assuming classRecordService.createLog or similar exists
-      // await classRecordService.createLog(logEntry);
       setClassRecordLogs(prev => [normalize(logEntry), ...prev]);
     } catch (err) {
       console.error("Failed to lock class record:", err);
