@@ -172,7 +172,7 @@ export function SubmittedRecords({
                             {record.gradeLevel} - {record.sectionName}
                           </p>
                           <span className="text-slate-300 text-lg">•</span>
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-tight italic">Submitted: {new Date(record.submittedAt).toLocaleDateString()}</p>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-tight italic">Submitted: {new Date(record.submittedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
                         </div>
                       </div>
                     </div>
@@ -219,7 +219,7 @@ export function SubmittedRecords({
                             <div>
                               <p className="text-slate-500 font-bold uppercase text-sm">Submitted</p>
                               <p className="text-slate-800 font-medium">
-                                {new Date(record.submittedAt).toLocaleDateString()}
+                                {new Date(record.submittedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                               </p>
                             </div>
                             <div>
@@ -265,7 +265,7 @@ export function SubmittedRecords({
                                     By: {log.actorName || log.submittedBy || log.requestedBy || log.approvedBy || log.rejectedBy || log.lockedBy || 'System'}
                                   </div>
                                   <div className="text-slate-600">
-                                    {new Date(log.createdAt || log.submittedAt || log.requestedAt || log.approvedAt || log.rejectedAt || log.lockedAt).toLocaleDateString()}
+                                    {new Date(log.createdAt || log.submittedAt || log.requestedAt || log.approvedAt || log.rejectedAt || log.lockedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                                   </div>
                                   {log.reason && (
                                     <div className="text-slate-600 mt-1 italic">
