@@ -146,7 +146,12 @@ export function SubmittedRecords({
                         className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                       />
                       <div>
-                        <p className="font-black text-slate-800 uppercase italic tracking-tighter">{record.subjectName}</p>
+                        <p className="font-black text-slate-800 uppercase italic tracking-tighter flex items-center gap-2 flex-wrap">
+                          {record.subjectName}
+                          <span className="not-italic text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 tracking-widest">
+                            {record.teacherName}
+                          </span>
+                        </p>
                         <div className="flex items-center gap-3 mt-1">
                           <p className="text-base text-slate-800 font-black">Q{record.quarter}</p>
                           <span className="text-slate-300 text-xl">•</span>
