@@ -50,31 +50,39 @@ export const submitClassRecord = async (data) => {
     }
 };
 
-// ✅ Request edit = log action via verify (unlock) since no /request-edit endpoint
 export const requestEditClassRecord = async (recordId, teacherId, teacherName, reason) => {
     try {
-        // Unlock the record so the teacher can edit
-        const response = await api.put(`/classrecord/${recordId}/lock`, { isLocked: false });
+        // Match C# RequestEditRequest DTO keys
+        const response = await api.post(`/classrecord/${recordId}/request-edit`, { 
+            TeacherName: teacherName, 
+            Reason: reason 
+        });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to request edit';
     }
 };
 
-// ✅ Approve edit = unlock record
 export const approveEditRequest = async (recordId, adviserId, adviserName, reason) => {
     try {
-        const response = await api.put(`/classrecord/${recordId}/lock`, { isLocked: false });
+        // Match C# ApproveEditRequest DTO keys
+        const response = await api.post(`/classrecord/${recordId}/approve-edit`, { 
+            AdviserName: adviserName, 
+            Reason: reason 
+        });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to approve edit request';
     }
 };
 
-// ✅ Reject edit = keep record locked
 export const rejectEditRequest = async (recordId, adviserId, adviserName, reason) => {
     try {
-        const response = await api.put(`/classrecord/${recordId}/lock`, { isLocked: true });
+        // Match C# RejectEditRequest DTO keys
+        const response = await api.post(`/classrecord/${recordId}/reject-edit`, { 
+            AdviserName: adviserName, 
+            Reason: reason 
+        });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to reject edit request';

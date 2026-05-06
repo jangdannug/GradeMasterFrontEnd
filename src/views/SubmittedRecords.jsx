@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, Eye, MessageSquare, Check, X, FileSearch } from 'lucide-react';
@@ -14,7 +14,8 @@ export function SubmittedRecords({
   onApproveEdit = null,
   onRejectEdit = null,
   onLockRecord = null,
-  onSelectSubject = null
+  onSelectSubject = null,
+  onSync = null
 }) {
   const [expandedRecord, setExpandedRecord] = useState(null);
   const navigate = useNavigate();
@@ -24,12 +25,17 @@ export function SubmittedRecords({
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [verificationFilter, setVerificationFilter] = useState('all');
 
+  // Ensure data is fresh when viewing submitted records
+  useEffect(() => {
+    onSync?.();
+  }, [onSync]);
+
   const baseRecords = React.useMemo(() => {
     if (userRole === 'teacher') {
-      return savedRecords.filter(record => record.teacherId === currentUserId);
+      return savedRecords.filter(record => record.teacherId === currentUserId && record.isLocked);
     } else if (userRole === 'adviser') {
       const adviserSection = sections.find(s => s.adviserId === currentUserId);
-      return savedRecords.filter(record => record.sectionId === adviserSection?.id);
+      return savedRecords.filter(record => record.sectionId === adviserSection?.id && record.isLocked);
     }
     return [];
   }, [savedRecords, userRole, currentUserId, sections]);
@@ -56,10 +62,11 @@ export function SubmittedRecords({
 
   const getRecordLogs = (recordId) => {
     return classRecordLogs
-      .filter(log => log.recordId === recordId)
+      // Use loose equality or String cast as DB IDs might be numbers while local state might be strings
+      .filter(log => String(log.recordId) === String(recordId))
       .sort((a, b) => {
-        const timeA = new Date(a.submittedAt || a.requestedAt || a.approvedAt || a.rejectedAt || a.lockedAt);
-        const timeB = new Date(b.submittedAt || b.requestedAt || b.approvedAt || b.rejectedAt || b.lockedAt);
+        const timeA = new Date(a.createdAt || a.submittedAt || a.requestedAt || a.approvedAt || a.rejectedAt || a.lockedAt);
+        const timeB = new Date(b.createdAt || b.submittedAt || b.requestedAt || b.approvedAt || b.rejectedAt || b.lockedAt);
         return timeB - timeA;
       });
   };
@@ -127,8 +134,8 @@ export function SubmittedRecords({
         ) : (
           <div className="space-y-3">
             {filteredRecords.map((record) => {
-              const logs = getRecordLogs(record.id);
-              const pendingEdit = getPendingEditRequest(record.id);
+              const logs = getRecordLogs(record.dbId || record.id);
+              const pendingEdit = getPendingEditRequest(record.dbId || record.id);
               const isExpanded = expandedRecord === record.id;
 
               return (
@@ -249,10 +256,10 @@ export function SubmittedRecords({
                                     {log.action.replace(/_/g, ' ')}
                                   </div>
                                   <div className="text-slate-700">
-                                    By: {log.submittedBy || log.requestedBy || log.approvedBy || log.rejectedBy || log.lockedBy || 'System'}
+                                    By: {log.actorName || log.submittedBy || log.requestedBy || log.approvedBy || log.rejectedBy || log.lockedBy || 'System'}
                                   </div>
                                   <div className="text-slate-600">
-                                    {new Date(log.submittedAt || log.requestedAt || log.approvedAt || log.rejectedAt || log.lockedAt).toLocaleDateString()}
+                                    {new Date(log.createdAt || log.submittedAt || log.requestedAt || log.approvedAt || log.rejectedAt || log.lockedAt).toLocaleDateString()}
                                   </div>
                                   {log.reason && (
                                     <div className="text-slate-600 mt-1 italic">
@@ -331,7 +338,7 @@ export function SubmittedRecords({
                             <div className="border-t pt-4 bg-orange-50 p-4 rounded-lg">
                               <h4 className="font-bold text-orange-900 mb-3 flex items-center gap-2">
                                 <MessageSquare size={16} />
-                                Edit Request from {pendingEdit.requestedBy}
+                                Edit Request from {pendingEdit.actorName}
                               </h4>
                               <p className="text-sm text-orange-800 mb-3">
                                 <span className="font-bold">Reason:</span> {pendingEdit.reason}

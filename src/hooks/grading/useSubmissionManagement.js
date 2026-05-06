@@ -50,7 +50,15 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
     setError(null);
     try {
       const records = await classRecordService.getClassRecords();
-      setRawRecords(normalize(records));
+      const normalizedRecords = normalize(records);
+      setRawRecords(normalizedRecords);
+
+      // Fetch logs for all records to ensure advisers see pending edit requests
+      const logsPromises = normalizedRecords.map(r => 
+        classRecordService.getClassRecordLogs(r.dbId || r.id).catch(() => [])
+      );
+      const allLogs = await Promise.all(logsPromises);
+      setClassRecordLogs(normalize(allLogs.flat()));
     } catch (err) {
       console.error("Failed to fetch class records or logs:", err);
       setError(err);
@@ -180,23 +188,33 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
     }
   }, [savedClassRecords]);
 
-  const requestEditClassRecord = async (recordId, teacherId, teacherName, reason) => {
+  const requestEditClassRecord = useCallback(async (recordId, teacherId, teacherName, reason) => {
     const existing = savedClassRecords.find(r => r.id === recordId);
     if (!existing || !existing.dbId) return;
 
     try {
       setError(null);
-      const log = await classRecordService.requestEditClassRecord(existing.dbId, teacherId, teacherName, reason);
-      setClassRecordLogs(prev => [normalize(log), ...prev]);
+      await classRecordService.requestEditClassRecord(existing.dbId, teacherId, teacherName, reason);
+      
+      // Manually add the log entry so the UI reflects "Edit Request Pending" immediately
+      const newLog = {
+        recordId: existing.dbId,
+        action: 'edit_requested',
+        status: 'pending',
+        reason: reason,
+        actorName: teacherName,
+        createdAt: new Date().toISOString()
+      };
+      setClassRecordLogs(prev => [normalize(newLog), ...prev]);
       return { success: true };
     } catch (err) {
       console.error("Failed to request edit:", err);
       setError(err);
       return { success: false, message: err };
     }
-  };
+  }, [savedClassRecords]);
 
-  const approveEditRequest = async (recordId, adviserId, adviserName, reason) => {
+  const approveEditRequest = useCallback(async (recordId, adviserId, adviserName, reason) => {
     const existing = savedClassRecords.find(r => r.id === recordId);
     if (!existing || !existing.dbId) return;
 
@@ -209,33 +227,54 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
       setRawRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: false } : r));
       
       // Update logs: Mark the pending request as approved
-      setClassRecordLogs(prev => prev.map(l => 
-        (l.recordId === existing.dbId && l.action === 'edit_requested' && l.status === 'pending')
-          ? { ...l, status: 'approved' } : l
-      ));
+      setClassRecordLogs(prev => {
+        const approvedLog = {
+          recordId: existing.dbId,
+          action: 'edit_approved',
+          status: 'approved',
+          reason: reason,
+          actorName: adviserName,
+          createdAt: new Date().toISOString()
+        };
+        return [normalize(approvedLog), ...prev.map(l => 
+          (l.recordId === existing.dbId && l.action === 'edit_requested' && l.status === 'pending')
+            ? { ...l, status: 'approved' } : l
+        )];
+      });
     } catch (err) {
       console.error("Failed to approve edit request:", err);
       setError(err);
     }
-  };
+  }, [savedClassRecords]);
 
-  const rejectEditRequest = async (recordId, adviserId, adviserName, reason) => {
+  const rejectEditRequest = useCallback(async (recordId, adviserId, adviserName, reason) => {
     const existing = savedClassRecords.find(r => r.id === recordId);
     if (!existing || !existing.dbId) return;
 
     try {
       setError(null);
-      const log = await classRecordService.rejectEditRequest(existing.dbId, adviserId, adviserName, reason);
-      setClassRecordLogs(prev => [normalize(log), ...prev.map(l => 
-        (l.recordId === existing.dbId && l.action === 'edit_requested' && l.status === 'pending')
-          ? { ...l, status: 'rejected' } : l
-      )]);
+      await classRecordService.rejectEditRequest(existing.dbId, adviserId, adviserName, reason);
+      
+      setClassRecordLogs(prev => {
+        const rejectedLog = {
+          recordId: existing.dbId,
+          action: 'edit_rejected',
+          status: 'rejected',
+          reason: reason,
+          actorName: adviserName,
+          createdAt: new Date().toISOString()
+        };
+        return [normalize(rejectedLog), ...prev.map(l => 
+          (l.recordId === existing.dbId && l.action === 'edit_requested' && l.status === 'pending')
+            ? { ...l, status: 'rejected' } : l
+        )];
+      });
     } catch (err) {
       console.error("Failed to reject edit request:", err);
       setError(err);
       throw err;
     }
-  };
+  }, [savedClassRecords]);
 
   const lockClassRecord = async (recordId, adviserId, adviserName) => {
     try {
