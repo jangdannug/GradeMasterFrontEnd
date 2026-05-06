@@ -521,19 +521,27 @@ export function ClassRecord({
 
        {!isReadOnly && !isSubmitted && onSubmitClassRecord && (
          <div className="p-6 md:p-10 bg-slate-50 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-           <div className="flex items-center gap-5 p-5 bg-rose-50 border-2 border-rose-100 rounded-[2rem] shadow-sm max-w-2xl">
-             <div className="size-12 bg-white rounded-2xl flex items-center justify-center text-rose-600 shadow-sm shrink-0 border border-rose-50">
+           <div className={`flex items-center gap-5 p-5 ${hasUnsavedChanges ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-100'} border-2 rounded-[2rem] shadow-sm max-w-2xl transition-colors`}>
+             <div className={`size-12 bg-white rounded-2xl flex items-center justify-center ${hasUnsavedChanges ? 'text-amber-600 border-amber-100' : 'text-rose-600 border-rose-100'} shadow-sm shrink-0 border`}>
                <ShieldAlert size={28} />
              </div>
              <div className="space-y-1">
-               <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Submission Notice</p>
-               <p className="text-sm font-black text-rose-900 uppercase italic leading-tight">
-                 Once submitted, this record will be locked and cannot be edited without approval from the adviser.
+               <p className={`text-[10px] font-black ${hasUnsavedChanges ? 'text-amber-600' : 'text-rose-600'} uppercase tracking-widest`}>
+                 {hasUnsavedChanges ? 'Action Required: Save Progress' : 'Submission Notice'}
+               </p>
+               <p className={`text-sm font-black ${hasUnsavedChanges ? 'text-amber-900' : 'text-rose-900'} uppercase italic leading-tight`}>
+                 {hasUnsavedChanges 
+                   ? 'You have unsaved changes. Please click the pulsing "Save Changes" button at the top before submitting.'
+                   : 'Once submitted, this record will be locked and cannot be edited without approval from the adviser.'}
                </p>
              </div>
            </div>
            <button
-           onClick={() => { // Submit button should not show if already verified
+           onClick={() => {
+               if (hasUnsavedChanges) {
+                 alert('Cannot submit yet! You have unsaved changes in the class record. Please click "Save Changes" at the top of the table first to ensure your data is synced.');
+                 return;
+               }
                if (confirm('Are you sure you want to submit this class record? Once submitted, it cannot be edited unless the adviser approves an edit request.')) {
                  onSubmitClassRecord({
                    subject,
@@ -543,7 +551,8 @@ export function ClassRecord({
                  });
                }
              }}
-             className={`${theme.styles.button} bg-emerald-500 hover:bg-emerald-600 text-white py-4`}
+             disabled={draftStatus === 'saving'}
+             className={`${theme.styles.button} ${hasUnsavedChanges ? 'bg-slate-300 text-slate-500 cursor-not-allowed border-slate-200' : 'bg-emerald-500 hover:bg-emerald-600 text-white'} py-4 transition-all`}
            >
              <Send size={18} />
              Submit Record
