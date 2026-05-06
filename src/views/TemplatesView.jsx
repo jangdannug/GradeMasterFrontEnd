@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
@@ -18,6 +19,7 @@ export function TemplatesView({
   updateColumnName,
   onUpdateBaseSubject // Pass this from useGradeManagement
 }) {
+  const location = useLocation();
   const [selectedBaseSubjectId, setSelectedBaseSubjectId] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingColumnIndex, setEditingColumnIndex] = useState(null);
@@ -27,13 +29,16 @@ export function TemplatesView({
   // Set initial selected subject or update when subjects change
   useEffect(() => {
     if (subjects && subjects.length > 0) {
+      const stateId = location.state?.subjectId;
       const currentExists = subjects.some(s => String(s.id) === String(selectedBaseSubjectId));
       
-      if (!selectedBaseSubjectId || !currentExists) {
+      if (stateId && subjects.some(s => String(s.id) === String(stateId))) {
+        setSelectedBaseSubjectId(stateId);
+      } else if (!selectedBaseSubjectId || !currentExists) {
         setSelectedBaseSubjectId(subjects[0].id);
       }
     }
-  }, [subjects]); // Removed selectedBaseSubjectId from deps to allow manual changes
+  }, [subjects, location.state?.subjectId]); // Listen for changes in subjects or incoming navigation state
 
   const selectedSubject = subjects.find(s => String(s.id) === String(selectedBaseSubjectId));
 

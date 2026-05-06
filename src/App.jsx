@@ -382,8 +382,8 @@ export default function App() {
                             }}
                             className="bg-slate-50 border border-slate-200 rounded-lg px-2 md:px-4 py-2 text-xs md:text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none max-w-[120px] md:max-w-none"
                           >
-                            {filteredSubjects.map(sub => (
-                              <option key={sub.id} value={sub.id}>{sub.name}</option>
+                            {filteredSubjects.map(sub => ( // Added sub.gradeLevel to the option text
+                              <option key={sub.id} value={sub.id}>{sub.name} (G{sub.gradeLevel})</option>
                             ))}
                           </select>
                         )}
