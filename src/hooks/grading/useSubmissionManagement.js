@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import classRecordService from '../../services/classRecordService';
 
 const normalize = (data) => {
@@ -41,8 +41,8 @@ const normalize = (data) => {
   return Array.isArray(data) ? data.map(transform) : transform(data);
 };
 
-export function useSubmissionManagement() {
-  const [savedClassRecords, setSavedClassRecords] = useState([]);
+export function useSubmissionManagement(allSubjects, allSections) { // allSubjects and allSections are passed from useGradeManagement
+  const [rawRecords, setRawRecords] = useState([]);
   const [classRecordLogs, setClassRecordLogs] = useState([]);
   const [error, setError] = useState(null);
 
@@ -50,15 +50,28 @@ export function useSubmissionManagement() {
     setError(null);
     try {
       const records = await classRecordService.getClassRecords();
-      setSavedClassRecords(normalize(records));
-      // Assuming a separate endpoint for all logs or fetching logs per record
-      // For now, we'll just fetch records. Logs will be fetched per record as needed.
+      setRawRecords(normalize(records));
     } catch (err) {
       console.error("Failed to fetch class records or logs:", err);
       setError(err);
       throw err;
     }
-  }, []);
+  }, []); // This function is now stable and won't trigger re-fetch loops
+
+  // Derived state: Enrich raw database records with subject/section metadata for the UI
+  const savedClassRecords = useMemo(() => {
+    return rawRecords.map(record => {
+      // Lookup metadata from the stable lists provided by the parent
+      const subject = allSubjects.find(s => String(s.id) === String(record.subjectId)); 
+      const section = allSections.find(s => String(s.id) === String(record.sectionId)); 
+      return {
+        ...record,
+        subjectName: subject?.name || 'Unknown Subject',
+        gradeLevel: section?.gradeLevel || 'Unknown Grade',
+        sectionName: section?.name || 'Unknown Section',
+      };
+    });
+  }, [rawRecords, allSubjects, allSections]);
 
   const saveDraftClassRecord = useCallback(async ({ subject, section, teacher, students, quarter }) => {
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
@@ -89,7 +102,7 @@ export function useSubmissionManagement() {
     try {
       setError(null);
       const savedDraft = await classRecordService.saveClassRecordDraft(recordId, draftData);
-      setSavedClassRecords(prev => [normalize(savedDraft), ...prev.filter(r => r.id !== recordId)]);
+      setRawRecords(prev => [normalize(savedDraft), ...prev.filter(r => r.id !== recordId)]);
       return { success: true, message: 'Draft saved successfully.' };
     } catch (error) {
       console.error('Error saving draft class record:', error);
@@ -147,7 +160,7 @@ export function useSubmissionManagement() {
       // Call the lock endpoint as requested: PUT /api/classrecord/{id}/lock
       const submittedRecord = await classRecordService.lockClassRecord(existing.dbId, true);
       
-      setSavedClassRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
+      setRawRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
       
       // Log the submission locally for UI consistency
       const logEntry = {
@@ -184,7 +197,7 @@ export function useSubmissionManagement() {
       // Unlock the record
       setError(null);
       await classRecordService.lockClassRecord(recordId, false);
-      setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: false } : r));
+      setRawRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: false } : r));
 
       // Log the approval
       const log = await classRecordService.approveEditRequest(recordId, adviserId, adviserName, reason);
@@ -221,7 +234,7 @@ export function useSubmissionManagement() {
       // Assuming verification also happens on lock
       await classRecordService.verifyClassRecord(recordId, true);
 
-      setSavedClassRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: true, isVerified: true } : r));
+      setRawRecords(prev => prev.map(r => r.id === recordId ? { ...r, isLocked: true, isVerified: true } : r));
       
       const logEntry = {
         recordId,

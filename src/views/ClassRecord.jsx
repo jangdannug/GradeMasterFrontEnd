@@ -50,10 +50,6 @@ export function ClassRecord({
 }) {
   const location = useLocation();
 
-  React.useEffect(() => {
-    onRefresh?.();
-  }, [onRefresh]);
-
   const isSummaryOnly = location.state?.summaryOnly || false;
   const isAdviser = userRole === 'adviser';
   const isAdmin = userRole === 'admin';

@@ -21,7 +21,7 @@ export function useGradeManagement(currentUser) {
     currentUser
   );
 
-  const submissionsState = useSubmissionManagement();
+  const submissionsState = useSubmissionManagement(subjectsState.subjects, sectionsState.sections);
   const gradingState = useStudentGrades(
     subjectsState.subjects, 
     subjectsState.setSubjects, 
