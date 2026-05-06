@@ -471,6 +471,7 @@ export default function App() {
                     <ProgressReport 
                     students={students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
                       subjects={reportSubjects} 
+                      baseSubjects={baseSubjects}
                       transmutationTable={transmutationTable}
                       descriptors={descriptors}
                     section={sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0] || defaultSection} 

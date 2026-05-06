@@ -277,7 +277,7 @@ export function SubmittedRecords({
                             </div>
                           </div>
 
-                          {userRole === 'teacher' && record.isLocked && !pendingEdit && (
+                          {userRole === 'teacher' && record.isLocked && !record.isVerified && !pendingEdit && (
                             <div className="border-t pt-4">
                               <button
                                 onClick={() => setEditRequestForm({ ...editRequestForm, [record.id]: true })}

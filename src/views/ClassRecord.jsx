@@ -49,12 +49,12 @@ export function ClassRecord({
   onDirtyChange = null
 }) {
   const location = useLocation();
-
   const isSummaryOnly = location.state?.summaryOnly || false;
   const isAdviser = userRole === 'adviser';
   const isAdmin = userRole === 'admin';
   const isSubmitted = savedRecord?.isLocked;
-  const isEditable = !isReadOnly && !isSubmitted;
+  const isVerified = savedRecord?.isVerified; // New variable for clarity
+  const isEditable = !isReadOnly && !isSubmitted && !isVerified; // Record is editable only if not read-only, not locked, and not verified.
   const effectiveSummaryOnly = isSummaryOnly || (isAdviser && isReadOnly);
 
   // Find the template associated with this subject to ensure we have the categories
@@ -533,7 +533,7 @@ export function ClassRecord({
              </div>
            </div>
            <button
-             onClick={() => {
+           onClick={() => { // Submit button should not show if already verified
                if (confirm('Are you sure you want to submit this class record? Once submitted, it cannot be edited unless the adviser approves an edit request.')) {
                  onSubmitClassRecord({
                    subject,
@@ -551,13 +551,26 @@ export function ClassRecord({
          </div>
        )}
 
-       {isSubmitted && (
+       {isSubmitted && !isVerified && ( // Show this if locked but not yet verified
          <div className="p-4 md:p-8 bg-amber-50 border-t border-amber-200 flex items-center gap-3">
            <div className="text-2xl">🔒</div>
            <div>
              <p className="font-bold text-amber-900">Record Submitted & Locked</p>
              <p className="text-sm text-amber-800">
-               Submitted on {new Date(savedRecord.submittedAt).toLocaleDateString()}.
+               Submitted on {new Date(savedRecord.submittedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.
+             </p>
+           </div>
+         </div>
+       )}
+
+       {isVerified && ( // NEW: Condition for "Record Verified & Finalized" message
+         <div className="p-4 md:p-8 bg-emerald-50 border-t border-emerald-200 flex items-center gap-3">
+           <div className="text-2xl">✅</div>
+           <div>
+             <p className="font-bold text-emerald-900">Record Verified & Finalized</p>
+             <p className="text-sm text-emerald-800">
+               {/* Assuming submittedAt is updated on verification too, or add a verifiedAt field */}
+               Verified on {new Date(savedRecord.submittedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.
              </p>
            </div>
          </div>

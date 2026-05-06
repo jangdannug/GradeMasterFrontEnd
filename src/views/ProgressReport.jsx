@@ -9,6 +9,7 @@ import { theme } from '../theme';
 export function ProgressReport({ 
   students, 
   subjects, 
+  baseSubjects = [],
   section, 
   transmutationTable, 
   descriptors,
@@ -56,15 +57,18 @@ export function ProgressReport({
         {filteredStudents.map(student => {
           // Only include results from verified (locked) records
           const subjectResults = subjects.map(subject => {
+            // Find template for effective categories (fallback logic)
+            const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
+            const effectiveCategories = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
+
             const quarterGrades = [1, 2, 3, 4].map(q => {
               const recordId = `${section.id}-${subject.id}-Q${q}`;
               const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
               
               if (!verifiedRecord) return { quarter: q, score: null };
 
-              const studentSnapshot = verifiedRecord.studentSnapshots?.find(s => s.id === student.id);
-              const sg = studentSnapshot ? { categoryGrades: studentSnapshot.grades?.categoryGrades || {} } : null;
-              const result = calculateSubjectResult(sg, verifiedRecord.subjectSnapshot || subject, transmutationTable, descriptors);
+              const studentSnapshot = verifiedRecord.studentSnapshots?.find(s => String(s.id) === String(student.id));
+              const result = calculateSubjectResult(studentSnapshot?.grades, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
               
               return { 
                 quarter: q, 
