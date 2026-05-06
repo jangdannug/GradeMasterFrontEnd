@@ -86,7 +86,7 @@ export function SubmittedRecords({
                  onChange={(e) => setQuarterFilter(e.target.value)}
                  className="bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all min-w-[140px]"
                >
-                 <option value="all">ALL QUARTERS</option>
+                 <option key="all-q" value="all">ALL QUARTERS</option>
                  {[1, 2, 3, 4].map(q => <option key={q} value={q}>QUARTER {q}</option>)}
                </select>
              </div>
@@ -98,7 +98,7 @@ export function SubmittedRecords({
                  onChange={(e) => setSubjectFilter(e.target.value)}
                  className="bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all min-w-[200px]"
                >
-                 <option value="all">ALL SUBJECTS</option>
+                 <option key="all-s" value="all">ALL SUBJECTS</option>
                  {availableSubjects.map(sub => (
                    <option key={sub} value={sub}>{sub}</option>
                  ))}
@@ -112,9 +112,9 @@ export function SubmittedRecords({
                  onChange={(e) => setVerificationFilter(e.target.value)}
                  className="bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-2.5 text-sm font-black text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all min-w-[160px]"
                >
-                 <option value="all">ALL STATUSES</option>
-                 <option value="verified">VERIFIED</option>
-                 <option value="pending">PENDING VERIFICATION</option>
+                 <option key="all-v" value="all">ALL STATUSES</option>
+                 <option key="verified-v" value="verified">VERIFIED</option>
+                 <option key="pending-v" value="pending">PENDING VERIFICATION</option>
                </select>
              </div>
           </div>

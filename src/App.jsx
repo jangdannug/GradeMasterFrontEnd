@@ -411,9 +411,10 @@ export default function App() {
                         loadClassRecordDraft={loadClassRecordDraft}
                         applyClassRecordDraft={applyClassRecordDraft}
                         onRefresh={refreshGlobalData}
-                        onSubmitClassRecord={(data) => {
-                          const result = submitClassRecord({ ...data, quarter: selectedQuarter });
+                        onSubmitClassRecord={async (data) => {
+                          const result = await submitClassRecord({ ...data, quarter: selectedQuarter });
                           if (!result.success) alert(result.message);
+                          else alert(result.message);
                         }}
                       />
                     ) : (
