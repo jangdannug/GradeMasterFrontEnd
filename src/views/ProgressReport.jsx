@@ -21,6 +21,7 @@ export function ProgressReport({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [sf10Student, setSf10Student] = React.useState(null);
   const [sf9Student, setSf9Student] = React.useState(null); // New state for SF9 modal
+  const [activeTab, setActiveTab] = React.useState('cards'); // 'cards' | 'summary'
 
   const getStudentInitials = (fullName) => {
     const parts = fullName.split(',');
@@ -37,6 +38,53 @@ export function ProgressReport({
       s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [students, searchQuery]);
+
+  // Centralized calculation logic for all students to be shared between tabs
+  const studentReportData = React.useMemo(() => {
+    return filteredStudents.map(student => {
+      const studentSubjects = subjects.filter(sub => String(sub.sectionId) === String(student.sectionId));
+      
+      const subjectResults = studentSubjects.map(subject => {
+        const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
+        const effectiveCategories = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
+
+        const quarterlyGrades = Array.from({ length: maxQuarters }, (_, i) => i + 1).map(q => {
+          const recordId = `${student.sectionId}-${subject.id}-Q${q}`;
+          const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
+          
+          if (!verifiedRecord) return { quarter: q, score: null };
+
+          const snapshot = verifiedRecord.studentSnapshots?.find(s => String(s.id) === String(student.id));
+          const result = calculateSubjectResult(snapshot?.grades, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
+          
+          return { quarter: q, score: result.quarterly, descriptor: result.descriptor };
+        });
+
+        const verifiedScores = quarterlyGrades.filter(q => q.score !== null).map(q => q.score);
+        const finalGrade = verifiedScores.length > 0 
+          ? Math.round(verifiedScores.reduce((a, b) => a + b, 0) / verifiedScores.length) 
+          : 0;
+        
+        const finalDescriptor = descriptors.find(d => finalGrade >= d.min && finalGrade <= d.max) || descriptors[descriptors.length - 1];
+
+        return {
+          id: subject.id,
+          name: subject.name,
+          quarterlyGrades,
+          finalGrade,
+          finalDescriptor,
+          isVerified: verifiedScores.length > 0
+        };
+      });
+
+      const generalAverage = subjectResults.length > 0 
+        ? Math.round(subjectResults.reduce((acc, curr) => acc + curr.finalGrade, 0) / subjectResults.length)
+        : 0;
+      const avgDescriptor = descriptors.find(d => generalAverage >= d.min && generalAverage <= d.max) || descriptors[descriptors.length - 1];
+
+      return { student, subjectResults, generalAverage, avgDescriptor };
+    });
+  }, [filteredStudents, subjects, baseSubjects, maxQuarters, savedClassRecords, transmutationTable, descriptors]);
 
   // Data processing for SF10 modal
   const sf10Data = React.useMemo(() => {
@@ -115,6 +163,53 @@ export function ProgressReport({
     return { subjectGrades, genAvg };
   }, [sf9Student, subjects, baseSubjects, savedClassRecords, maxQuarters, transmutationTable, descriptors]);
 
+  const handleDownloadSummary = () => {
+    if (!studentReportData || studentReportData.length === 0) {
+      alert("No data to download.");
+      return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Headers
+    let headers = ["No.", "Learner's Name"];
+    subjects.forEach(sub => {
+      const subjectLabel = `${sub.name} (G${sub.gradeLevel})`; // Include grade level for clarity
+      for (let q = 1; q <= maxQuarters; q++) {
+        headers.push(`${subjectLabel} Q${q}`);
+      }
+      headers.push(`${subjectLabel} Final`);
+    });
+    headers.push("General Average");
+    csvContent += headers.join(",") + "\n";
+
+    // Data Rows
+    studentReportData.forEach(({ student, subjectResults, generalAverage }, sIdx) => {
+      let row = [`"${sIdx + 1}"`, `"${student.name}"`];
+      subjects.forEach(sub => {
+        const res = subjectResults.find(r => r.id === sub.id);
+        for (let q = 1; q <= maxQuarters; q++) {
+          const qRes = res?.quarterlyGrades.find(item => item.quarter === q);
+          row.push(`"${qRes?.score || ''}"`);
+        }
+        row.push(`"${res?.finalGrade || ''}"`);
+      });
+      row.push(`"${generalAverage || ''}"`);
+      csvContent += row.join(",") + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const fileName = section 
+      ? `Grade_Summary_${section.gradeLevel}-${section.name}.csv` 
+      : `Grade_Summary_All_Sections.csv`;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -139,146 +234,209 @@ export function ProgressReport({
               className={`${theme.styles.input} pl-10 py-2.5 text-sm`}
             />
           </div>
-          <button className={`${theme.styles.button} ${theme.styles.buttonPrimary} py-2.5`}>
+          <button 
+            onClick={handleDownloadSummary}
+            disabled={activeTab === 'cards'} // Disable if not on summary tab
+            className={`${theme.styles.button} ${theme.styles.buttonPrimary} py-2.5 ${activeTab === 'cards' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
             <Download size={18} />
             <span className="hidden md:inline">Export All</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {filteredStudents.map(student => {
-          // Filter subjects to only those assigned to the student's section
-          const studentSubjects = subjects.filter(sub => String(sub.sectionId) === String(student.sectionId));
-          
-          // Only include results from verified (locked) records
-          const subjectResults = studentSubjects.map(subject => {
-            // Find template for effective categories (fallback logic)
-            const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
-            const effectiveCategories = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
+      <div className="flex bg-slate-100 p-1 rounded-xl w-fit shadow-sm">
+        <TabButton 
+          active={activeTab === 'cards'} 
+          onClick={() => setActiveTab('cards')}
+          icon={<Table size={14} />}
+          label="Individual Cards"
+        />
+        <TabButton 
+          active={activeTab === 'summary'} 
+          onClick={() => setActiveTab('summary')}
+          icon={<Eye size={14} />}
+          label="Grade Summary"
+        />
+      </div>
 
-            const quarterGrades = Array.from({ length: maxQuarters }, (_, i) => i + 1).map(q => {
-              const recordId = `${student.sectionId}-${subject.id}-Q${q}`;
-              const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
-              
-              if (!verifiedRecord) return { quarter: q, score: null };
-
-              const studentSnapshot = verifiedRecord.studentSnapshots?.find(s => String(s.id) === String(student.id));
-              const result = calculateSubjectResult(studentSnapshot?.grades, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
-              
-              return { 
-                quarter: q, 
-                score: result.quarterly,
-                descriptor: result.descriptor
-              };
-            });
-
-            const verifiedScores = quarterGrades.filter(q => q.score !== null).map(q => q.score);
-            const finalGrade = verifiedScores.length > 0 
-              ? Math.round(verifiedScores.reduce((a, b) => a + b, 0) / verifiedScores.length) 
-              : 0;
-            
-            const finalDescriptor = descriptors.find(d => finalGrade >= d.min && finalGrade <= d.max) || descriptors[descriptors.length - 1];
-
-            return {
-              id: subject.id,
-              name: subject.name,
-              quarterlyGrades: quarterGrades,
-              finalGrade: finalGrade,
-              finalDescriptor: finalDescriptor,
-              isVerified: verifiedScores.length > 0
-            };
-          });
-
-          const generalAverage = subjectResults.length > 0 
-            ? Math.round(subjectResults.reduce((acc, curr) => acc + curr.finalGrade, 0) / subjectResults.length)
-            : 0;
-          const avgDescriptor = descriptors.find(d => generalAverage >= d.min && generalAverage <= d.max) || descriptors[descriptors.length - 1];
-
-          return (
-            <div key={student.id} className={`${theme.styles.card} overflow-hidden group`}>
-               <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-slate-100/50 transition-colors gap-4">
-                 <div className="flex items-center gap-4">
-                   <div className={`size-12 ${theme.styles.radiusSm} flex items-center justify-center text-sm font-black shadow-sm ${student.gender === 'MALE' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} shrink-0 transition-colors`}>
-                     {getStudentInitials(student.name)}
+      <AnimatePresence mode="wait">
+        {activeTab === 'cards' ? (
+          <motion.div 
+            key="cards"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="grid grid-cols-1 gap-6"
+          >
+            {studentReportData.map(({ student, subjectResults, generalAverage, avgDescriptor }) => (
+              <div key={student.id} className={`${theme.styles.card} overflow-hidden group`}>
+                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-slate-100/50 transition-colors gap-4">
+                   <div className="flex items-center gap-4">
+                     <div className={`size-12 ${theme.styles.radiusSm} flex items-center justify-center text-sm font-black shadow-sm ${student.gender === 'MALE' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} shrink-0 transition-colors`}>
+                       {getStudentInitials(student.name)}
+                     </div>
+                     <div className="min-w-0 flex-1">
+                       <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">{student.name}</h4>
+                       <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate">
+                         {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • ID: {String(student.id).substring(0, 8)}
+                       </p>
+                     </div>
                    </div>
-                   <div className="min-w-0 flex-1">
-                     <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">{student.name}</h4>
-                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate">
-                       {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • ID: {String(student.id).substring(0, 8)}
+                   <div className="text-left sm:text-right">
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">General Average</p>
+                     <p className={`text-2xl md:text-3xl font-black leading-none ${generalAverage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                       {generalAverage}
+                     </p>
+                     <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${avgDescriptor?.color}`}>
+                       {avgDescriptor?.label}
                      </p>
                    </div>
                  </div>
-                 <div className="text-left sm:text-right">
-                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">General Average</p>
-                 <p className={`text-2xl md:text-3xl font-black leading-none ${generalAverage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                   {generalAverage}
-                   </p>
-                 <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${avgDescriptor?.color}`}>
-                   {avgDescriptor?.label}
-                 </p>
-                 </div>
-               </div>
-               
-               <div className="p-6 md:p-8 bg-white">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                   {subjectResults.map((res, i) => (
-                     <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow space-y-4">
-                       <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">{res.name}</p>
-                       <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
-                         {res.quarterlyGrades.map(q => (
-                           <div key={q.quarter} className={`text-center py-1.5 rounded-lg border ${q.score === null ? 'border-transparent' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
-                             <p className="text-[6px] text-slate-400 font-black uppercase mb-0.5">Q{q.quarter}</p>
-                             <p className={`text-xs font-black leading-none ${q.score === null ? 'text-slate-200' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
-                               {q.score || '--'}
-                             </p>
-                             {q.score !== null && (
-                               <p className={`text-[5px] font-black uppercase mt-1 leading-none ${q.descriptor?.color}`}>
-                                 {q.descriptor?.label.substring(0, 3)}
+                 
+                 <div className="p-6 md:p-8 bg-white">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                     {subjectResults.map((res, i) => (
+                       <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow space-y-4">
+                         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">{res.name}</p>
+                         <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
+                           {res.quarterlyGrades.map(q => (
+                             <div key={q.quarter} className={`text-center py-1.5 rounded-lg border ${q.score === null ? 'border-transparent' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
+                               <p className="text-[6px] text-slate-400 font-black uppercase mb-0.5">Q{q.quarter}</p>
+                               <p className={`text-xs font-black leading-none ${q.score === null ? 'text-slate-200' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
+                                 {q.score || '--'}
                                </p>
+                               {q.score !== null && (
+                                 <p className={`text-[5px] font-black uppercase mt-1 leading-none ${q.descriptor?.color}`}>
+                                   {q.descriptor?.label.substring(0, 3)}
+                                 </p>
+                               )}
+                             </div>
+                           ))}
+                         </div>
+                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                           <div className="flex flex-col gap-1">
+                             <span className="text-[9px] font-black text-slate-400 uppercase leading-none">Yearly Grade</span>
+                             {res.isVerified && (
+                               <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${res.finalDescriptor?.color}`}>
+                                 {res.finalDescriptor?.label}
+                               </span>
                              )}
                            </div>
-                         ))}
-                       </div>
-                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                         <div className="flex flex-col gap-1">
-                           <span className="text-[9px] font-black text-slate-400 uppercase leading-none">Yearly Grade</span>
-                           {res.isVerified && (
-                             <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${res.finalDescriptor?.color}`}>
-                               {res.finalDescriptor?.label}
-                             </span>
-                           )}
+                           <span className={`text-xl font-black ${res.finalGrade >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                             {res.finalGrade || '--'}
+                           </span>
                          </div>
-                         <span className={`text-xl font-black ${res.finalGrade >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                           {res.finalGrade || '--'}
-                         </span>
                        </div>
-                     </div>
-                   ))}
-                 </div>
+                     ))}
+                   </div>
 
-                 <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-2">
-                    <button className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-2">
-                      <Trash2 size={14} /> Clear
-                    </button>
-                    <button 
-                      onClick={() => setSf10Student(student)}
-                      className="px-5 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-100"
-                    >
-                      <FileText size={14} /> SF10 Permanent Record
-                    </button>
-                    <button
-                      onClick={() => setSf9Student(student)} // New button for SF9
-                      className="px-5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-100"
-                    >
-                      <FileText size={14} /> SF9 Progress Report
-                    </button>
+                   <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-2">
+                      <button className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-2">
+                        <Trash2 size={14} /> Clear
+                      </button>
+                      <button 
+                        onClick={() => setSf10Student(student)}
+                        className="px-5 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-100"
+                      >
+                        <FileText size={14} /> SF10 Permanent Record
+                      </button>
+                      <button
+                        onClick={() => setSf9Student(student)}
+                        className="px-5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-100"
+                      >
+                        <FileText size={14} /> SF9 Progress Report
+                      </button>
+                   </div>
                  </div>
-               </div>
+              </div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="summary"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 w-12">No.</th>
+                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r">Learner's Name</th>
+                    {subjects.map(sub => (
+                      <th key={sub.id} colSpan={maxQuarters + 1} className="p-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-500 border-r border-slate-200 bg-slate-50/50">
+                        {sub.name}
+                      </th>
+                    ))}
+                    <th rowSpan={2} className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 w-24 border-l border-indigo-100">Gen. Avg</th>
+                  </tr>
+                  <tr className="bg-slate-50/30 border-b border-slate-200">
+                    {subjects.map(sub => (
+                      <React.Fragment key={`sub-header-${sub.id}`}>
+                        {Array.from({ length: maxQuarters }, (_, i) => (
+                          <th key={i} className="p-2 text-center text-[8px] font-black text-slate-400 border-r border-slate-100">Q{i + 1}</th>
+                        ))}
+                        <th className="p-2 text-center text-[8px] font-black text-indigo-500 bg-indigo-50/30 border-r border-slate-200 italic">Final</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {studentReportData.map(({ student, subjectResults, generalAverage }, sIdx) => (
+                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="p-4 text-xs font-bold text-slate-400">{sIdx + 1}</td>
+                      <td className="p-4 text-sm font-black text-slate-800 uppercase sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r">
+                        {student.name}
+                      </td>
+                      {subjects.map(sub => {
+                        const res = subjectResults.find(r => r.id === sub.id);
+                        return (
+                          <React.Fragment key={`res-${student.id}-${sub.id}`}>
+                            {Array.from({ length: maxQuarters }, (_, i) => {
+                              const qRes = res?.quarterlyGrades.find(q => q.quarter === i + 1);
+                              return (
+                                <td key={i} className="p-2 text-center text-xs font-medium text-slate-600 border-r border-slate-100">
+                                  {qRes?.score || <span className="text-slate-200">--</span>}
+                                </td>
+                              );
+                            })}
+                            <td className="p-2 text-center text-xs font-black bg-indigo-50/20 border-r border-slate-200">
+                              {res ? (
+                                <span className={res.finalGrade < 75 ? 'text-rose-500' : 'text-indigo-600'}>
+                                  {res.finalGrade || '--'}
+                                </span>
+                              ) : (
+                                <span className="text-slate-200">--</span>
+                              )}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+                      <td className="p-4 text-center text-base font-black text-indigo-600 bg-indigo-50/30 border-l border-indigo-100">
+                        {generalAverage || '--'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          );
-        })}
-      </div>
+          </motion.div>
+        )}
+
+        {/* SF9 Modal */}
+        {sf9Student && sf9Data && (
+          <SF9Modal 
+            student={sf9Student}
+            sf9Data={sf9Data}
+            section={allSections.find(s => String(s.id) === String(sf9Student.sectionId))}
+            maxQuarters={maxQuarters}
+            onClose={() => setSf9Student(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {sf10Student && sf10Data && (
@@ -398,6 +556,22 @@ export function ProgressReport({
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs font-black uppercase transition-all ${
+        active 
+          ? 'bg-white text-indigo-600 shadow-sm' 
+          : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
