@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save } from 'lucide-react';
+import { motion } from 'motion/react'; // Keep this line
+import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save, Layers } from 'lucide-react';
 import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
@@ -71,7 +71,7 @@ export function ClassRecord({
 
   const isComposite = React.useMemo(() => 
     resolvedCategories.some(c => c.isComponent), 
-  [resolvedCategories]);
+    [resolvedCategories]);
 
   const [activeComponentId, setActiveComponentId] = React.useState(null);
 
@@ -85,8 +85,12 @@ export function ClassRecord({
   }, [subject.id, isComposite, resolvedCategories]);
 
   const effectiveCategories = React.useMemo(() => {
+    if (activeComponentId === 'summary') return [];
     if (isComposite && activeComponentId) {
-      return resolvedCategories.find(c => c.id === activeComponentId)?.categories || [];
+      const foundComponent = resolvedCategories.find(c => c.id === activeComponentId);
+      // If activeComponentId is set but the component is not found (e.g., deleted),
+      // fall back to the first component's categories if available.
+      return foundComponent?.categories || resolvedCategories[0]?.categories || [];
     }
     return resolvedCategories;
   }, [resolvedCategories, isComposite, activeComponentId]);
@@ -364,6 +368,18 @@ export function ClassRecord({
 
        {isComposite && (
          <div className="px-8 py-4 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto scrollbar-hide">
+           <button
+             onClick={() => setActiveComponentId('summary')}
+             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
+               activeComponentId === 'summary' 
+                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                 : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
+             }`}
+           >
+             <Layers size={14} />
+             Summary
+           </button>
+
            {resolvedCategories.map(comp => (
              <button
                key={comp.id}
@@ -399,6 +415,14 @@ export function ClassRecord({
                   </th>
                 );
               })}
+              {activeComponentId === 'summary' && resolvedCategories.map(comp => (
+                <th key={`h-sum-${comp.id}`} className="p-4 text-center bg-indigo-100/50">
+                  <div className="flex flex-col items-center">
+                    <span className="font-black text-xs text-indigo-800 italic uppercase">{comp.name}</span>
+                    <span className="text-[8px] opacity-50">Component Grade</span>
+                  </div>
+                </th>
+              ))}
               <th rowSpan={2} className="p-3 w-16 bg-slate-200 text-slate-800 border-l border-slate-300">
                 <div className="flex flex-col items-center gap-1">
                   <span>Initial Grade</span>
@@ -537,6 +561,15 @@ export function ClassRecord({
                         <td className={`p-2 text-center font-bold select-none cursor-default ${idx % 2 === 0 ? 'text-blue-400 bg-blue-50/40' : 'text-emerald-400 bg-emerald-50/40'}`}>{catRes.ps.toFixed(2)}</td>
                         <td className={`p-2 text-center font-black select-none cursor-default ${idx % 2 === 0 ? 'text-blue-500 bg-blue-100/30' : 'text-emerald-500 bg-emerald-100/30'}`}>{catRes.ws.toFixed(2)}</td>
                       </React.Fragment>
+                    );
+                  })}
+
+                  {activeComponentId === 'summary' && results.isComposite && resolvedCategories.map(comp => {
+                    const compRes = (results.components || []).find(c => c.id === comp.id);
+                    return (
+                      <td key={`cell-sum-${comp.id}`} className="p-3 text-center font-bold bg-indigo-50/30 text-indigo-600">
+                        {calculatingGrades ? <Loader2 size={12} className="animate-spin mx-auto" /> : (compRes?.quarterly || 0)}
+                      </td>
                     );
                   })}
                   

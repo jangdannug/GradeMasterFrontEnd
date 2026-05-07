@@ -12,13 +12,27 @@ export const calculateSubjectResult = (
   // Handle Composite Subjects (e.g., MAPEH with Arts, PE, etc.)
   if (subject.categories?.some(cat => cat.isComponent)) {
     const componentResults = subject.categories.map(component => {
+      // Create a new sg object for the component, containing only its relevant categoryGrades
+      const componentSg = {
+        categoryGrades: {}
+      };
+
+      if (sg && sg.categoryGrades) {
+        component.categories.forEach(compCat => {
+          if (sg.categoryGrades[compCat.id]) {
+            componentSg.categoryGrades[compCat.id] = sg.categoryGrades[compCat.id];
+          }
+        });
+      }
+
       // Recursively calculate for each sub-component
-      return calculateSubjectResult(
-        sg, 
+      const result = calculateSubjectResult(
+        componentSg, // Pass the component-specific sg
         { ...subject, categories: component.categories || [] }, 
         transmutationTable, 
         descriptors
       );
+      return { ...result, id: component.id }; // Attach the component ID for the UI to find
     });
 
     // Average the transmuted (quarterly) grades of all components
@@ -29,7 +43,7 @@ export const calculateSubjectResult = (
     const finalDescriptor = descriptors.find(d => finalQuarterly >= d.min && finalQuarterly <= d.max) || (descriptors.length > 0 ? descriptors[descriptors.length - 1] : { label: 'N/A', color: 'text-slate-400' });
 
     return {
-      initial: componentResults.reduce((acc, res) => acc + res.initial, 0) / componentResults.length,
+      initial: componentResults.length > 0 ? componentResults.reduce((acc, res) => acc + (res.initial || 0), 0) / componentResults.length : 0,
       quarterly: finalQuarterly,
       descriptor: finalDescriptor,
       components: componentResults, // Keep individual component details
