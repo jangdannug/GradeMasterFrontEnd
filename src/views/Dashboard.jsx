@@ -37,7 +37,7 @@ export function Dashboard({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      {role === 'admin' && (
+      {(role === 'admin' || role === 'superadmin') && (
         <AdminDashboardView 
           users={users} 
           allSections={allSections} 

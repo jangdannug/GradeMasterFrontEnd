@@ -567,17 +567,6 @@ export function ProgressReport({
             </div>
           </motion.div>
         )}
-
-        {/* SF9 Modal */}
-        {sf9Student && sf9Data && (
-          <SF9Modal 
-            student={sf9Student}
-            sf9Data={sf9Data}
-            section={allSections.find(s => String(s.id) === String(sf9Student.sectionId))}
-            maxQuarters={maxQuarters}
-            onClose={() => setSf9Student(null)}
-          />
-        )}
       </AnimatePresence>
 
       <AnimatePresence>

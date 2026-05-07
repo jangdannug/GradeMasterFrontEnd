@@ -171,7 +171,7 @@ export default function App() {
     if (!currentUser) return false;
     // If there's a sync error, assume no subjects can be loaded
     if (syncError) return false;
-    if (currentUser.role === 'admin') return false;
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return false;
     
     const mySubjects = subjects.filter(s =>
       (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id
@@ -190,7 +190,7 @@ export default function App() {
     if (!currentUser) return [];
     // If there's a sync error, no subjects can be filtered
     if (syncError) return [];
-    if (currentUser.role === 'admin') return [];
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return [];
 
     const myTeachingLoad = subjects.filter(s =>
       (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id
@@ -212,7 +212,7 @@ export default function App() {
   const reportSubjects = useMemo(() => {
     if (!currentUser) return [];
     if (syncError) return [];
-    if (currentUser.role === 'admin') return subjects;
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return subjects;
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
       return subjects.filter(s => s.sectionId === currentUser.assignedSectionId);
     }
@@ -287,7 +287,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={
               // UPDATED: All routes except login are protected
-              <ProtectedRoute roles={['admin', 'teacher', 'adviser']}>
+              <ProtectedRoute roles={['admin', 'teacher', 'adviser', 'superadmin']}>
                 <Header 
                   section={sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection}
                   userName={currentUser.name}
@@ -322,7 +322,7 @@ export default function App() {
             } />
 
             <Route path="/admin" element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['superadmin', 'admin']}>
                 <>
                   <Header 
                     section={defaultSection} 
@@ -505,21 +505,21 @@ export default function App() {
             } />
 
             <Route path="/report" element={
-              <ProtectedRoute roles={['admin', 'adviser']}>
+              <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
                 <>
                   <Header 
-                    section={currentUser.role === 'admin' ? { name: 'All Sections', gradeLevel: 'Overview' } : (sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection)}
+                    section={(currentUser.role === 'admin' || currentUser.role === 'superadmin') ? { name: 'All Sections', gradeLevel: 'Overview' } : (sections.find(s => s.id === currentUser.assignedSectionId) || defaultSection)}
                     userName={currentUser.name}
                     syncError={syncError} // Pass syncError to Header
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <ProgressReport 
-                      students={currentUser.role === 'admin' ? students : students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
+                      students={(currentUser.role === 'admin' || currentUser.role === 'superadmin') ? students : students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
                       subjects={reportSubjects} 
                       baseSubjects={baseSubjects}
                       transmutationTable={transmutationTable}
                       descriptors={descriptors}
-                    section={currentUser.role === 'admin' ? null : (sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0])} 
+                    section={(currentUser.role === 'admin' || currentUser.role === 'superadmin') ? null : (sections.find(sec => sec.id === currentUser.assignedSectionId) || sections[0])} 
                     allSections={sections}
                     savedClassRecords={savedClassRecords}
                     syncError={syncError} // Pass syncError to ProgressReport
@@ -530,7 +530,7 @@ export default function App() {
             } />
 
             <Route path="/transmutation-table" element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['superadmin', 'admin']}>
                 <>
                   <Header 
                     section={defaultSection} 
@@ -551,7 +551,7 @@ export default function App() {
             } />
 
             <Route path="/descriptors" element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['superadmin', 'admin']}>
                 <>
                   <Header 
                     section={defaultSection} 
@@ -572,7 +572,7 @@ export default function App() {
             } />
 
             <Route path="/templates" element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['superadmin', 'admin']}>
                 <>
                   <Header 
                     section={defaultSection} 
@@ -607,7 +607,7 @@ export default function App() {
             } />
 
             <Route path="/student-management" element={
-              <ProtectedRoute roles={['admin', 'adviser']}>
+              <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
                 <>
                   <Header 
                     section={defaultSection} 

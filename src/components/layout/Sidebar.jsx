@@ -57,7 +57,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           collapsed={!isOpen}
         />
 
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'superadmin') && (
           <SidebarLink 
             to="/admin"
             icon={<ShieldAlert size={20} />}
@@ -66,7 +66,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           />
         )}
 
-        {(role === 'admin' || role === 'adviser') && (
+        {(role === 'superadmin' || role === 'admin' || role === 'adviser') && (
           <SidebarLink 
             to="/student-management"
             icon={<UserPlus size={20} />}
@@ -102,7 +102,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           </>
         )}
 
-        {(role === 'adviser' || role === 'admin') && (
+        {(role === 'superadmin' || role === 'admin' || role === 'adviser') && (
           <SidebarLink 
             to="/report"
             icon={<FileText size={20} />}
@@ -111,7 +111,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           />
         )}
 
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'superadmin') && (
           <>
             <div className={`mt-6 mb-2 px-4 flex items-center gap-2 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
               <Layout size={14} className="text-indigo-500" />

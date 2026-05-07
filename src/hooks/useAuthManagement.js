@@ -11,7 +11,7 @@ export function useAuthManagement(currentUser) {
     // Use currentUser prop or get from service
     const activeUser = currentUser || authService.getProfile();
     
-    if (activeUser && (activeUser.role === 'admin' || activeUser.role === 'adviser') && authService.isLoggedIn()) {
+    if (activeUser && (activeUser.role === 'superadmin' || activeUser.role === 'admin' || activeUser.role === 'adviser') && authService.isLoggedIn()) {
       setError(null); // Clear previous errors
       try {
         // Fetch user profiles (needed by both Admin and Adviser)
@@ -30,7 +30,7 @@ export function useAuthManagement(currentUser) {
         setUsers(Array.isArray(allUsers) ? allUsers.map(normalizeUser) : []);
 
         // Only fetch pending registrations if Admin
-        if (activeUser.role === 'admin') {
+        if (activeUser.role === 'admin' || activeUser.role === 'superadmin') {
           try {
             const allRegs = await authService.getRegistrations();
             // Simple normalization for registrations is usually fine as they don't have circular refs
