@@ -64,6 +64,9 @@ export function ProgressReport({
           return { quarter: q, score: result.quarterly, descriptor: result.descriptor, components: result.components };
         });
 
+        const isComposite = subjectWithResolvedCategories.categories?.some(c => c.isComponent);
+        const componentsList = isComposite ? subjectWithResolvedCategories.categories : [];
+
         const verifiedScores = mainSubjectQuarterlyResults.filter(q => q.score !== null).map(q => q.score);
         const finalGrade = verifiedScores.length > 0 
           ? Math.round(verifiedScores.reduce((a, b) => a + b, 0) / verifiedScores.length) 
@@ -78,14 +81,14 @@ export function ProgressReport({
           finalGrade,
           finalDescriptor,
           isVerified: verifiedScores.length > 0,
-          isComposite: mainSubjectQuarterlyResults[0]?.components?.length > 0,
-          components: mainSubjectQuarterlyResults[0]?.components // Attach component results if composite
+          isComposite,
+          components: componentsList
         }];
 
         // If composite, also add each component as a separate entry for SF9/SF10
-        if (results[0].isComposite) {
-          results[0].quarterlyGrades[0].components?.forEach(comp => {
-            const compVerifiedScores = mainSubjectQuarterlyResults.filter(q => q.components?.find(c => c.id === comp.id)?.quarterly !== null).map(q => q.components?.find(c => c.id === comp.id)?.quarterly);
+        if (isComposite) {
+          componentsList.forEach(comp => {
+            const compVerifiedScores = mainSubjectQuarterlyResults.filter(q => q.components?.find(c => c.id === comp.id)?.quarterly > 0).map(q => q.components?.find(c => c.id === comp.id)?.quarterly);
             const compFinalGrade = compVerifiedScores.length > 0
               ? Math.round(compVerifiedScores.reduce((a, b) => a + b, 0) / compVerifiedScores.length)
               : 0;
@@ -118,7 +121,7 @@ export function ProgressReport({
         : 0;
       const avgDescriptor = descriptors.find(d => generalAverage >= d.min && generalAverage <= d.max) || descriptors[descriptors.length - 1];
 
-      return { student, subjectResults: nonComponentSubjectResults, generalAverage, avgDescriptor }; // Pass only non-component results for general average
+      return { student, subjectResults, generalAverage, avgDescriptor }; // Pass all results, we filter in the UI
     });
   }, [filteredStudents, subjects, baseSubjects, maxQuarters, savedClassRecords, transmutationTable, descriptors]);
 
@@ -139,7 +142,7 @@ export function ProgressReport({
         const recordId = `${sf9Student.sectionId}-${subject.id}-Q${q}`;
         const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
         if (!verifiedRecord) return null;
-
+        
         const snapshot = verifiedRecord.studentSnapshots?.find(s => String(s.id) === String(sf9Student.id));
         const result = calculateSubjectResult(snapshot?.grades, subjectWithResolvedCategories, transmutationTable, descriptors);
         return {
@@ -150,6 +153,9 @@ export function ProgressReport({
         };
       });
 
+      const isComposite = subjectWithResolvedCategories.categories?.some(c => c.isComponent);
+      const componentsList = isComposite ? subjectWithResolvedCategories.categories : [];
+
       const verifiedScores = mainSubjectQuarterlyResults.filter(q => q !== null && q.score !== null).map(q => q.score);
       const finalRating = verifiedScores.length > 0
         ? Math.round(verifiedScores.reduce((a, b) => a + b, 0) / verifiedScores.length)
@@ -159,27 +165,27 @@ export function ProgressReport({
         name: subject.name,
         quarters: mainSubjectQuarterlyResults, // Keep full quarter objects
         finalRating,
-        action: finalRating >= 75 ? 'PASSED' : finalRating > 0 ? 'FAILED' : '',
-        isComposite: mainSubjectQuarterlyResults[0]?.components?.length > 0,
+        action: finalRating >= 75 ? 'PASSED' : (finalRating > 0 ? 'FAILED' : ''),
+        isComposite,
       }];
 
       // If composite, also add each component as a separate entry for SF9
-      if (results[0].isComposite) {
-        results[0].quarters[0].components?.forEach(comp => {
-          const compVerifiedScores = mainSubjectQuarterlyResults.filter(q => q.components?.find(c => c.id === comp.id)?.quarterly !== null).map(q => q.components?.find(c => c.id === comp.id)?.quarterly);
+      if (isComposite) {
+        componentsList.forEach(comp => {
+          const compVerifiedScores = mainSubjectQuarterlyResults.filter(q => q && q.components?.find(c => c.id === comp.id)?.quarterly !== null).map(q => q.components?.find(c => c.id === comp.id)?.quarterly);
           const compFinalRating = compVerifiedScores.length > 0
             ? Math.round(compVerifiedScores.reduce((a, b) => a + b, 0) / compVerifiedScores.length)
             : 0;
 
           results.push({
             name: `  ${comp.name}`, // Indent for sub-subject
-            quarters: mainSubjectQuarterlyResults.map(q => ({
+            quarters: mainSubjectQuarterlyResults.map(q => q ? ({
               quarter: q.quarter,
               score: q.components?.find(c => c.id === comp.id)?.quarterly,
               descriptor: q.components?.find(c => c.id === comp.id)?.descriptor
-            })),
+            }) : { quarter: null, score: null, descriptor: null }),
             finalRating: compFinalRating,
-            action: compFinalRating >= 75 ? 'PASSED' : compFinalRating > 0 ? 'FAILED' : '',
+            action: compFinalRating >= 75 ? 'PASSED' : (compFinalRating > 0 ? 'FAILED' : ''),
             isComponent: true,
             parentSubjectId: subject.id
           });
@@ -193,7 +199,91 @@ export function ProgressReport({
     return { subjectGrades, genAvg };
   }, [sf9Student, subjects, baseSubjects, savedClassRecords, maxQuarters, transmutationTable, descriptors]);
 
-  const handleDownloadSummary = () => {
+  // Data processing for SF10 modal
+  const sf10Data = React.useMemo(() => {
+    if (!sf10Student) return null;
+
+    const studentSubjects = subjects.filter(sub => String(sub.sectionId) === String(sf10Student.sectionId));
+
+    const subjectGrades = studentSubjects.flatMap(subject => { // Use flatMap for composite subjects
+      const template = baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId));
+      const subjectWithResolvedCategories = { 
+        ...subject, 
+        categories: (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []) 
+      };
+
+      const mainSubjectQuarterlyResults = Array.from({ length: maxQuarters }, (_, i) => i + 1).map(q => {
+        const recordId = `${sf10Student.sectionId}-${subject.id}-Q${q}`;
+        const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
+        if (!verifiedRecord) return null;
+
+        const snapshot = verifiedRecord.studentSnapshots?.find(s => String(s.id) === String(sf10Student.id)); // Use sf10Student.id
+        const result = calculateSubjectResult(snapshot?.grades, subjectWithResolvedCategories, transmutationTable, descriptors);
+        return {
+          quarter: q,
+          score: result.quarterly,
+          descriptor: result.descriptor, // Keep descriptor for potential future use or debugging
+          components: result.components // Attach component results
+        };
+      });
+
+      const isComposite = subjectWithResolvedCategories.categories?.some(c => c.isComponent);
+      const componentsList = isComposite ? subjectWithResolvedCategories.categories : [];
+
+      const verifiedScores = mainSubjectQuarterlyResults.filter(q => q !== null && q.score !== null).map(q => q.score);
+      const finalRating = verifiedScores.length > 0
+        ? Math.round(verifiedScores.reduce((a, b) => a + b, 0) / verifiedScores.length)
+        : 0;
+
+      const results = [{
+        name: subject.name,
+        quarters: mainSubjectQuarterlyResults.map(q => q?.score || null), // Only scores for SF10
+        finalRating,
+        action: finalRating >= 75 ? 'PASSED' : (finalRating > 0 ? 'FAILED' : ''),
+        isComposite,
+      }];
+
+      // If composite, also add each component as a separate entry for SF10
+      if (isComposite) {
+        componentsList.forEach(comp => {
+          const compVerifiedScores = mainSubjectQuarterlyResults.filter(q => q && q.components?.find(c => c.id === comp.id)?.quarterly !== null).map(q => q.components?.find(c => c.id === comp.id)?.quarterly);
+          const compFinalRating = compVerifiedScores.length > 0
+            ? Math.round(compVerifiedScores.reduce((a, b) => a + b, 0) / compVerifiedScores.length)
+            : 0;
+
+          results.push({
+            name: `  ${comp.name}`, // Indent for sub-subject
+            quarters: mainSubjectQuarterlyResults.map(q => q ? (q.components?.find(c => c.id === comp.id)?.quarterly || null) : null), // Guard against q being null
+            finalRating: compFinalRating,
+            action: compFinalRating >= 75 ? 'PASSED' : compFinalRating > 0 ? 'FAILED' : '',
+            isComponent: true,
+            parentSubjectId: subject.id
+          });
+        });
+      }
+      return results;
+    });
+
+    const genAvg = subjectGrades.length > 0 ? Math.round(subjectGrades.reduce((a, b) => a + b.finalRating, 0) / subjectGrades.length) : 0;
+
+    return { subjectGrades, genAvg };
+  }, [sf10Student, subjects, baseSubjects, savedClassRecords, maxQuarters, transmutationTable, descriptors]);
+
+  // Flattened subjects list for Grade Summary table columns
+  const summarySubjectsList = React.useMemo(() => {
+    return subjects.flatMap(sub => {
+      const template = baseSubjects.find(b => String(b.id) === String(sub.baseSubjectId));
+      const cats = (sub.categories && sub.categories.length > 0) ? sub.categories : (template?.categories || []);
+      const isComp = cats.some(c => c.isComponent);
+      const result = [{ ...sub, isComposite: isComp }];
+      if (isComp) {
+        cats.forEach(comp => result.push({ ...comp, isComponent: true, parentId: sub.id }));
+      }
+      return result;
+    });
+  }, [subjects, baseSubjects]);
+
+  const handleDownloadSummary = React.useCallback(() => {
     if (!studentReportData || studentReportData.length === 0) {
       alert("No data to download.");
       return;
@@ -203,8 +293,10 @@ export function ProgressReport({
 
     // Headers
     let headers = ["No.", "Learner's Name"];
-    subjects.forEach(sub => {
-      const subjectLabel = `${sub.name} (G${sub.gradeLevel})`; // Include grade level for clarity
+    
+    const subjectsForSummary = summarySubjectsList;
+    subjectsForSummary.forEach(sub => {
+      const subjectLabel = `${sub.name} (G${section?.gradeLevel || 'N/A'})`; // Use section gradeLevel or N/A
       for (let q = 1; q <= maxQuarters; q++) {
         headers.push(`${subjectLabel} Q${q}`);
       }
@@ -216,13 +308,14 @@ export function ProgressReport({
     // Data Rows
     studentReportData.forEach(({ student, subjectResults, generalAverage }, sIdx) => {
       let row = [`"${sIdx + 1}"`, `"${student.name}"`];
-      subjects.forEach(sub => {
-        const res = subjectResults.find(r => r.id === sub.id);
+      
+      summarySubjectsList.forEach(sub => {
+        const subRes = subjectResults.find(r => r.id === sub.id);
         for (let q = 1; q <= maxQuarters; q++) {
-          const qRes = res?.quarterlyGrades.find(item => item.quarter === q);
+          const qRes = subRes.quarterlyGrades.find(item => item.quarter === q);
           row.push(`"${qRes?.score || ''}"`);
         }
-        row.push(`"${res?.finalGrade || ''}"`);
+        row.push(`"${subRes.finalGrade || ''}"`);
       });
       row.push(`"${generalAverage || ''}"`);
       csvContent += row.join(",") + "\n";
@@ -238,7 +331,7 @@ export function ProgressReport({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [studentReportData, maxQuarters, section, summarySubjectsList]); // Dependencies for useCallback
 
   return (
     <motion.div 
@@ -326,7 +419,7 @@ export function ProgressReport({
                  
                  <div className="p-6 md:p-8 bg-white">
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                     {subjectResults.map((res, i) => (
+                     {subjectResults.filter(r => !r.isComponent).map((res, i) => (
                        <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow space-y-4">
                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">{res.name}</p>
                          <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
@@ -344,6 +437,24 @@ export function ProgressReport({
                              </div>
                            ))}
                          </div>
+
+                         {/* Composite Subject Components Breakdown */}
+                         {res.isComposite && (
+                           <div className="pt-3 border-t border-slate-50 space-y-1">
+                             {res.components.map(comp => (
+                               <div key={comp.id} className="flex items-center justify-between text-[7px] font-black text-slate-400 uppercase tracking-tighter">
+                                 <span className="truncate max-w-[60px]">{comp.name}</span>
+                                 <div className="flex gap-1">
+                                   {res.quarterlyGrades.map(q => {
+                                     const compScore = q.components?.find(c => c.id === comp.id)?.quarterly;
+                                     return <span key={q.quarter} className={`w-4 text-center ${compScore ? 'text-slate-600' : 'text-slate-200'}`}>{compScore || '-'}</span>
+                                   })}
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         )}
+
                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                            <div className="flex flex-col gap-1">
                              <span className="text-[9px] font-black text-slate-400 uppercase leading-none">Yearly Grade</span>
@@ -396,15 +507,15 @@ export function ProgressReport({
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 w-12">No.</th>
                     <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r">Learner's Name</th>
-                    {subjects.map(sub => (
-                      <th key={sub.id} colSpan={maxQuarters + 1} className="p-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-500 border-r border-slate-200 bg-slate-50/50">
+                    {summarySubjectsList.map(sub => (
+                      <th key={sub.id} colSpan={maxQuarters + 1} className={`p-2 text-center text-[10px] font-black uppercase tracking-widest border-r border-slate-200 ${sub.isComponent ? 'bg-slate-100/50 text-slate-400 text-[8px]' : 'bg-slate-50/50 text-slate-500'}`}>
                         {sub.name}
                       </th>
                     ))}
                     <th rowSpan={2} className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 w-24 border-l border-indigo-100">Gen. Avg</th>
                   </tr>
                   <tr className="bg-slate-50/30 border-b border-slate-200">
-                    {subjects.map(sub => (
+                    {summarySubjectsList.map(sub => (
                       <React.Fragment key={`sub-header-${sub.id}`}>
                         {Array.from({ length: maxQuarters }, (_, i) => (
                           <th key={i} className="p-2 text-center text-[8px] font-black text-slate-400 border-r border-slate-100">Q{i + 1}</th>
@@ -421,7 +532,7 @@ export function ProgressReport({
                       <td className="p-4 text-sm font-black text-slate-800 uppercase sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r">
                         {student.name}
                       </td>
-                      {subjects.map(sub => {
+                      {summarySubjectsList.map(sub => {
                         const res = subjectResults.find(r => r.id === sub.id);
                         return (
                           <React.Fragment key={`res-${student.id}-${sub.id}`}>
@@ -433,7 +544,7 @@ export function ProgressReport({
                                 </td>
                               );
                             })}
-                            <td className="p-2 text-center text-xs font-black bg-indigo-50/20 border-r border-slate-200">
+                            <td className={`p-2 text-center text-xs font-black border-r border-slate-200 ${sub.isComponent ? 'bg-slate-50/50 text-slate-400' : 'bg-indigo-50/20'}`}>
                               {res ? (
                                 <span className={res.finalGrade < 75 ? 'text-rose-500' : 'text-indigo-600'}>
                                   {res.finalGrade || '--'}
@@ -543,7 +654,7 @@ export function ProgressReport({
                     <tbody className="divide-y divide-slate-400">
                       {sf10Data.subjectGrades.map((sub, idx) => (
                         <tr key={idx} className="divide-x divide-slate-400">
-                          <td className="p-2 font-bold uppercase">{sub.name}</td>
+                          <td className={`p-2 font-bold uppercase ${sub.isComponent ? 'pl-6 text-slate-600' : 'text-slate-900'}`}>{sub.name}</td>
                           {sub.quarters.map((q, i) => (
                             <td key={i} className="p-2 text-center">{q || ''}</td>
                           ))}
