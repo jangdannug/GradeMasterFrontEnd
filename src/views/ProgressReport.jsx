@@ -383,6 +383,7 @@ export function ProgressReport({
         />
       </div>
 
+      {/* AnimatePresence for tab content (cards vs summary) */}
       <AnimatePresence mode="wait">
         {activeTab === 'cards' ? (
           <motion.div 
