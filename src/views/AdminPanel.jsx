@@ -221,12 +221,16 @@ export function AdminPanel({
   const handleUpdateBaseSubject = async (id) => {
     if (!baseEditFormData.name || !baseEditFormData.code) return;
     setIsBaseSubjectCreatingOrUpdating(true);
+    
+    // Find the existing subject to preserve its categories
+    const existing = baseSubjects.find(s => String(s.id) === String(id));
+    
     try {
       const data = {
         Name: baseEditFormData.name.toUpperCase(),
         Code: baseEditFormData.code.toUpperCase(),
         GradeLevel: baseEditFormData.gradeLevel,
-        CategoriesJson: JSON.stringify([]), // TODO: Get actual categories from base subject
+        CategoriesJson: existing?.categories || [], 
         PushToInstances: false // TODO: Add UI option to push changes to instances
       };
       await onUpdateBaseSubject(id, data);
@@ -707,11 +711,55 @@ export function AdminPanel({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {groupedBaseSubjects[grade].map(base => (
                         <div key={base.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center group">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
-                            <p className="font-bold text-slate-800 text-sm truncate uppercase">{base.name}</p>
-                          </div>
+                          {editingBaseSubjectId === base.id ? (
+                            <div className="flex-1 space-y-2 mr-4">
+                              <input 
+                                value={baseEditFormData.code}
+                                onChange={e => setBaseEditFormData({ ...baseEditFormData, code: e.target.value.toUpperCase() })}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                placeholder="CODE"
+                              />
+                              <input 
+                                value={baseEditFormData.name}
+                                onChange={e => setBaseEditFormData({ ...baseEditFormData, name: e.target.value.toUpperCase() })}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                placeholder="NAME"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => handleUpdateBaseSubject(base.id)}
+                                  className="px-2 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase rounded hover:bg-indigo-700 transition-colors"
+                                >
+                                  Save
+                                </button>
+                                <button 
+                                  onClick={() => setEditingBaseSubjectId(null)}
+                                  className="px-2 py-1 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase rounded hover:bg-slate-50 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
+                              <p className="font-bold text-slate-800 text-sm truncate uppercase">{base.name}</p>
+                            </div>
+                          )}
                           <div className="flex gap-1">
+                            {editingBaseSubjectId !== base.id && (
+                              <button 
+                                onClick={() => {
+                                  setEditingBaseSubjectId(base.id);
+                                  setBaseEditFormData({ name: base.name, code: base.code, gradeLevel: base.gradeLevel });
+                                }}
+                                className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                                title="Edit Subject Label"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
                             <button 
                               onClick={() => navigate('/templates', { state: { subjectId: base.id } })}
                               className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
