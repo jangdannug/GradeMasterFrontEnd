@@ -172,7 +172,7 @@ export function TemplatesView({
             onChange={(e) => setSelectedBaseSubjectId(e.target.value)}
             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 text-sm"
           >
-            {subjects.map((sub, idx) => (
+            {[...subjects].sort((a, b) => a.name.localeCompare(b.name)).map((sub, idx) => (
               <option key={sub.id || idx} value={sub.id}>{sub.name} (G{sub.gradeLevel})</option>
             ))}
           </select>
@@ -183,7 +183,13 @@ export function TemplatesView({
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-6 space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-black uppercase italic text-slate-800 flex items-center gap-2">
-              <BookOpen size={20} className="text-indigo-600" /> {selectedSubject.name} (G{selectedSubject.gradeLevel})
+              <BookOpen size={20} className="text-indigo-600" /> 
+              {selectedSubject.name} (G{selectedSubject.gradeLevel})
+              {(!selectedSubject.categories || selectedSubject.categories.length === 0) ? (
+                <span className="text-[10px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-100 not-italic tracking-normal">Unconfigured</span>
+              ) : (
+                <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100 not-italic uppercase tracking-tighter font-black">Configured</span>
+              )}
             </h3>
             <div className="flex gap-2">
               <div className="hidden md:flex flex-col items-end justify-center mr-4 pr-4 border-r border-slate-200">
@@ -236,7 +242,7 @@ export function TemplatesView({
 
           {isComposite && (
             <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-xl shadow-inner">
-              {components.map(comp => (
+              {components.sort((a, b) => a.name.localeCompare(b.name)).map(comp => (
                 <div key={comp.id} className="relative group">
                   {editingComponentName === comp.id ? (
                     <input

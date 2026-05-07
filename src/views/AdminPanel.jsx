@@ -709,7 +709,7 @@ export function AdminPanel({
                       <div className="h-px flex-1 bg-slate-100"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {groupedBaseSubjects[grade].map(base => (
+                      {groupedBaseSubjects[grade].sort((a, b) => a.name.localeCompare(b.name)).map(base => (
                         <div key={base.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center group">
                           {editingBaseSubjectId === base.id ? (
                             <div className="flex-1 space-y-2 mr-4">
@@ -745,6 +745,15 @@ export function AdminPanel({
                             <div className="min-w-0 flex-1">
                               <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
                               <p className="font-bold text-slate-800 text-sm truncate uppercase">{base.name}</p>
+                              {(!base.categories || base.categories.length === 0) ? (
+                                <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full border border-rose-100 mt-1 block w-fit">
+                                  TEMPLATE NOT SET
+                                </span>
+                              ) : (
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight mt-1 italic">
+                                  {base.categories.some(c => c.isComponent) ? 'Composite Configured' : 'Template Configured'}
+                                </p>
+                              )}
                             </div>
                           )}
                           <div className="flex gap-1">
