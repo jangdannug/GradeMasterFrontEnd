@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save, Layers, X, Info } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 
 export function TemplatesView({
-  subjects, // This is baseSubjects from useSubjectManagement
-  syncSubjects, // Function to fetch base subjects
-  isLoading, // Loading state for base subjects fetch
-  syncError, // Global sync error
+  subjects,
+  syncSubjects,
+  isLoading,
+  syncError,
   addCategory,
   removeCategory,
   resetSubjectTemplate,
@@ -17,14 +17,22 @@ export function TemplatesView({
   addColumnToCategory,
   removeColumnFromCategory,
   updateColumnName,
-  onUpdateBaseSubject // Pass this from useGradeManagement
+  onUpdateBaseSubject,
+  addComponentToSubject, // NEW
+  removeComponentFromSubject, // NEW
+  updateComponentName, // NEW
+  convertToComposite, // NEW
+  convertToNonComposite // NEW
 }) {
   const location = useLocation();
   const [selectedBaseSubjectId, setSelectedBaseSubjectId] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState(null);
-  const [editingColumnIndex, setEditingColumnIndex] = useState(null);
+  const [activeComponentId, setActiveComponentId] = useState(null); // Keep track of active component
+  const [editingColumnIndex, setEditingColumnIndex] = useState(null); 
   const [editedColumnName, setEditedColumnName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [editingComponentName, setEditingComponentName] = useState(null); // NEW: For renaming components
+  const [newComponentName, setNewComponentName] = useState(''); // NEW: For renaming components
 
   // Set initial selected subject or update when subjects change
   useEffect(() => {
@@ -41,9 +49,65 @@ export function TemplatesView({
   }, [subjects, location.state?.subjectId]); // Listen for changes in subjects or incoming navigation state
 
   const selectedSubject = subjects.find(s => String(s.id) === String(selectedBaseSubjectId));
+  
+  // Determine if the subject is composite
+  const isComposite = selectedSubject?.categories?.some(c => c.isComponent) || false;
+  const components = isComposite ? selectedSubject.categories : [];
+  
+  // Ensure activeComponentId is synced when the selected subject changes
+  useEffect(() => {
+    if (isComposite && components.length > 0) {
+      setActiveComponentId(components[0].id);
+    } else {
+      setActiveComponentId(null); // Clear if not composite
+    }
+  }, [selectedBaseSubjectId, isComposite]);
 
-  const totalWeight = selectedSubject ? (selectedSubject.categories || []).reduce((acc, cat) => acc + (cat.weight || 0), 0) : 0;
+  const activeComponent = components.find(c => c.id === activeComponentId);
+  const currentCategories = isComposite ? (activeComponent?.categories || []) : (selectedSubject?.categories || []);
+
+  const totalWeight = currentCategories.reduce((acc, cat) => acc + (cat.weight || 0), 0);
   const isWeightValid = Math.round(totalWeight * 100) === 100;
+
+  // NEW: Handle converting to composite
+  const handleConvertToComposite = async () => {
+    if (!selectedSubject) return;
+    if (!window.confirm("Convert this to a composite subject (like MAPEH)? Existing categories will be moved into the first component. This action will reset the template structure.")) return;
+
+    try {
+      convertToComposite(selectedSubject.id); 
+      alert('Subject converted to composite successfully! Please configure components.');
+    } catch (err) {
+      alert(`Conversion failed: ${err}`);
+    }
+  };
+
+  // NEW: Handle converting to non-composite
+  const handleConvertToNonComposite = async () => {
+    if (!selectedSubject) return;
+    if (!window.confirm("Convert this back to a non-composite subject? Only categories from the first component will be kept. This action will reset the template structure.")) return;
+
+    try {
+      convertToNonComposite(selectedSubject.id);
+      alert('Subject converted to non-composite successfully!');
+    } catch (err) {
+      alert(`Conversion failed: ${err}`);
+    }
+  };
+
+  // NEW: Handle adding a new component
+  const handleAddComponent = async () => {
+    if (!selectedSubject || !isComposite) return;
+    const componentName = prompt("Enter name for new component (e.g., HEALTH):");
+    if (!componentName) return;
+
+    try {
+      addComponentToSubject(selectedSubject.id, componentName);
+      alert('Component added successfully!');
+    } catch (err) {
+      alert(`Failed to add component: ${err}`);
+    }
+  };
 
   const handleSave = async () => {
     if (!selectedSubject) return;
@@ -136,11 +200,29 @@ export function TemplatesView({
                 <RefreshCw size={14} /> Reset Template
               </button>
               <button
-                onClick={() => addCategory(selectedSubject.id)}
+                onClick={() => addCategory(selectedSubject.id, activeComponentId)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
               >
                 <Plus size={14} /> Add Category
               </button>
+              {!isComposite && (
+                <button
+                  onClick={handleConvertToComposite}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-black uppercase hover:bg-black transition-all shadow-lg"
+                >
+                  <Layers size={14} /> Make Composite
+                </button>
+              )}
+              {isComposite && (
+                <button
+                  onClick={handleConvertToNonComposite}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-500 text-white rounded-xl text-xs font-black uppercase hover:bg-slate-600 transition-all shadow-lg"
+                >
+                  <Layers size={14} /> Make Non-Composite
+                </button>
+              )}
               <button
                 onClick={handleSave}
                 disabled={isSaving || !isWeightValid}
@@ -152,8 +234,52 @@ export function TemplatesView({
             </div>
           </div>
 
+          {isComposite && (
+            <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-xl shadow-inner">
+              {components.map(comp => (
+                <div key={comp.id} className="relative group">
+                  {editingComponentName === comp.id ? (
+                    <input
+                      type="text"
+                      value={newComponentName}
+                      onChange={e => setNewComponentName(e.target.value)}
+                      onBlur={() => {
+                        updateComponentName(selectedSubject.id, comp.id, newComponentName);
+                        setEditingComponentName(null);
+                      }}
+                      onKeyDown={e => e.key === 'Enter' && updateComponentName(selectedSubject.id, comp.id, newComponentName)}
+                      autoFocus
+                      className="px-4 py-2 rounded-lg text-xs font-black uppercase bg-white text-indigo-600 shadow-sm border border-indigo-200 outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setActiveComponentId(comp.id)}
+                      onDoubleClick={() => {
+                        setEditingComponentName(comp.id);
+                        setNewComponentName(comp.name);
+                      }}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${
+                        activeComponentId === comp.id
+                          ? 'bg-white text-indigo-600 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {comp.name}
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={handleAddComponent}
+                className="px-4 py-2 rounded-lg text-xs font-black uppercase text-slate-400 hover:text-indigo-600 transition-all flex items-center gap-1"
+              >
+                <Plus size={14} /> Add Component
+              </button>
+            </div>
+          )}
+
           <div className="space-y-4">
-            {selectedSubject.categories?.map((category, idx) => ( // Line 91:33 is now here, with optional chaining
+            {currentCategories.map((category, idx) => (
               <div key={category.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
@@ -161,7 +287,7 @@ export function TemplatesView({
                       <input
                         type="text"
                         value={category.name}
-                        onChange={(e) => updateCategoryTitle(selectedSubject.id, category.id, e.target.value)}
+                        onChange={(e) => updateCategoryTitle(selectedSubject.id, category.id, e.target.value, activeComponentId)}
                         onBlur={() => setEditingCategoryId(null)}
                         onKeyDown={(e) => e.key === 'Enter' && setEditingCategoryId(null)}
                         autoFocus
@@ -189,13 +315,13 @@ export function TemplatesView({
                             value={editedColumnName}
                             onChange={(e) => setEditedColumnName(e.target.value)}
                             onBlur={() => {
-                              updateColumnName(selectedSubject.id, category.id, colIdx, editedColumnName);
+                              updateColumnName(selectedSubject.id, category.id, colIdx, editedColumnName, activeComponentId); // Pass activeComponentId
                               setEditingColumnIndex(null);
                               setEditedColumnName('');
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
-                                updateColumnName(selectedSubject.id, category.id, colIdx, editedColumnName);
+                                updateColumnName(selectedSubject.id, category.id, colIdx, editedColumnName, activeComponentId);
                                 setEditingColumnIndex(null);
                                 setEditedColumnName('');
                               }
@@ -217,9 +343,9 @@ export function TemplatesView({
                         )}
                       </span>
                     ))}
-                    <button onClick={() => addColumnToCategory(selectedSubject.id, category.id)} className="text-slate-400 hover:text-indigo-600"><Plus size={14} /></button>
+                    <button onClick={() => addColumnToCategory(selectedSubject.id, category.id, activeComponentId)} className="text-slate-400 hover:text-indigo-600"><Plus size={14} /></button>
                     {category.columnNames?.length > 1 && (
-                      <button onClick={() => removeColumnFromCategory(selectedSubject.id, category.id)} className="text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
+                      <button onClick={() => removeColumnFromCategory(selectedSubject.id, category.id, activeComponentId)} className="text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
                     )}
                   </div>
                 </div>
@@ -230,7 +356,7 @@ export function TemplatesView({
                     max="100"
                     step="1"
                     value={Math.round(category.weight * 100)}
-                    onChange={(e) => updateCategoryWeight(selectedSubject.id, category.id, parseInt(e.target.value))}
+                    onChange={(e) => updateCategoryWeight(selectedSubject.id, category.id, parseInt(e.target.value), activeComponentId)}
                     className="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
                   <div className="flex items-center bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
@@ -242,15 +368,15 @@ export function TemplatesView({
                       onChange={(e) => {
                         const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                         if (!isNaN(val) && val >= 0 && val <= 100) {
-                          updateCategoryWeight(selectedSubject.id, category.id, val);
+                          updateCategoryWeight(selectedSubject.id, category.id, val, activeComponentId);
                         }
                       }}
-                      className="w-10 text-right bg-transparent text-sm font-bold text-slate-700 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-10 text-right bg-transparent text-sm font-bold text-slate-700 outline-none"
                     />
                     <span className="text-xs font-bold text-slate-400 ml-0.5">%</span>
                   </div>
                   <button
-                    onClick={() => removeCategory(selectedSubject.id, category.id)}
+                    onClick={() => removeCategory(selectedSubject.id, category.id, activeComponentId)}
                     className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
                   >
                     <Trash2 size={16} />
@@ -259,6 +385,15 @@ export function TemplatesView({
               </div>
             ))}
           </div>
+
+          {isComposite && (
+            <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+              <Info size={16} className="text-indigo-600 shrink-0" />
+              <p className="text-[10px] font-medium text-indigo-900 leading-tight">
+                Double-click on a component tab to rename it. Each component carries equal weight in the final subject grade calculation.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </motion.div>

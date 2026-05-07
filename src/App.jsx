@@ -131,7 +131,12 @@ export default function App() {
     updateStudent, // Pass updateStudent
     enrollStudentOverall, // New
     syncError, // New: Propagate API sync errors
-    refreshGlobalData
+    refreshGlobalData,
+    addComponentToSubject, // NEW
+    removeComponentFromSubject, // NEW
+    updateComponentName, // NEW
+    convertToComposite, // NEW
+    convertToNonComposite // NEW
   } = useGradeManagement(currentUser); // UPDATED: Pass currentUser context
 
   // Initial data fetch on mount or login to ensure deep links work
@@ -590,6 +595,11 @@ export default function App() {
                       syncError={syncError} // Pass syncError to TemplatesView
                       syncSubjects={syncSubjects} // Pass sync function
                       isLoading={subjectsLoading} // Pass loading state
+                      addComponentToSubject={addComponentToSubject} // NEW
+                      removeComponentFromSubject={removeComponentFromSubject} // NEW
+                      updateComponentName={updateComponentName} // NEW
+                      convertToComposite={convertToComposite} // NEW
+                      convertToNonComposite={convertToNonComposite} // NEW
                     />
                   </div>
                 </>

@@ -62,7 +62,29 @@ export function ClassRecord({
     baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId)), 
     [baseSubjects, subject.baseSubjectId]
   );
-  const effectiveCategories = React.useMemo(() => (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []), [subject.categories, template]);
+
+  const isComposite = React.useMemo(() => 
+    subject.categories?.some(c => c.isComponent) || false, 
+  [subject.categories]);
+
+  const [activeComponentId, setActiveComponentId] = React.useState(null);
+
+  // Sync activeComponentId when the subject or composite status changes
+  React.useEffect(() => {
+    if (isComposite && subject.categories?.length > 0) {
+      setActiveComponentId(subject.categories[0].id);
+    } else {
+      setActiveComponentId(null);
+    }
+  }, [subject.id, isComposite]);
+
+  const effectiveCategories = React.useMemo(() => {
+    const cats = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
+    if (isComposite && activeComponentId) {
+      return cats.find(c => c.id === activeComponentId)?.categories || [];
+    }
+    return cats;
+  }, [subject.categories, template, isComposite, activeComponentId]);
 
   const totalWeight = (effectiveCategories).reduce((acc, cat) => acc + cat.weight, 0);
 

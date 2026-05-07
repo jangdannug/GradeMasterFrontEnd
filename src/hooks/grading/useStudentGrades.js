@@ -36,6 +36,28 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }
   }, [currentUser]);
 
+  // Helper function to find and update categories, handling composite structure
+  const updateCategoriesInBaseSubject = useCallback((baseSub, categoryId, componentId, updateFn) => {
+    if (!baseSub) return baseSub;
+
+    const isComposite = baseSub.categories?.some(c => c.isComponent);
+
+    if (isComposite && componentId) {
+      return {
+        ...baseSub,
+        categories: baseSub.categories.map(comp => {
+          if (comp.id === componentId) {
+            return { ...comp, categories: updateFn(comp.categories || []) };
+          }
+          return comp;
+        })
+      };
+    } else if (!isComposite) {
+      return { ...baseSub, categories: updateFn(baseSub.categories || []) };
+    }
+    return baseSub; // No change if composite but no componentId, or if component not found
+  }, []);
+
   const updateGrade = useCallback((studentId, subjectId, categoryId, type, index, value, quarter) => {
     setStudents(prev => prev.map(student => {
       if (studentId !== 'HPS' && student.id !== studentId) return student;
@@ -69,75 +91,89 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }));
   }, []);
 
-  const updateCategoryTitle = useCallback((subjectId, categoryId, title) => {
+  const updateCategoryTitle = useCallback((subjectId, categoryId, title, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, name: title } : c) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.map(c => c.id === categoryId ? { ...c, name: title } : c)
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const updateCategoryWeight = useCallback((subjectId, categoryId, weight) => {
+  const updateCategoryWeight = useCallback((subjectId, categoryId, weight, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.map(c => c.id === categoryId ? { ...c, weight: weight / 100 } : c)
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const updateColumnName = useCallback((subjectId, categoryId, index, name) => {
+  const updateColumnName = useCallback((subjectId, categoryId, index, name, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.map(c => {
-          if (c.id !== categoryId) return c;
-          const names = [...(c.columnNames || [])];
-          names[index] = name;
-          return { ...c, columnNames: names };
-        }) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.map(c => {
+            if (c.id !== categoryId) return c;
+            const names = [...(c.columnNames || [])];
+            names[index] = name;
+            return { ...c, columnNames: names };
+          })
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const addCategory = useCallback((subjectId) => {
+  const addCategory = useCallback((subjectId, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: [...baseSub.categories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }] };
+        return updateCategoriesInBaseSubject(baseSub, null, componentId, (currentCategories) =>
+          [...currentCategories, { id: `cat-${Date.now()}`, name: 'NEW', weight: 0.1, columnNames: ['1','2','3'] }]
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const removeCategory = useCallback((subjectId, categoryId) => {
+  const removeCategory = useCallback((subjectId, categoryId, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.filter(c => c.id !== categoryId) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.filter(c => c.id !== categoryId)
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const addColumnToCategory = useCallback((subjectId, categoryId) => {
+  const addColumnToCategory = useCallback((subjectId, categoryId, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.map(c => c.id === categoryId ? { ...c, columnNames: [...c.columnNames, (c.columnNames.length + 1).toString()] } : c)
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const removeColumnFromCategory = useCallback((subjectId, categoryId) => {
+  const removeColumnFromCategory = useCallback((subjectId, categoryId, componentId = null) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
-        return { ...baseSub, categories: baseSub.categories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c) };
+        return updateCategoriesInBaseSubject(baseSub, categoryId, componentId, (currentCategories) =>
+          currentCategories.map(c => (c.id === categoryId && c.columnNames.length > 2) ? { ...c, columnNames: c.columnNames.slice(0, -1) } : c)
+        );
       }
       return baseSub;
     }));
-  }, [setBaseSubjects]);
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
 
-  const resetSubjectTemplate = useCallback((id) => {
+  const resetSubjectTemplate = useCallback((id, componentId = null) => {
     const defaultCategories = [
       { id: `cat-ww-${Date.now()}`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
       { id: `cat-pt-${Date.now()}`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
@@ -146,7 +182,85 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
 
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === id) {
-        return { ...baseSub, categories: defaultCategories };
+        return updateCategoriesInBaseSubject(baseSub, null, componentId, () => defaultCategories);
+      }
+      return baseSub;
+    }));
+  }, [setBaseSubjects, updateCategoriesInBaseSubject]);
+
+  const addComponentToSubject = useCallback((subjectId, componentName) => {
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        const newComponent = {
+          id: `comp-${Date.now()}`,
+          name: componentName.toUpperCase(),
+          isComponent: true,
+          categories: [
+            { id: `cat-ww-${Date.now()}-new`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
+            { id: `cat-pt-${Date.now()}-new`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
+            { id: `cat-qa-${Date.now()}-new`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['1'] },
+          ]
+        };
+        return { ...baseSub, categories: [...(baseSub.categories || []), newComponent] };
+      }
+      return baseSub;
+    }));
+  }, [setBaseSubjects]);
+
+  const removeComponentFromSubject = useCallback((subjectId, componentId) => {
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        return { ...baseSub, categories: baseSub.categories.filter(comp => comp.id !== componentId) };
+      }
+      return baseSub;
+    }));
+  }, [setBaseSubjects]);
+
+  const updateComponentName = useCallback((subjectId, componentId, newName) => {
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        return {
+          ...baseSub,
+          categories: baseSub.categories.map(comp =>
+            comp.id === componentId ? { ...comp, name: newName.toUpperCase() } : comp
+          )
+        };
+      }
+      return baseSub;
+    }));
+  }, [setBaseSubjects]);
+
+  const convertToComposite = useCallback((subjectId) => {
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        const initialComponent = {
+          id: `comp-${Date.now()}-1`,
+          name: "COMPONENT 1",
+          isComponent: true,
+          categories: baseSub.categories || [] // Move existing categories into the first component
+        };
+        const secondComponent = {
+          id: `comp-${Date.now()}-2`,
+          name: "COMPONENT 2",
+          isComponent: true,
+          categories: [
+            { id: `cat-ww-${Date.now()}-new`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
+            { id: `cat-pt-${Date.now()}-new`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
+            { id: `cat-qa-${Date.now()}-new`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['1'] },
+          ]
+        };
+        return { ...baseSub, categories: [initialComponent, secondComponent] };
+      }
+      return baseSub;
+    }));
+  }, [setBaseSubjects]);
+
+  const convertToNonComposite = useCallback((subjectId) => {
+    setBaseSubjects(prev => prev.map(baseSub => {
+      if (baseSub.id === subjectId) {
+        // For simplicity, just take the categories from the first component
+        const firstComponentCategories = baseSub.categories.find(c => c.isComponent)?.categories || [];
+        return { ...baseSub, categories: firstComponentCategories };
       }
       return baseSub;
     }));
@@ -222,7 +336,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }
   }, []);
 
-  const applyClassRecordDraft = useCallback((draftRecord, subjectId, quarter) => {
+  const applyClassRecordDraft = useCallback((draftRecord, subjectId, quarter, isCompositeSubject = false) => {
     if (!draftRecord?.studentSnapshots) return;
 
     const snapshotMap = Object.fromEntries(
@@ -238,7 +352,17 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
         const subGrades = { ...(grades[subjectId] || {}) };
         
         // Robustly pick up grades regardless of casing from the normalized snapshot
-        const snapshotData = snapshot.grades || snapshot.Grades || {};
+        let snapshotData = snapshot.grades || snapshot.Grades || {};
+
+        // If it's a composite subject, the snapshot data might be nested under 'components'
+        // For now, the `updateGrade` function doesn't differentiate, it just updates the `categoryGrades`
+        // So, if the snapshot has a `components` array, we need to extract the relevant `categoryGrades`
+        // This part might need more refinement depending on how `snapshot.grades` is structured for composite subjects.
+        // For now, `updateGrade` expects `categoryGrades` directly.
+        if (isCompositeSubject && snapshotData.components) {
+          // This is a simplification. The `updateGrade` function needs to know which component's categories to update.
+          // For now, we'll just pass the top-level `categoryGrades` if they exist.
+        }
         subGrades[quarter] = { ...(subGrades[quarter] || {}), ...snapshotData };
         grades[subjectId] = subGrades;
 
@@ -255,7 +379,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
       return merged;
     });
   }, []);
-
+  
   return {
     students,
     setStudents,
@@ -275,6 +399,11 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     enrollStudentOverall,
     assignStudentToSection,
     updateStudent,
-    error // Expose error state
+    error, // Expose error state
+    addComponentToSubject,
+    removeComponentFromSubject,
+    updateComponentName,
+    convertToComposite,
+    convertToNonComposite
   };
 }

@@ -147,6 +147,11 @@ export function useGradeManagement(currentUser) {
     assignStudentToSection: gradingState.assignStudentToSection,
     updateStudent: gradingState.updateStudent, // Expose updateStudent
     enrollStudentOverall: gradingState.enrollStudentOverall, // New overall enrollment
+    addComponentToSubject: gradingState.addComponentToSubject,
+    removeComponentFromSubject: gradingState.removeComponentFromSubject,
+    updateComponentName: gradingState.updateComponentName,
+    convertToComposite: gradingState.convertToComposite,
+    convertToNonComposite: gradingState.convertToNonComposite,
 
     // Error state
     syncError,
