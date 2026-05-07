@@ -12,7 +12,7 @@ import {
   Check, 
   X,
   Eye,
-  Layers,
+  Layers, Pencil,
   Settings,
   BookOpen, 
   Mail,
@@ -21,6 +21,7 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
+import authService from '../services/authService';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 import { SectionCard } from './admin/components/SectionCard';
 import { RegistrationCard } from './admin/components/RegistrationCard';
@@ -36,6 +37,7 @@ export function AdminPanel({
   onApproveRegistration,
   onRejectRegistration,
   baseSubjects = [],
+  subjects = [], // Added subjects prop
   onCreateBaseSubject,
   onUpdateBaseSubject,
   onDeleteBaseSubject,
@@ -58,9 +60,21 @@ export function AdminPanel({
   const [isCreating, setIsCreating] = React.useState(false);
   const [isSectionCreatingOrUpdating, setIsSectionCreatingOrUpdating] = React.useState(false); 
   const [isBaseSubjectCreatingOrUpdating, setIsBaseSubjectCreatingOrUpdating] = React.useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = React.useState(false);
   const [editingSectionId, setEditingSectionId] = React.useState(null);
   const [editingBaseSubjectId, setEditingBaseSubjectId] = React.useState(null);
   const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7' });
+
+  // State for user editing
+  const [editingUserId, setEditingUserId] = React.useState(null);
+  const [editUserFormData, setEditUserFormData] = React.useState({
+    name: '',
+    username: '',
+    role: '',
+    assignedSectionId: '',
+    assignedSubjectIds: [],
+    status: ''
+  });
   const [approvalForms, setApprovalForms] = React.useState({});
   const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
   const [isCreatingBaseSubject, setIsCreatingBaseSubject] = React.useState(false);
@@ -81,7 +95,42 @@ export function AdminPanel({
   if (syncError) return <ApiConnectionErrorDisplay />;
 
   const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');
+  // Filter out the current user from the list of assignable advisers for sections
+  const assignableAdvisers = users.filter(u => u.role === 'adviser' && u.id !== currentUserId);
   const pendingRegistrations = registrations.filter(r => r.status === 'pending');
+
+  const handleEditUser = (user) => {
+    setEditingUserId(user.id);
+    setEditUserFormData({
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      assignedSectionId: user.assignedSectionId ? String(user.assignedSectionId) : '',
+      assignedSubjectIds: (user.assignedSubjectIds || []).map(String),
+      status: user.status
+    });
+  };
+
+  const handleSaveUser = async (userId) => {
+    setIsUpdatingUser(true);
+    try {
+      // Directly call the authService to ensure the PUT /api/profiles/{id} endpoint is hit
+      await authService.updateProfile(userId, {
+        Name: editUserFormData.name,
+        Role: editUserFormData.role,
+        SectionId: editUserFormData.assignedSectionId ? parseInt(editUserFormData.assignedSectionId, 10) : null,
+        SubjectIds: editUserFormData.assignedSubjectIds.map(id => parseInt(id, 10)),
+        Status: editUserFormData.status
+      });
+      alert('User updated successfully!');
+      setEditingUserId(null); // Exit edit mode
+      await syncAuthData(); // Re-sync auth data to ensure the list is fresh
+    } catch (error) {
+      alert(`Failed to update user: ${error.message || error}`);
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
 
   const handleUpdateSection = (id) => {
     if (!formData.name || !formData.gradeLevel) return;
@@ -384,17 +433,215 @@ export function AdminPanel({
           </motion.div>
         )}
 
+        {activeTab === 'users' && (
+          <motion.div
+            key="users"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="space-y-6"
+          >
+            {authLoading && (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="animate-spin mr-2" size={20} />
+                <span className="text-sm font-medium">Loading users...</span>
+              </div>
+            )}
+            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {users.map(user => (
+                <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
+                  {editingUserId === user.id ? (
+                    // Edit Form
+                    <div className="flex-1 space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Name</label>
+                        <input
+                          type="text"
+                          value={editUserFormData.name}
+                          onChange={e => setEditUserFormData({ ...editUserFormData, name: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Username</label>
+                        <input
+                          type="text"
+                          value={editUserFormData.username}
+                          onChange={e => setEditUserFormData({ ...editUserFormData, username: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                          disabled // Username usually not editable
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
+                        <select
+                          value={editUserFormData.role}
+                          onChange={e => setEditUserFormData({ ...editUserFormData, role: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                          disabled={user.id === currentUserId}
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="teacher">Teacher</option>
+                          <option value="adviser">Adviser</option>
+                        </select>
+                      </div>
+
+                      {editUserFormData.role === 'adviser' && (
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Assigned Section (Adviser)</label>
+                          <select
+                            value={editUserFormData.assignedSectionId}
+                            onChange={e => setEditUserFormData({ ...editUserFormData, assignedSectionId: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">None</option>
+                            {sections.map(section => (
+                              <option key={section.id} value={section.id}>
+                                G{section.gradeLevel} - {section.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {(editUserFormData.role === 'teacher' || editUserFormData.role === 'adviser') && (
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Assigned Subjects (Teacher)</label>
+                          <select
+                            multiple
+                            value={editUserFormData.assignedSubjectIds}
+                            onChange={e => {
+                              const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+                              setEditUserFormData({ ...editUserFormData, assignedSubjectIds: selectedOptions });
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500 h-24"
+                          >
+                            {subjects.map(subject => (
+                              <option key={subject.id} value={subject.id}>
+                                G{subject.gradeLevel} - {subject.name} ({sections.find(s => s.id === subject.sectionId)?.name || 'N/A'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                        <select
+                          value={editUserFormData.status}
+                          onChange={e => setEditUserFormData({ ...editUserFormData, status: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => setEditingUserId(null)}
+                          className="px-3 py-1 bg-white border border-slate-200 text-slate-500 text-xs font-black uppercase rounded-lg hover:bg-slate-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveUser(user.id)}
+                          disabled={isUpdatingUser}
+                          className="px-3 py-1 bg-indigo-600 text-white text-xs font-black uppercase rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isUpdatingUser ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Display View
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className="size-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 shrink-0 mt-0.5">
+                            <User size={20} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-black text-slate-800 uppercase italic text-xs leading-tight">{user.name}</h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{user.username}</p>
+                          </div>
+                        </div>
+                        {user.id === currentUserId && (
+                          <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100 uppercase shrink-0">You</span>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
+                          <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
+                        </div>
+                        {user.role === 'adviser' && user.assignedSectionId && (
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Adviser of</label>
+                            <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
+                              G{sections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {sections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
+                            </p>
+                          </div>
+                        )}
+                        {(user.role === 'teacher' || user.role === 'adviser') && user.assignedSubjectIds && user.assignedSubjectIds.length > 0 && (
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Teaching</label>
+                            <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
+                              {user.assignedSubjectIds.map(subId => {
+                                const subject = subjects.find(s => String(s.id) === String(subId));
+                                return subject ? <span key={subId} className="block">{subject.name} (G{subject.gradeLevel})</span> : null;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                          <p className={`w-full border rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none ${user.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
+                            {user.status}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          disabled={user.id === currentUserId} // Prevent editing self for now, or allow specific fields
+                          className="p-2 text-slate-300 hover:text-indigo-600 transition-all disabled:opacity-0"
+                          title="Edit User"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          disabled={user.id === currentUserId}
+                          onClick={() => onDeleteUser(user.id)}
+                          className="p-2 text-slate-300 hover:text-rose-500 transition-all disabled:opacity-0"
+                          title="Delete User"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {activeTab === 'templates' && (
           <motion.div
             key="templates"
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
+            className="space-y-6"
           >
             {(subjectsLoading || isBaseSubjectCreatingOrUpdating) && (
               <div className="flex items-center justify-center py-8 text-slate-400">
                 <Loader2 className="animate-spin mr-2" size={20} />
-                <span className="text-sm font-medium">Loading subject templates...</span>
+                <span className="text-sm font-medium">Processing subject templates...</span>
               </div>
             )}
 
@@ -402,12 +649,14 @@ export function AdminPanel({
               <h3 className="text-lg font-black uppercase italic text-slate-800 mb-6 flex items-center gap-3">
                 <BookOpen className="text-indigo-600" /> Global Subject Templates
               </h3>
+              
               <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <input 
                   placeholder="AUTO-GENERATED CODE" 
                   value={baseSubjectForm.code}
                   readOnly
-                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs cursor-not-allowed opacity-70" required
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs cursor-not-allowed opacity-70" 
+                  required
                 />
                 <input 
                   placeholder="SUBJECT LABEL" 
@@ -420,7 +669,8 @@ export function AdminPanel({
                       code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
                     });
                   }}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2" required
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2" 
+                  required
                 />
                 <div className="flex gap-2">
                   <select 
@@ -440,12 +690,13 @@ export function AdminPanel({
                   <button 
                     type="submit" 
                     disabled={isBaseSubjectCreatingOrUpdating}
-                    className="bg-indigo-600 text-white p-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-indigo-600 text-white p-2 rounded-xl disabled:opacity-50"
                   >
-                    {isCreatingBaseSubject ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+                    <Plus size={20} />
                   </button>
                 </div>
               </form>
+
               <div className="space-y-6">
                 {sortedBaseGrades.map(grade => (
                   <div key={grade} className="space-y-3">
@@ -456,82 +707,23 @@ export function AdminPanel({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {groupedBaseSubjects[grade].map(base => (
                         <div key={base.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center group">
-                    {editingBaseSubjectId === base.id ? (
-                      <div className="flex-1 space-y-2 mr-4">
-                        <input 
-                          value={baseEditFormData.code}
-                          readOnly
-                          className="w-full bg-slate-100 border border-indigo-200 rounded-lg px-2 py-1 text-[10px] font-black outline-none cursor-not-allowed opacity-70"
-                          placeholder="CODE"
-                        />
-                        <input 
-                          value={baseEditFormData.name}
-                          onChange={e => {
-                            const newName = e.target.value.toUpperCase();
-                            setBaseEditFormData({
-                              ...baseEditFormData, 
-                              name: newName,
-                              code: `${baseEditFormData.gradeLevel}${newName.replace(/\s+/g, '')}`
-                            });
-                          }}
-                          className="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
-                          placeholder="NAME"
-                        />
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => handleUpdateBaseSubject(base.id)}
-                            className="px-2 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase rounded hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Save
-                          </button>
-                          <button 
-                            onClick={() => setEditingBaseSubjectId(null)}
-                            className="px-2 py-1 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase rounded hover:bg-slate-50 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
-                        <p className="font-bold text-slate-800 text-sm truncate">{base.name}</p>
-                        {base.categories?.length === 0 ? (
-                          <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full border border-rose-100 mt-1 block w-fit">
-                            TEMPLATE NOT SET
-                          </span>
-                        ) : (
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Template Configured</p>
-                        )}
-                      </div>
-                    )}
-                    
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
+                            <p className="font-bold text-slate-800 text-sm truncate uppercase">{base.name}</p>
+                          </div>
                           <div className="flex gap-1">
-                      {editingBaseSubjectId !== base.id && (
-                        <button 
-                          onClick={() => {
-                            setEditingBaseSubjectId(base.id);
-                            setBaseEditFormData({ name: base.name, code: base.code, gradeLevel: base.gradeLevel });
-                          }}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
-                          title="Edit Code/Name"
-                        >
-                          <History size={16} />
-                        </button>
-                      )}
                             <button 
                               onClick={() => navigate('/templates', { state: { subjectId: base.id } })}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
-                              title="Edit Template"
+                              className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                              title="Configure Grading structure"
                             >
                               <Settings size={16} />
                             </button>
                             <button 
                               onClick={() => handleDeleteBaseSubject(base.id)} 
-                              disabled={deletingBaseSubjectId === base.id}
-                              className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                              className="p-2 text-slate-300 hover:text-rose-500 transition-all"
                             >
-                              {deletingBaseSubjectId === base.id ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </div>
@@ -540,71 +732,6 @@ export function AdminPanel({
                   </div>
                 ))}
               </div>
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'users' && (
-          <motion.div
-            key="users"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            className="space-y-6"
-          >
-            {authLoading && (
-              <div className="flex items-center justify-center py-8 text-slate-400">
-                <Loader2 className="animate-spin mr-2" size={20} />
-                <span className="text-sm font-medium">Loading users...</span>
-              </div>
-            )}
-            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {users.map(user => (
-                <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div className="size-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 shrink-0 mt-0.5">
-                        <User size={20} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-black text-slate-800 uppercase italic text-xs leading-tight">{user.name}</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{user.username}</p>
-                      </div>
-                    </div>
-                    {user.id === currentUserId && (
-                      <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100 uppercase shrink-0">You</span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
-                      <select 
-                        value={user.role}
-                        disabled={user.id === currentUserId}
-                        onChange={(e) => onUpdateUser(user.id, { role: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-                      >
-                        <option value="admin">Admin</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="adviser">Adviser</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex justify-end">
-                    <button 
-                      disabled={user.id === currentUserId}
-                      onClick={() => onDeleteUser(user.id)}
-                      className="p-2 text-slate-300 hover:text-rose-500 disabled:opacity-0 transition-all"
-                      title="Delete User"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           </motion.div>
         )}

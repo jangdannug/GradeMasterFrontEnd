@@ -336,6 +336,7 @@ export default function App() {
                       onApproveRegistration={approveRegistration}
                       onRejectRegistration={rejectRegistration}
                       baseSubjects={baseSubjects}
+                      subjects={subjects} // Pass subjects for user assignment
                       onCreateBaseSubject={createBaseSubject}
                       onUpdateBaseSubject={updateBaseSubject}
                       onDeleteBaseSubject={deleteBaseSubject}

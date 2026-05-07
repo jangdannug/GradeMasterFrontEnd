@@ -85,6 +85,15 @@ export const deleteProfile = async (id) => {
     }
 };
 
+export const updateProfile = async (id, userData) => {
+    try {
+        const response = await api.put(`profiles/${String(id)}`, userData);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to update profile';
+    }
+};
+
 export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('profile');
@@ -104,4 +113,4 @@ export const isLoggedIn = () => {
     return !!localStorage.getItem('token');
 };
 
-export default { login, register, getRegistrations, approveRegistration, rejectRegistration, getAllProfiles, deleteProfile, logout, getProfile, getToken, isLoggedIn };
+export default { login, register, getRegistrations, approveRegistration, rejectRegistration, getAllProfiles, deleteProfile, updateProfile, logout, getProfile, getToken, isLoggedIn };
