@@ -37,16 +37,23 @@ export function TemplatesView({
   // Set initial selected subject or update when subjects change
   useEffect(() => {
     if (subjects && subjects.length > 0) {
-      const stateId = location.state?.subjectId;
-      const currentExists = subjects.some(s => String(s.id) === String(selectedBaseSubjectId));
-      
-      if (stateId && subjects.some(s => String(s.id) === String(stateId))) {
-        setSelectedBaseSubjectId(stateId);
-      } else if (!selectedBaseSubjectId || !currentExists) {
-        setSelectedBaseSubjectId(subjects[0].id);
+      // Only initialize from location state if we haven't selected a subject yet
+      if (!selectedBaseSubjectId) {
+        const stateId = location.state?.subjectId;
+        if (stateId && subjects.some(s => String(s.id) === String(stateId))) {
+          setSelectedBaseSubjectId(stateId);
+        } else {
+          setSelectedBaseSubjectId(subjects[0].id);
+        }
+      } else {
+        // If already selected, only reset if the current selection no longer exists in the list
+        const stillExists = subjects.some(s => String(s.id) === String(selectedBaseSubjectId));
+        if (!stillExists) {
+          setSelectedBaseSubjectId(subjects[0].id);
+        }
       }
     }
-  }, [subjects, location.state?.subjectId]); // Listen for changes in subjects or incoming navigation state
+  }, [subjects, location.state?.subjectId]);
 
   const selectedSubject = subjects.find(s => String(s.id) === String(selectedBaseSubjectId));
   

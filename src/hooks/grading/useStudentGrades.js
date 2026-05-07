@@ -40,7 +40,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
   const updateCategoriesInBaseSubject = useCallback((baseSub, categoryId, componentId, updateFn) => {
     if (!baseSub) return baseSub;
 
-    const isComposite = baseSub.categories?.some(c => c.isComponent);
+    const isComposite = (baseSub.categories || []).some(c => c.isComponent);
 
     if (isComposite && componentId) {
       return {

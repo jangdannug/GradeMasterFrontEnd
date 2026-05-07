@@ -63,28 +63,33 @@ export function ClassRecord({
     [baseSubjects, subject.baseSubjectId]
   );
 
+  // Unified categories (instance or template fallback)
+  const resolvedCategories = React.useMemo(() => 
+    (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []),
+    [subject.categories, template]
+  );
+
   const isComposite = React.useMemo(() => 
-    subject.categories?.some(c => c.isComponent) || false, 
-  [subject.categories]);
+    resolvedCategories.some(c => c.isComponent), 
+  [resolvedCategories]);
 
   const [activeComponentId, setActiveComponentId] = React.useState(null);
 
   // Sync activeComponentId when the subject or composite status changes
   React.useEffect(() => {
-    if (isComposite && subject.categories?.length > 0) {
-      setActiveComponentId(subject.categories[0].id);
+    if (isComposite && resolvedCategories.length > 0) {
+      setActiveComponentId(resolvedCategories[0].id);
     } else {
       setActiveComponentId(null);
     }
-  }, [subject.id, isComposite]);
+  }, [subject.id, isComposite, resolvedCategories]);
 
   const effectiveCategories = React.useMemo(() => {
-    const cats = (subject.categories && subject.categories.length > 0) ? subject.categories : (template?.categories || []);
     if (isComposite && activeComponentId) {
-      return cats.find(c => c.id === activeComponentId)?.categories || [];
+      return resolvedCategories.find(c => c.id === activeComponentId)?.categories || [];
     }
-    return cats;
-  }, [subject.categories, template, isComposite, activeComponentId]);
+    return resolvedCategories;
+  }, [resolvedCategories, isComposite, activeComponentId]);
 
   const totalWeight = (effectiveCategories).reduce((acc, cat) => acc + cat.weight, 0);
 
@@ -222,7 +227,8 @@ export function ClassRecord({
     const localGrades = {};
     students.forEach(student => {
       const sg = student.grades?.[subject.id]?.[quarter];
-      localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: effectiveCategories }, transmutationTable, descriptors);
+      // Ensure calculation uses resolved categories
+      localGrades[student.id] = calculateSubjectResult(sg, { ...subject, categories: resolvedCategories }, transmutationTable, descriptors);
     });
 
     // 2. If the draft just finished loading, sync once with the API to ensure 100% accuracy
@@ -235,7 +241,7 @@ export function ClassRecord({
         const batchData = students.map(student => ({
           studentId: student.id,
           grades: student.grades?.[subject.id]?.[quarter] || null,
-          categories: effectiveCategories
+          categories: resolvedCategories // Pass the full resolved categories for API calculation
         }));
 
         const apiResults = await gradingService.calculateBatchGrades(batchData);
@@ -356,6 +362,26 @@ export function ClassRecord({
           </div>
        </div>
 
+       {isComposite && (
+         <div className="px-8 py-4 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto scrollbar-hide">
+           {resolvedCategories.map(comp => (
+             <button
+               key={comp.id}
+               onClick={() => setActiveComponentId(comp.id)}
+               className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                 activeComponentId === comp.id 
+                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                   : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
+               }`}
+             >
+               {comp.name}
+             </button>
+           ))}
+           <div className="flex-1"></div>
+           <span className="text-[10px] font-black text-slate-400 uppercase self-center italic">Composite Subject Mode</span>
+         </div>
+       )}
+
         <div className="overflow-x-auto overflow-y-hidden">
           <table className="w-full border-collapse border border-slate-200">
           <thead>
@@ -457,7 +483,14 @@ export function ClassRecord({
             {students.map((student, sIdx) => {
               const sg = student.grades[subject.id]?.[quarter];
               const results = calculatedGrades[student.id] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
-              
+
+              // For composite subjects, get the category results from the active component
+              let componentCategoryResults = [];
+              if (results.isComposite && results.components) {
+                const activeCompResult = results.components.find(comp => comp.id === activeComponentId);
+                componentCategoryResults = activeCompResult?.categories || [];
+              }
+
               return (
                 <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-slate-50/50 transition-colors divide-x divide-slate-200">
                   <td className="p-3 sticky left-0 bg-inherit z-10 shadow-[2px_0_4px_rgba(0,0,0,0.02)] border-r border-slate-200">
@@ -469,7 +502,7 @@ export function ClassRecord({
                   
                   {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                     const cg = sg?.categoryGrades?.[cat.id];
-                    const catRes = (results.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
+                    const catRes = (isComposite ? componentCategoryResults : results.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
                     const count = cat.columnNames?.length || 5;
 
                     return (
