@@ -297,7 +297,7 @@ export function AdvisoryDashboardView({
               {subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).map(sub => (
                 <div key={sub.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all">
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-3">{sub.name}</h4>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-3">{sub.name} (G{sub.gradeLevel})</h4>
                     <div className="flex items-center gap-3">
                       <div className="size-9 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100">
                         <User size={18} />
