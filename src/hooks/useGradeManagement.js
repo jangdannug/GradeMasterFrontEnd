@@ -147,6 +147,7 @@ export function useGradeManagement(currentUser) {
     assignStudentToSection: gradingState.assignStudentToSection,
     updateStudent: gradingState.updateStudent, // Expose updateStudent
     enrollStudentOverall: gradingState.enrollStudentOverall, // New overall enrollment
+    bulkEnrollStudents: gradingState.bulkEnrollStudents,
     addComponentToSubject: gradingState.addComponentToSubject,
     removeComponentFromSubject: gradingState.removeComponentFromSubject,
     updateComponentName: gradingState.updateComponentName,

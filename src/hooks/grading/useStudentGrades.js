@@ -279,6 +279,19 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }
   }, []);
 
+  const bulkEnrollStudents = useCallback(async (file, schoolYear) => {
+    try {
+      setError(null);
+      const result = await studentService.bulkUploadStudents(file, schoolYear);
+      await syncStudents(); // Refresh the list after bulk upload
+      return result;
+    } catch (err) {
+      console.error("Bulk enrollment failed:", err);
+      setError(err);
+      throw err;
+    }
+  }, [syncStudents]);
+
   const removeStudent = useCallback(async (id) => {
     try {
       await studentService.deleteStudent(id);
@@ -397,6 +410,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     addStudentToSection,
     removeStudent,
     enrollStudentOverall,
+    bulkEnrollStudents,
     assignStudentToSection,
     updateStudent,
     error, // Expose error state

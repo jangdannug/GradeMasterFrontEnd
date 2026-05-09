@@ -130,6 +130,7 @@ export default function App() {
     assignStudentToSection,
     updateStudent, // Pass updateStudent
     enrollStudentOverall, // New
+    bulkEnrollStudents,
     syncError, // New: Propagate API sync errors
     refreshGlobalData,
     addComponentToSubject, // NEW
@@ -622,6 +623,7 @@ export default function App() {
                       students={students} // Pass students for the new management tab
                       onUpdateStudent={updateStudent} // Pass updateStudent for editing
                       onSync={syncStudents}
+                      onBulkEnroll={bulkEnrollStudents}
                       syncError={syncError} // Pass syncError to StudentManagementView
                       onRemoveStudent={removeStudent} // Pass removeStudent for deleting
                     />

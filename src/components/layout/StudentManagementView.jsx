@@ -10,7 +10,8 @@ export function StudentManagementView({
   students = [], // All students
   onUpdateStudent,
   onRemoveStudent,
-  onSync
+  onSync,
+  onBulkEnroll
 }) {
   const [formData, setFormData] = useState({
     lastName: '',
@@ -25,6 +26,7 @@ export function StudentManagementView({
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [genderFilter, setGenderFilter] = useState('all');
+  const [isUploading, setIsUploading] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
 
   React.useEffect(() => {
@@ -72,37 +74,26 @@ export function StudentManagementView({
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
 
-  const handleBulkUpload = (event) => {
+  const handleBulkUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const lines = text.split('\n').filter(line => line.trim() !== '');
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-      const requiredHeaders = ['last_name', 'first_name', 'middle_name', 'gender', 'grade_level', 'school_year'];
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      if (missingHeaders.length > 0) {
-        alert(`Missing required headers in CSV: ${missingHeaders.join(', ')}. Please use the provided template.`);
-        return;
+    try {
+      setIsUploading(true);
+      const result = await onBulkEnroll(file, formData.schoolYear);
+      
+      // Check if backend returned success: false even with a 200 OK
+      if (result && result.success === false) {
+        throw new Error(result.message || "Server processed file but returned failure.");
       }
 
-      const newStudents = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const studentData = {};
-        headers.forEach((header, index) => {
-          studentData[header] = values[index];
-        });
-        onEnrollStudent(studentData.last_name, studentData.first_name, studentData.middle_name, studentData.gender, studentData.grade_level, studentData.school_year);
-        newStudents.push(studentData);
-      }
-      alert(`Successfully uploaded ${newStudents.length} students.`);
-      setActiveTab('manage'); // Switch to manage tab after upload
-    };
-    reader.readAsText(file);
+      alert(result?.message || `Bulk upload completed successfully.`);
+      setActiveTab('manage');
+    } catch (err) {
+      alert(`Upload failed: ${err}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   if (isSubmitted && activeTab === 'enroll') { // Only show success message if on enroll tab
@@ -324,15 +315,16 @@ export function StudentManagementView({
               <Download size={18} /> Download CSV Template
             </button>
 
-            <label className="block text-sm font-medium text-slate-700">Upload Student CSV File</label>
+            <label className="block text-sm font-medium text-slate-700">Upload Student CSV File {isUploading && '(Uploading...)'}</label>
             <input
               type="file"
               accept=".csv"
               onChange={handleBulkUpload}
+              disabled={isUploading}
               className="block w-full text-sm text-slate-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
-                file:text-sm file:font-semibold
+                file:text-sm file:font-semibold disabled:opacity-50
                 file:bg-indigo-50 file:text-indigo-700
                 hover:file:bg-indigo-100"
             />
