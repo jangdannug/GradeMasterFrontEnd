@@ -506,13 +506,23 @@ export function ClassRecord({
 
             {students.map((student, sIdx) => {
               const sg = student.grades[subject.id]?.[quarter];
-              const results = calculatedGrades[student.id] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
+              const rawResults = calculatedGrades[student.id] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
 
               // For composite subjects, get the category results from the active component
               let componentCategoryResults = [];
-              if (results.isComposite && results.components) {
-                const activeCompResult = results.components.find(comp => comp.id === activeComponentId);
+              if (rawResults.isComposite && rawResults.components) {
+                const activeCompResult = rawResults.components.find(comp => comp.id === activeComponentId);
                 componentCategoryResults = activeCompResult?.categories || [];
+              }
+              
+              // UNIFY: Use active component results for summary columns if we are in a component view.
+              // This ensures components look and feel like regular subjects.
+              let results = rawResults;
+              if (isComposite && activeComponentId && activeComponentId !== 'summary') {
+                const activeCompResult = rawResults.components?.find(comp => comp.id === activeComponentId);
+                if (activeCompResult) {
+                  results = activeCompResult;
+                }
               }
 
               return (
@@ -526,7 +536,7 @@ export function ClassRecord({
                   
                   {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                     const cg = sg?.categoryGrades?.[cat.id];
-                    const catRes = (isComposite ? componentCategoryResults : results.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
+                    const catRes = (isComposite ? componentCategoryResults : rawResults.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
                     const count = cat.columnNames?.length || 5;
 
                     return (
@@ -567,8 +577,8 @@ export function ClassRecord({
                     );
                   })}
 
-                  {activeComponentId === 'summary' && results.isComposite && resolvedCategories.map(comp => {
-                    const compRes = (results.components || []).find(c => c.id === comp.id);
+                  {activeComponentId === 'summary' && rawResults.isComposite && resolvedCategories.map(comp => {
+                    const compRes = (rawResults.components || []).find(c => c.id === comp.id);
                     return (
                       <td key={`cell-sum-${comp.id}`} className="p-3 text-center font-bold bg-indigo-50/30 text-indigo-600">
                         {calculatingGrades ? <Loader2 size={12} className="animate-spin mx-auto" /> : (compRes?.quarterly || 0)}
