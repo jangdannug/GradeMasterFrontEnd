@@ -31,18 +31,25 @@ export function SubmittedRecords({
     onSync?.();
   }, [onSync]);
 
+  const adviserSection = React.useMemo(() => 
+    sections.find(s => s.adviserId === currentUserId),
+    [sections, currentUserId]
+  );
+
   const baseRecords = React.useMemo(() => {
     let filtered = [];
     if (userRole === 'teacher') {
       filtered = savedRecords.filter(record => record.teacherId === currentUserId && record.isLocked);
     } else if (userRole === 'adviser') {
-      const adviserSection = sections.find(s => s.adviserId === currentUserId);
-      filtered = savedRecords.filter(record => record.sectionId === adviserSection?.id && record.isLocked);
+      // Advisers see records for their own advisory section AND records they personally teach in other sections
+      filtered = savedRecords.filter(record => 
+        (record.sectionId === adviserSection?.id || record.teacherId === currentUserId) && record.isLocked
+      );
     }
     
     if (mode === 'verified') return filtered.filter(r => r.isVerified);
     return filtered.filter(r => !r.isVerified);
-  }, [savedRecords, userRole, currentUserId, sections, mode]);
+  }, [savedRecords, userRole, currentUserId, adviserSection, mode]);
 
   const availableSubjects = React.useMemo(() => {
     const subs = new Set();
@@ -231,7 +238,7 @@ export function SubmittedRecords({
                             </button>
                           </div>
 
-                          {userRole === 'adviser' && !record.isVerified && !pendingEdit && (
+                          {record.sectionId === adviserSection?.id && !record.isVerified && !pendingEdit && (
                             <div className="border-t pt-4">
                               <button
                                 onClick={() => onLockRecord && onLockRecord(record.id, currentUserId, currentUserName)}
@@ -267,7 +274,7 @@ export function SubmittedRecords({
                             </div>
                           </div>
 
-                          {userRole === 'teacher' && record.isLocked && !record.isVerified && !pendingEdit && (
+                          {record.teacherId === currentUserId && record.isLocked && !record.isVerified && !pendingEdit && (
                             <div className="border-t pt-4">
                               <button
                                 onClick={() => setEditRequestForm({ ...editRequestForm, [record.id]: true })}
@@ -330,7 +337,7 @@ export function SubmittedRecords({
                             </div>
                           )}
 
-                          {userRole === 'adviser' && pendingEdit && (
+                          {record.sectionId === adviserSection?.id && pendingEdit && (
                             <div className="border-t pt-4 bg-orange-50 p-4 rounded-lg">
                               <h4 className="font-bold text-orange-900 mb-3 flex items-center gap-2">
                                 <MessageSquare size={16} />
