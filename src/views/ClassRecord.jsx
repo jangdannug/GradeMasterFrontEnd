@@ -539,19 +539,22 @@ export function ClassRecord({
                                 type="number"
                                 min="0"
                                 max={hps}
+                                title={hps > 0 ? `Enter score (Max: ${hps})` : "Please set HPS first"}
                                 value={(cg?.scores[colIdx]?.points === null || cg?.scores[colIdx]?.points === undefined || isNaN(Number(cg?.scores[colIdx]?.points))) ? '' : Number(cg?.scores[colIdx]?.points)}
                                 onChange={(e) => {
                                   if (isEditable) {
                                     let val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                                     if (val !== null) {
                                       if (isNaN(val) || val < 0) val = 0;
-                                      if (hps > 0 && val > hps) val = hps;
-                                      e.target.value = val.toString(); // Strip leading zeros (08 -> 8)
+                                      if (hps > 0 && val > hps) {
+                                        alert(`⚠️ INVALID SCORE: ${val} exceeds the Highest Possible Score (${hps}).\n\nThis entry is invalid and has been cleared. Please enter a score between 0 and ${hps}.`);
+                                        val = null;
+                                      }
                                     }
                                     updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
                                   }
                                 }}
-                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'}`}
+                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
                                 disabled={hps === 0 || !isEditable}
                               />
                             </td>
