@@ -160,28 +160,34 @@ export function useSubjectManagement(users, setUsers) {
   };
 
   const addSubject = async (data) => {
-    const base = baseSubjects.find(b => b.id === data.baseSubjectId);
+    // Support both casings during lookup
+    const baseId = data.BaseSubjectId || data.baseSubjectId;
+    const base = baseSubjects.find(b => String(b.id) === String(baseId));
     if (!base) return;
 
     // Prevent adding duplicate subject to the same section
+    const sectionId = data.SectionId || data.sectionId;
     const existingSubject = subjects.find(s =>
       s.code === base.code &&
       s.gradeLevel === base.gradeLevel &&
-      s.sectionId === data.sectionId
+      String(s.sectionId) === String(sectionId)
     );
 
     if (existingSubject) {
-      console.warn(`Subject ${base.name} (Code: ${base.code}) already exists in section ${data.sectionId}.`);
+      console.warn(`Subject ${base.name} (Code: ${base.code}) already exists in section ${sectionId}.`);
       return; // Do not add the subject if a duplicate exists
     }
 
+    // Prepare payload for API (Strictly PascalCase to match CreateSubjectRequest DTO)
     const newSub = {
-      ...data,
-      id: `sub-${Date.now()}`,
-      name: base.name,
-      code: base.code,
-      gradeLevel: base.gradeLevel,
-      categories: JSON.parse(JSON.stringify(base.categories || []))
+      Name: base.name,
+      Code: base.code,
+      GradeLevel: base.gradeLevel,
+      SectionId: Number(sectionId),
+      BaseSubjectId: Number(baseId),
+      TeacherId: Number(data.TeacherId || data.teacherId),
+      TeacherName: data.TeacherName || data.teacherName,
+      CategoriesJson: base.categories || []
     };
 
     try {
@@ -192,9 +198,10 @@ export function useSubjectManagement(users, setUsers) {
       const normalizedSubject = normalizeSubject(response);
       
       setSubjects(prev => [...prev, normalizedSubject]);
-      if (data.teacherId) {
+      const teacherId = data.TeacherId || data.teacherId || normalizedSubject.teacherId;
+      if (teacherId) {
         setUsers(prev => prev.map(user => {
-          if (user.id !== data.teacherId) return user;
+          if (user.id !== teacherId) return user;
           return { ...user, assignedSubjectIds: [...(user.assignedSubjectIds || []), normalizedSubject.id] };
         }));
       }
@@ -238,11 +245,12 @@ export function useSubjectManagement(users, setUsers) {
       // Apply normalization to the updated subject response to ensure camelCase consistency
       const normalized = normalizeSubject(updatedSubject);
       setSubjects(prev => prev.map(s => String(s.id) === String(id) ? normalized : s));
-      if (data.teacherId) {
+      const teacherId = data.TeacherId || data.teacherId;
+      if (teacherId) {
         setUsers(prev => prev.map(u => {
           let sids = new Set(u.assignedSubjectIds || []);
-          if (u.id === data.teacherId) sids.add(id);
-          else if (u.id === old?.teacherId) sids.delete(id);
+          if (String(u.id) === String(teacherId)) sids.add(normalized.id);
+          else if (String(u.id) === String(old?.teacherId || old?.TeacherId)) sids.delete(normalized.id);
           return { ...u, assignedSubjectIds: Array.from(sids) };
         }));
       }

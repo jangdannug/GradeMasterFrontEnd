@@ -249,7 +249,7 @@ export function TemplatesView({
 
           {isComposite && (
             <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-100 rounded-xl shadow-inner">
-              {components.sort((a, b) => a.name.localeCompare(b.name)).map(comp => (
+              {components.map(comp => (
                 <div key={comp.id} className="relative group">
                   {editingComponentName === comp.id ? (
                     <input
