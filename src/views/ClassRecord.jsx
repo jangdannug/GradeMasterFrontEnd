@@ -59,8 +59,6 @@ export function ClassRecord({
     [currentUser, subject.teacherId]
   );
 
-  const effectiveSummaryOnly = isSummaryOnly || (isAdviser && !isMainTeacher);
-
   // Find the template associated with this subject to ensure we have the categories
   const template = React.useMemo(() => 
     baseSubjects.find(b => String(b.id) === String(subject.baseSubjectId)), 
@@ -78,15 +76,6 @@ export function ClassRecord({
     [resolvedCategories]);
 
   const [activeComponentId, setActiveComponentId] = React.useState(null);
-
-  // Sync activeComponentId when the subject or composite status changes
-  React.useEffect(() => {
-    if (isComposite && resolvedCategories.length > 0) {
-      setActiveComponentId(resolvedCategories[0].id);
-    } else {
-      setActiveComponentId(null);
-    }
-  }, [subject.id, isComposite, resolvedCategories]);
 
   const activeComponent = React.useMemo(() => {
     if (!isComposite || !activeComponentId || activeComponentId === 'summary') return null;
@@ -107,6 +96,31 @@ export function ClassRecord({
     }
     return String(currentUser.id) === String(subject.teacherId);
   }, [currentUser, isComposite, activeComponent, subject.teacherId]);
+
+  // Filter components based on assignment: Admins, Main Teachers, and Section Advisers see all.
+  // Specific component teachers only see the tabs they are assigned to.
+  const visibleComponents = React.useMemo(() => {
+    if (!isComposite) return [];
+    if (isAdmin || userRole === 'superadmin' || isMainTeacher) return resolvedCategories;
+    
+    const isUserAdviserOfThisSection = isAdviser && String(currentUser?.assignedSectionId) === String(section?.id);
+    if (isUserAdviserOfThisSection) return resolvedCategories;
+
+    return resolvedCategories.filter(comp => 
+      comp.teacherId && String(comp.teacherId) === String(currentUser?.id)
+    );
+  }, [isComposite, resolvedCategories, isAdmin, userRole, isMainTeacher, isAdviser, currentUser, section]);
+
+  const effectiveSummaryOnly = isSummaryOnly || (isAdviser && !isMainTeacher && !isCurrentUserComponentTeacher);
+
+  // Sync activeComponentId when the subject or composite status changes
+  React.useEffect(() => {
+    if (isComposite && visibleComponents.length > 0) {
+      setActiveComponentId(visibleComponents[0].id);
+    } else {
+      setActiveComponentId(null);
+    }
+  }, [subject.id, isComposite, visibleComponents]);
 
   const effectiveCategories = React.useMemo(() => {
     if (activeComponentId === 'summary') return [];
@@ -294,6 +308,19 @@ export function ClassRecord({
               }))
             : fallback.categories;
 
+          const apiComponents = result.components || result.Components;
+          const components = Array.isArray(apiComponents) ? apiComponents.map(comp => ({
+            id: comp.id ?? comp.Id ?? '',
+            initial: comp.initial ?? comp.Initial ?? 0,
+            quarterly: comp.quarterly ?? comp.Quarterly ?? 0,
+            categories: (comp.categories || comp.Categories || []).map(c => ({
+              categoryId: c.categoryId ?? c.CategoryId ?? '',
+              total: c.total ?? c.Total ?? 0,
+              ps: c.ps ?? c.Ps ?? c.PS ?? 0,
+              ws: c.ws ?? c.Ws ?? c.WS ?? 0
+            }))
+          })) : (fallback.components || []);
+
           gradesMap[sId] = {
             initial: result.initial ?? result.initialGrade ?? result.InitialGrade ?? fallback.initial,
             quarterly: result.quarterly ?? result.transmutedGrade ?? result.TransmutedGrade ?? fallback.quarterly,
@@ -301,6 +328,8 @@ export function ClassRecord({
               label: result.descriptor?.label ?? result.descriptorLabel ?? result.DescriptorLabel ?? fallback.descriptor?.label ?? '',
               color: result.descriptor?.color ?? result.descriptorColor ?? result.DescriptorColor ?? fallback.descriptor?.color ?? 'text-slate-400'
             },
+            isComposite: result.isComposite ?? result.IsComposite ?? fallback.isComposite ?? false,
+            components,
             categories
           };
         });
@@ -414,7 +443,7 @@ export function ClassRecord({
              Summary
            </button>
 
-           {resolvedCategories.map(comp => (
+           {visibleComponents.map(comp => (
              <button
                key={comp.id}
                onClick={() => setActiveComponentId(comp.id)}
@@ -542,18 +571,13 @@ export function ClassRecord({
               const sg = student.grades[subject.id]?.[quarter];
               const rawResults = calculatedGrades[student.id] || { initial: 0, quarterly: 0, descriptor: { label: '', color: '' }, categories: [] };
 
-              // For composite subjects, get the category results from the active component
-              let componentCategoryResults = [];
-              if (rawResults.isComposite && rawResults.components) {
-                const activeCompResult = rawResults.components.find(comp => comp.id === activeComponentId);
-                componentCategoryResults = activeCompResult?.categories || [];
-              }
-              
               // UNIFY: Use active component results for summary columns if we are in a component view.
               // This ensures components look and feel like regular subjects.
               let results = rawResults;
               if (isComposite && activeComponentId && activeComponentId !== 'summary') {
-                const activeCompResult = rawResults.components?.find(comp => comp.id === activeComponentId);
+                const activeCompResult = (rawResults.components || []).find(comp => 
+                  String(comp.id) === String(activeComponentId)
+                );
                 if (activeCompResult) {
                   results = activeCompResult;
                 }
@@ -569,8 +593,10 @@ export function ClassRecord({
                   </td>
                   
                   {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
-                    const cg = sg?.categoryGrades?.[cat.id];
-                    const catRes = (isComposite ? componentCategoryResults : rawResults.categories || []).find(c => c.categoryId === cat.id) || { total: 0, ps: 0, ws: 0 };
+                    const cg = sg?.categoryGrades?.[cat.id]; // This is for student input scores
+                    const catRes = (results.categories || []).find(c => 
+                      String(c.categoryId) === String(cat.id)
+                    ) || { total: 0, ps: 0, ws: 0 }; // This is for calculated results
                     const count = cat.columnNames?.length || 5;
 
                     return (
@@ -612,7 +638,9 @@ export function ClassRecord({
                   })}
 
                   {activeComponentId === 'summary' && rawResults.isComposite && resolvedCategories.map(comp => {
-                    const compRes = (rawResults.components || []).find(c => c.id === comp.id);
+                    const compRes = (rawResults.components || []).find(c => 
+                      String(c.id) === String(comp.id)
+                    );
                     return (
                       <td key={`cell-sum-${comp.id}`} className="p-3 text-center font-bold bg-indigo-50/30 text-indigo-600">
                         {calculatingGrades ? <Loader2 size={12} className="animate-spin mx-auto" /> : (compRes?.quarterly || 0)}

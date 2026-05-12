@@ -175,9 +175,11 @@ export default function App() {
     if (syncError) return false;
     if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return false;
     
-    const mySubjects = subjects.filter(s =>
-      (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id
-    );
+    const mySubjects = subjects.filter(s => {
+      const isMainTeacher = (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id;
+      const isComponentTeacher = s.categories?.some(cat => cat.isComponent && String(cat.teacherId) === String(currentUser.id));
+      return isMainTeacher || isComponentTeacher;
+    });
 
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
       // Advisers have access to class records if they teach subjects OR if their advisory section has subjects
@@ -194,9 +196,11 @@ export default function App() {
     if (syncError) return [];
     if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return [];
 
-    const myTeachingLoad = subjects.filter(s =>
-      (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id
-    );
+    const myTeachingLoad = subjects.filter(s => {
+      const isMainTeacher = (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id;
+      const isComponentTeacher = s.categories?.some(cat => cat.isComponent && String(cat.teacherId) === String(currentUser.id));
+      return isMainTeacher || isComponentTeacher;
+    });
 
     // Show all teaching load to allow viewing of submitted/locked records in the grading view
     let displayLoad = myTeachingLoad;
