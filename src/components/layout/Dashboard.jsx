@@ -3,9 +3,9 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, BookOpen, ClipboardCheck, Briefcase, Plus, Trash2, Shield, User, History, Layers } from 'lucide-react';
-import { AdminDashboardView } from '../../../src/views/dashboard/AdminDashboardView';
-import { TeachingLoadView } from '../../../src/views/dashboard/TeachingLoadView';
-import { AdvisoryDashboardView } from '../../../src/views/dashboard/AdvisoryDashboardView';
+import { AdminDashboardView } from '../../views/dashboard/AdminDashboardView';
+import { TeachingLoadView } from '../../views/dashboard/TeachingLoadView';
+import { AdvisoryDashboardView } from './AdvisoryDashboardView';
 import { theme } from '../../theme';
 
 export function Dashboard({ 
@@ -34,6 +34,15 @@ export function Dashboard({
   
   const navigate = useNavigate();
 
+  // DIAGNOSTIC LOG
+  React.useEffect(() => {
+    console.log("[Dashboard] Render State:", {
+      role,
+      activeTab,
+      hasAdviserSection: !!allSections.find(s => (assignedSectionId && String(s.id) === String(assignedSectionId)) || (s.adviserId || s.adviser_id) === currentTeacherId)
+    });
+  }, [role, activeTab, allSections, assignedSectionId, currentTeacherId]);
+
   // Fetch all necessary context data as soon as the dashboard mounts
   React.useEffect(() => {
     onRefresh?.();
@@ -49,7 +58,7 @@ export function Dashboard({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      {(role === 'admin' || role === 'superadmin') && (
+      {(String(role).toLowerCase() === 'admin' || String(role).toLowerCase() === 'superadmin') && (
         <AdminDashboardView 
           users={users} 
           allSections={allSections} 
@@ -57,7 +66,7 @@ export function Dashboard({
         />
       )}
 
-      {role === 'adviser' && (
+      {String(role).toLowerCase() === 'adviser' && (
         <div className="flex bg-slate-100 p-1 rounded-xl w-fit mb-8 shadow-sm">
           <TabButton 
             active={activeTab === 'teaching'} 
@@ -80,7 +89,7 @@ export function Dashboard({
         </div>
       )}
 
-      {((role === 'teacher') || (role === 'adviser' && activeTab === 'teaching')) && (
+      {((String(role).toLowerCase() === 'teacher') || (String(role).toLowerCase() === 'adviser' && activeTab === 'teaching')) && (
         <TeachingLoadView 
           role={role}
           subjects={subjects}
@@ -90,7 +99,7 @@ export function Dashboard({
         />
       )}
 
-      {role === 'adviser' && (activeTab === 'students' || activeTab === 'curriculum') && (
+      {String(role).toLowerCase() === 'adviser' && (activeTab === 'students' || activeTab === 'curriculum') && (
         <AdvisoryDashboardView 
           activeView={activeTab}
           allSections={allSections}

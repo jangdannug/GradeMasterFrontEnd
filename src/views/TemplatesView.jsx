@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save, Layers, X, Info } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save, Layers, X, Info, User } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 
 export function TemplatesView({
@@ -22,7 +22,9 @@ export function TemplatesView({
   removeComponentFromSubject, // NEW
   updateComponentName, // NEW
   convertToComposite, // NEW
-  convertToNonComposite // NEW
+  convertToNonComposite, // NEW
+  updateComponentTeacher, // NEW
+  users = [] // NEW
 }) {
   const location = useLocation();
   const [selectedBaseSubjectId, setSelectedBaseSubjectId] = useState('');
@@ -288,6 +290,27 @@ export function TemplatesView({
               >
                 <Plus size={14} /> Add Component
               </button>
+            </div>
+          )}
+
+          {isComposite && activeComponent && (
+            <div className="flex items-center gap-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+              <div className="size-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0">
+                <User size={16} />
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] font-black uppercase text-indigo-400 block mb-1">Assigned Component Teacher</label>
+                <select
+                  value={activeComponent.teacherId || ''}
+                  onChange={(e) => updateComponentTeacher(selectedSubject.id, activeComponent.id, e.target.value)}
+                  className="w-full bg-white border border-indigo-100 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="">Default (Main Subject Teacher)</option>
+                  {users.filter(u => u.role === 'teacher' || u.role === 'adviser').map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, Trash2, BookOpen, User, History, X, Search, Check } from 'lucide-react';
+import { Users, Plus, Trash2, BookOpen, User, History, X, Search, Check, Layers } from 'lucide-react';
 import { theme } from '../../theme';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 
@@ -36,6 +36,19 @@ export function AdvisoryDashboardView({
     ),
     [allSections, currentTeacherId, assignedSectionId]
   );
+
+  // Top-level execution log
+  console.log(`[AdvisoryDashboardView] Render triggered. View: "${activeView}", SectionFound: ${!!adviserSection}`);
+
+  React.useEffect(() => {
+    if (adviserSection) {
+      console.log(`[AdvisoryDashboardView] Sync check: Section "${adviserSection.name}" (ID: ${adviserSection.id}) has ${subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).length} subjects.`);
+    } else {
+      console.warn("[AdvisoryDashboardView] No adviserSection found. Checking ID mismatch...");
+      console.log("TeacherID:", currentTeacherId, "AssignedSectionID:", assignedSectionId);
+      console.log("Available Sections:", allSections.map(s => ({ id: s.id, adviserId: s.adviserId })));
+    }
+  }, [adviserSection, subjects.length, activeView]);
 
   const getStudentInitials = (fullName) => {
     const parts = fullName.split(',');
@@ -108,6 +121,23 @@ export function AdvisoryDashboardView({
       setEditingSubjectId(null);
       setSubjectFormData({ baseSubjectId: '', teacherId: '' });
     }
+  };
+
+  const handleComponentTeacherChange = (subject, componentId, teacherId) => {
+    const teacher = teachers.find(t => String(t.id) === String(teacherId));
+    
+    // Work with the current categories array
+    const currentCats = Array.isArray(subject.categories) ? subject.categories : [];
+    
+    const newCategories = currentCats.map(comp => 
+      comp.id === componentId ? { ...comp, teacherId, teacherName: teacher?.name || 'Unknown' } : comp
+    );
+    
+    onUpdateSubject(subject.id, {
+      ...subject, // Keep existing properties
+      teacherId: subject.teacherId, // Keep main teacher
+      categories: newCategories // useSubjectManagement will map this to CategoriesJson
+    });
   };
 
   const handleAssignSelectedStudents = () => {
@@ -314,26 +344,81 @@ export function AdvisoryDashboardView({
             </AnimatePresence>
 
             <div className="space-y-3">
-              {subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).map(sub => (
-                <div key={sub.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-indigo-200 hover:shadow-md transition-all">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-3">{sub.name} (G{sub.gradeLevel})</h4>
-                    <div className="flex items-center gap-3">
-                      <div className="size-9 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100">
-                        <User size={18} />
+              {(() => {
+                if (!adviserSection) return null;
+                
+                const filtered = subjects.filter(s => String(s.sectionId) === String(adviserSection.id));
+                console.log(`[AdvisoryDashboardView] Found ${filtered.length} subjects for section ${adviserSection.id}`);
+                
+                // Log the raw categories before checking isComposite
+                return filtered.map(sub => {
+                // Since we normalized in useSubjectManagement, sub.categories is already an array
+                const resolvedCats = Array.isArray(sub.categories) ? sub.categories : [];
+                
+                const isComposite = Array.isArray(resolvedCats) && resolvedCats.some(c => {
+                  // Log each component's isComponent status
+                  console.log(`[AdvisoryDashboardView] Component check for ${sub.name} - ${c.name}: isComponent=${c.isComponent}`);
+                  return c.isComponent === true; // Explicitly check for boolean true
+                });
+
+
+                console.log(`[AdvisoryDashboardView] Subject: "${sub.name}"`, {
+                  id: sub.id,
+                  isComposite,
+                  // Log resolvedCats directly here to see its structure
+                  categoriesLength: resolvedCats.length,
+                  categoriesData: resolvedCats
+                });
+
+                const components = isComposite ? resolvedCats : [];
+
+                return (
+                  <div key={sub.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col group hover:border-indigo-200 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{sub.name} (G{sub.gradeLevel})</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sub.code}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Assigned Teacher</p>
-                        <p className="text-sm font-black text-slate-800 uppercase truncate leading-none">{sub.teacherName}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors" title="Edit Subject"><History size={14} /></button>
+                        <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors" title="Delete Subject"><Trash2 size={14} /></button>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                        <div className="size-9 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100 shadow-sm">
+                          <User size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Main Teacher</p>
+                          <p className="text-xs font-black text-slate-800 uppercase truncate">{sub.teacherName}</p>
+                        </div>
+                      </div>
+
+                      {isComposite && components.map(comp => (
+                        <div key={comp.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                          <div className="size-9 bg-white rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-50">
+                            <Layers size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">{comp.name}</p>
+                            <select
+                              value={comp.teacherId || ''}
+                              onChange={(e) => handleComponentTeacherChange(sub, comp.id, e.target.value)}
+                              className="w-full bg-transparent text-xs font-black text-slate-700 uppercase outline-none cursor-pointer p-0 border-none focus:ring-0"
+                            >
+                              <option value="">(Unassigned)</option>
+                              {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors" title="Edit Subject"><History size={14} /></button>
-                    <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors" title="Delete Subject"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              ))}
+                );
+              });
+              })()}
             </div>
           </div>
         </div>

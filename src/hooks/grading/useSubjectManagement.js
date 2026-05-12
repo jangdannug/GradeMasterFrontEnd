@@ -17,6 +17,7 @@ const getCategoriesAsArray = (item) => {
       if (typeof parsed === 'string' && parsed.trim() !== '') parsed = JSON.parse(parsed); // Double parse if needed
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
+      console.error("[getCategoriesAsArray] Failed to parse categories string:", raw, e);
       console.error("Failed to parse categories string:", raw, e);
     }
   }
@@ -24,28 +25,36 @@ const getCategoriesAsArray = (item) => {
 };
 
 // Helper to normalize Base Subject (Template) properties
-const normalizeBaseSubject = (item) => ({
-  ...item,
-  id: item.id || item.Id,
-  name: item.name || item.Name,
-  code: item.code || item.Code,
-  gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
-  categories: getCategoriesAsArray(item)
-});
+const normalizeBaseSubject = (item) => {
+  const categories = getCategoriesAsArray(item);
+  console.log(`[normalizeBaseSubject] Normalized ${item.name || item.Name} (ID: ${item.id || item.Id}): isComposite=${categories?.some(c => c.isComponent)}`);
+  return {
+    ...item,
+    id: item.id || item.Id,
+    name: item.name || item.Name,
+    code: item.code || item.Code,
+    gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+    categories
+  };
+};
 
 // Helper to normalize Subject Instance properties
-const normalizeSubject = (item) => ({
-  ...item,
-  id: item.id || item.Id,
-  baseSubjectId: item.baseSubjectId || item.BaseSubjectId || item.base_subject_id,
-  sectionId: item.sectionId ?? item.SectionId ?? item.section_id ?? null,
-  teacherId: item.teacherId || item.TeacherId || item.teacher_id,
-  teacherName: item.teacherName || item.TeacherName || item.teacher_name,
-  name: item.name || item.Name,
-  code: item.code || item.Code,
-  gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
-  categories: getCategoriesAsArray(item)
-});
+const normalizeSubject = (item) => {
+  const categories = getCategoriesAsArray(item);
+  console.log(`[normalizeSubject] Normalized ${item.name || item.Name} (ID: ${item.id || item.Id}): isComposite=${categories?.some(c => c.isComponent)}`);
+  return {
+    ...item,
+    id: item.id || item.Id,
+    baseSubjectId: item.baseSubjectId || item.BaseSubjectId || item.base_subject_id,
+    sectionId: item.sectionId ?? item.SectionId ?? item.section_id ?? null,
+    teacherId: item.teacherId || item.TeacherId || item.teacher_id,
+    teacherName: item.teacherName || item.TeacherName || item.teacher_name,
+    name: item.name || item.Name,
+    code: item.code || item.Code,
+    gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
+    categories
+  };
+};
 
 export function useSubjectManagement(users, setUsers) {
   const [subjects, setSubjects] = useState([]);
@@ -64,6 +73,7 @@ export function useSubjectManagement(users, setUsers) {
       setBaseSubjects(data.map(normalizeBaseSubject));
 
       const fetchedSubjects = await subjectService.getSubjects();
+      console.log("[useSubjectManagement] Raw subjects from API:", fetchedSubjects);
       setSubjects(fetchedSubjects.map(normalizeSubject));
     } catch (error) {
       console.error('Failed to fetch subjects data:', error);
@@ -85,13 +95,27 @@ export function useSubjectManagement(users, setUsers) {
         const template = baseSubjects.find(b => String(b.id) === String(sub.baseSubjectId));
         if (!template) return sub;
 
-        // Compare structure (categories and name) to avoid unnecessary re-renders
+        // Compare structure (categories and name)
         const templateCatsJson = JSON.stringify(template.categories);
         const subCatsJson = JSON.stringify(sub.categories);
 
         if (templateCatsJson !== subCatsJson || sub.name !== template.name) {
-          hasStructuralChanges = true;
-          return { ...sub, name: template.name, categories: JSON.parse(templateCatsJson) };
+          // Only sync if the template actually has a grading structure defined.
+          // This prevents unconfigured base templates from wiping out 
+          // composite subject structures on instances.
+          const templateIsConfigured = template.categories && template.categories.length > 0;
+          const isInstanceComposite = sub.categories?.some(c => c.isComponent);
+          
+          console.log(`[useSubjectManagement] Sync check for ${sub.name}:`, {
+            templateIsConfigured,
+            isInstanceComposite,
+            willSync: templateIsConfigured || !isInstanceComposite
+          });
+
+          if (templateIsConfigured || !isInstanceComposite) {
+            hasStructuralChanges = true;
+            return { ...sub, name: template.name, categories: JSON.parse(templateCatsJson) };
+          }
         }
         return sub;
       });
@@ -240,7 +264,18 @@ export function useSubjectManagement(users, setUsers) {
     try {
       setLoading(true); // Set loading for this specific action
       setSubjectsError(null);
-      const updatedSubject = await subjectService.updateSubject(id, data);
+      
+      // Map data to backend DTO
+      const payload = {
+        Name: data.name || data.Name || old.name,
+        Code: data.code || data.Code || old.code,
+        GradeLevel: data.gradeLevel || data.GradeLevel || old.gradeLevel,
+        TeacherId: data.teacherId || data.TeacherId || old.teacherId,
+        TeacherName: data.teacherName || data.TeacherName || old.teacherName,
+        CategoriesJson: data.categories || data.CategoriesJson || old.categories
+      };
+
+      const updatedSubject = await subjectService.updateSubject(id, payload);
       
       // Apply normalization to the updated subject response to ensure camelCase consistency
       const normalized = normalizeSubject(updatedSubject);

@@ -137,7 +137,8 @@ export default function App() {
     removeComponentFromSubject, // NEW
     updateComponentName, // NEW
     convertToComposite, // NEW
-    convertToNonComposite // NEW
+    convertToNonComposite, // NEW
+    updateComponentTeacher // NEW
   } = useGradeManagement(currentUser); // UPDATED: Pass currentUser context
 
   // Initial data fetch on mount or login to ensure deep links work
@@ -601,6 +602,8 @@ export default function App() {
                       updateComponentName={updateComponentName} // NEW
                       convertToComposite={convertToComposite} // NEW
                       convertToNonComposite={convertToNonComposite} // NEW
+                      updateComponentTeacher={updateComponentTeacher} // NEW
+                      users={users} // NEW
                     />
                   </div>
                 </>

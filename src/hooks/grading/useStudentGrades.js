@@ -216,6 +216,22 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }));
   }, [setBaseSubjects]);
 
+  const updateComponentTeacher = useCallback((subjectId, componentId, teacherId) => {
+    const updater = (prev) => prev.map(sub => {
+      if (sub.id === subjectId) {
+        return {
+          ...sub,
+          categories: (sub.categories || []).map(comp =>
+            comp.id === componentId ? { ...comp, teacherId } : comp
+          )
+        };
+      }
+      return sub;
+    });
+    setBaseSubjects(updater);
+    setSubjects(updater);
+  }, [setBaseSubjects, setSubjects]);
+
   const updateComponentName = useCallback((subjectId, componentId, newName) => {
     setBaseSubjects(prev => prev.map(baseSub => {
       if (baseSub.id === subjectId) {
@@ -418,6 +434,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     removeComponentFromSubject,
     updateComponentName,
     convertToComposite,
-    convertToNonComposite
+    convertToNonComposite,
+    updateComponentTeacher
   };
 }
