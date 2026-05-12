@@ -419,7 +419,6 @@ export default function App() {
                         userRole={currentUser.role}
                         currentUser={currentUser}
                         quarter={selectedQuarter}
-                        isReadOnly={selectedSubject.teacherId !== currentUser.id}
                         savedRecord={savedClassRecords.find(record => record.id === `${selectedSubject.sectionId}-${selectedSubject.id}-Q${selectedQuarter}`)}
                         updateGrade={updateGrade}
                         syncError={syncError} // Pass syncError to ClassRecord

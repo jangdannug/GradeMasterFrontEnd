@@ -41,7 +41,6 @@ export function ClassRecord({
   applyClassRecordDraft,
   userRole,
   quarter,
-  isReadOnly = false,
   savedRecord = null,
   onSubmitClassRecord = null,
   currentUser = null,
@@ -54,8 +53,13 @@ export function ClassRecord({
   const isAdmin = userRole === 'admin';
   const isSubmitted = savedRecord?.isLocked;
   const isVerified = savedRecord?.isVerified; // New variable for clarity
-  const isEditable = !isReadOnly && !isSubmitted && !isVerified; // Record is editable only if not read-only, not locked, and not verified.
-  const effectiveSummaryOnly = isSummaryOnly || (isAdviser && isReadOnly);
+
+  const isMainTeacher = React.useMemo(() => 
+    currentUser && String(currentUser.id) === String(subject.teacherId),
+    [currentUser, subject.teacherId]
+  );
+
+  const effectiveSummaryOnly = isSummaryOnly || (isAdviser && !isMainTeacher);
 
   // Find the template associated with this subject to ensure we have the categories
   const template = React.useMemo(() => 
@@ -84,6 +88,26 @@ export function ClassRecord({
     }
   }, [subject.id, isComposite, resolvedCategories]);
 
+  const activeComponent = React.useMemo(() => {
+    if (!isComposite || !activeComponentId || activeComponentId === 'summary') return null;
+    return resolvedCategories.find(c => c.id === activeComponentId);
+  }, [isComposite, activeComponentId, resolvedCategories]);
+
+  // Determine if the current user is the teacher for the active component or the main subject
+  const isCurrentUserComponentTeacher = React.useMemo(() => {
+    if (!currentUser) return false;
+
+    if (isComposite && activeComponent) {
+      const componentTeacherId = activeComponent.teacherId;
+      if (componentTeacherId) {
+        return String(currentUser.id) === String(componentTeacherId);
+      } else {
+        return String(currentUser.id) === String(subject.teacherId);
+      }
+    }
+    return String(currentUser.id) === String(subject.teacherId);
+  }, [currentUser, isComposite, activeComponent, subject.teacherId]);
+
   const effectiveCategories = React.useMemo(() => {
     if (activeComponentId === 'summary') return [];
     if (isComposite && activeComponentId) {
@@ -96,7 +120,7 @@ export function ClassRecord({
   }, [resolvedCategories, isComposite, activeComponentId]);
 
   const totalWeight = (effectiveCategories).reduce((acc, cat) => acc + cat.weight, 0);
-
+  
   const containerRef = React.useRef(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [calculatedGrades, setCalculatedGrades] = React.useState({});
@@ -110,7 +134,7 @@ export function ClassRecord({
   const hasInitialBatchCalculated = React.useRef(false);
 
   // Reset draft loaded status when subject, section, or quarter changes
-  React.useEffect(() => {
+  React.useEffect(() => { // This effect should run when subject, section, or quarter changes
     setDraftLoaded(false);
     setIsApplyingDraft(false);
     hasInitialBatchCalculated.current = false;
@@ -143,6 +167,9 @@ export function ClassRecord({
     document.addEventListener('fullscreenchange', handleFSChange);
     return () => document.removeEventListener('fullscreenchange', handleFSChange);
   }, []);
+
+  // The overall editability of the current view (either main subject or active component)
+  const isCurrentViewEditable = React.useMemo(() => isCurrentUserComponentTeacher && !isSubmitted && !isVerified, [isCurrentUserComponentTeacher, isSubmitted, isVerified]);
 
   React.useEffect(() => {
     if (!subject || !section || !students.length || draftLoaded) return;
@@ -204,7 +231,7 @@ export function ClassRecord({
   }, [hasUnsavedChanges]); // Re-run effect if hasUnsavedChanges changes
 
   const handleSaveDraft = React.useCallback(async () => {
-    if (!isEditable || !saveDraftClassRecord || !currentUser || !subject || !section || draftStatus === 'saving' || !hasUnsavedChanges) return;
+    if (!isCurrentViewEditable || !saveDraftClassRecord || !currentUser || !subject || !section || draftStatus === 'saving' || !hasUnsavedChanges) return;
     
     setDraftStatus('saving');
     const relevantStudents = students.filter(s => String(s.sectionId) === String(subject.sectionId));
@@ -221,7 +248,7 @@ export function ClassRecord({
     } catch (error) {
       setDraftStatus('error');
     }
-  }, [isEditable, saveDraftClassRecord, currentUser, subject, section, students, quarter, draftStatus, hasUnsavedChanges, onDirtyChange]);
+  }, [isCurrentViewEditable, saveDraftClassRecord, currentUser, subject, section, students, quarter, draftStatus, hasUnsavedChanges, onDirtyChange]);
 
   // Handle Grade Calculations
   React.useEffect(() => {
@@ -313,8 +340,8 @@ export function ClassRecord({
                   <h2 className={`text-xl md:text-3xl ${theme.styles.heading}`}>Class Record</h2>
                   
                 <button 
-                  onClick={handleSaveDraft}
-                  disabled={draftStatus === 'saving' || !isEditable}
+                  onClick={handleSaveDraft} // This will only run if isCurrentViewEditable is true
+                  disabled={draftStatus === 'saving' || !isCurrentViewEditable}
                   className={`flex items-center gap-2 px-4 py-2 border ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed ${
                     hasUnsavedChanges 
                       ? 'bg-pink-600 border-pink-400 text-white animate-pulse shadow-lg shadow-pink-500/40' 
@@ -352,7 +379,14 @@ export function ClassRecord({
             </div>
           
           <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 p-6 bg-black/10 ${theme.styles.radiusSm}`}>
-            <RecordMeta label="Teacher" value={subject.teacherName} />
+            <RecordMeta 
+              label="Teacher" 
+              value={
+                isComposite && activeComponent && activeComponent.teacherId 
+                  ? activeComponent.teacherName 
+                  : subject.teacherName
+              } 
+            />
             <RecordMeta label="Subject" value={subject.name} italic />
             <RecordMeta label="Template" value={template?.code || 'N/A'} />
             <RecordMeta label="Grade & Section" value={`${section.gradeLevel} - ${section.name}`} />
@@ -471,14 +505,14 @@ export function ClassRecord({
                           type="number"
                           value={(hpsValues[i] === undefined || hpsValues[i] === null || isNaN(Number(hpsValues[i]))) ? '' : Number(hpsValues[i])}
                           onChange={(e) => {
-                            if (!isEditable) return;
+                            if (!isCurrentViewEditable) return;
                             let val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
                             if (isNaN(val) || val < 0) val = 0;
                             e.target.value = val.toString(); // Strip leading zeros (08 -> 8)
                             updateGrade('HPS', subject.id, cat.id, 'hps', i, val, quarter);
                           }}
-                          disabled={!isEditable}
-                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isEditable ? 'bg-slate-800/50 cursor-not-allowed opacity-30 select-none' : 'bg-transparent focus:bg-slate-800 transition-colors'}`}
+                          disabled={!isCurrentViewEditable}
+                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isCurrentViewEditable ? 'bg-slate-800/50 cursor-not-allowed opacity-30 select-none' : 'bg-transparent focus:bg-slate-800 transition-colors'}`}
                           placeholder="0"
                         />
                       </td>
@@ -552,7 +586,7 @@ export function ClassRecord({
                                 title={hps > 0 ? `Enter score (Max: ${hps})` : "Please set HPS first"}
                                 value={(cg?.scores[colIdx]?.points === null || cg?.scores[colIdx]?.points === undefined || isNaN(Number(cg?.scores[colIdx]?.points))) ? '' : Number(cg?.scores[colIdx]?.points)}
                                 onChange={(e) => {
-                                  if (isEditable) {
+                                  if (isCurrentViewEditable) {
                                     let val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                                     if (val !== null) {
                                       if (isNaN(val) || val < 0) val = 0;
@@ -564,8 +598,8 @@ export function ClassRecord({
                                     updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
                                   }
                                 }}
-                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
-                                disabled={hps === 0 || !isEditable}
+                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isCurrentViewEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
+                                disabled={hps === 0 || !isCurrentViewEditable}
                               />
                             </td>
                           );
@@ -620,7 +654,7 @@ export function ClassRecord({
         </table>
        </div>
 
-       {!isReadOnly && !isSubmitted && onSubmitClassRecord && (
+       {isCurrentViewEditable && onSubmitClassRecord && (
          <div className="p-6 md:p-10 bg-slate-50 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
            <div className={`flex items-center gap-5 p-5 ${hasUnsavedChanges ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-100'} border-2 rounded-[2rem] shadow-sm max-w-2xl transition-colors`}>
              <div className={`size-12 bg-white rounded-2xl flex items-center justify-center ${hasUnsavedChanges ? 'text-amber-600 border-amber-100' : 'text-rose-600 border-rose-100'} shadow-sm shrink-0 border`}>
