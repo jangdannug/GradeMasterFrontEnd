@@ -14,7 +14,8 @@ const normalizeStudent = (item) => {
     gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
     schoolYear: item.schoolYear || item.SchoolYear || item.school_year,
     sectionId: item.sectionId ?? item.SectionId ?? item.section_id ?? null,
-    grades: (typeof item.grades === 'string' ? JSON.parse(item.grades) : (item.grades || item.Grades)) || {}
+    grades: (typeof item.grades === 'string' ? JSON.parse(item.grades) : (item.grades || item.Grades)) || {},
+    schoolId: item.schoolId || item.SchoolId || item.school_id
   };
 };
 
@@ -295,10 +296,10 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
     }
   }, []);
 
-  const bulkEnrollStudents = useCallback(async (file, schoolYear) => {
+  const bulkEnrollStudents = useCallback(async (file, schoolYear, schoolId) => {
     try {
       setError(null);
-      const result = await studentService.bulkUploadStudents(file, schoolYear);
+      const result = await studentService.bulkUploadStudents(file, schoolYear, null, schoolId);
       await syncStudents(); // Refresh the list after bulk upload
       return result;
     } catch (err) {

@@ -27,12 +27,12 @@ export const createStudent = async (data) => {
     }
 };
 
-export const bulkUploadStudents = async (file, schoolYear, sectionId) => {
+export const bulkUploadStudents = async (file, schoolYear, sectionId, schoolId) => {
     try {
         const formData = new FormData();
         formData.append('file', file);
         const response = await api.post('/students/bulk', formData, {
-            params: { schoolYear, sectionId },
+            params: { schoolYear, sectionId, schoolId },
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         return response.data;

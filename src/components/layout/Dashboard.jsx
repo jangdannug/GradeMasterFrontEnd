@@ -38,10 +38,32 @@ export function Dashboard({
   const currentUserRole = String(currentUser?.role || role).toLowerCase();
   const currentUserSchoolId = currentUser?.schoolId;
 
+  const filteredBaseSubjectsForDashboard = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return baseSubjects;
+    return baseSubjects.filter(b => String(b.schoolId) === String(currentUserSchoolId));
+  }, [baseSubjects, currentUserRole, currentUserSchoolId]);
+
   const filteredSectionsForDashboard = React.useMemo(() => {
     if (currentUserRole === 'superadmin') return allSections;
     return allSections.filter(s => String(s.schoolId) === String(currentUserSchoolId));
   }, [allSections, currentUserRole, currentUserSchoolId]);
+
+  const filteredUsersForDashboard = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return users;
+    return users.filter(u => String(u.schoolId) === String(currentUserSchoolId));
+  }, [users, currentUserRole, currentUserSchoolId]);
+
+  const filteredStudentsForDashboard = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return students;
+    return students.filter(s => {
+      if (s.schoolId && String(s.schoolId) === String(currentUserSchoolId)) return true;
+      if (s.sectionId) {
+        const section = allSections.find(sec => String(sec.id) === String(s.sectionId));
+        return section && String(section.schoolId) === String(currentUserSchoolId);
+      }
+      return false;
+    });
+  }, [students, allSections, currentUserRole, currentUserSchoolId]);
 
   const filteredSubjectsForDashboard = React.useMemo(() => {
     if (currentUserRole === 'superadmin') return subjects;
@@ -75,7 +97,7 @@ export function Dashboard({
     >
       {(currentUserRole === 'admin' || currentUserRole === 'superadmin') && (
         <AdminDashboardView 
-          users={users} 
+          users={filteredUsersForDashboard} 
           allSections={filteredSectionsForDashboard} 
           subjects={filteredSubjectsForDashboard} 
         />
@@ -109,20 +131,20 @@ export function Dashboard({
           role={currentUserRole}
           subjects={filteredSubjectsForDashboard}
           currentTeacherId={currentTeacherId}
-          allSections={allSections}
+          allSections={filteredSectionsForDashboard}
           onSelectSubject={onSelectSubject}
         />
       )}
 
-      {String(role).toLowerCase() === 'adviser' && (activeTab === 'students' || activeTab === 'curriculum') && (
+      {currentUserRole === 'adviser' && (activeTab === 'students' || activeTab === 'curriculum') && (
         <AdvisoryDashboardView 
           activeView={activeTab}
-          allSections={allSections}
+          allSections={filteredSectionsForDashboard}
           currentTeacherId={currentTeacherId}
-          students={students}
-          subjects={subjects}
-          baseSubjects={baseSubjects}
-          users={users}
+          students={filteredStudentsForDashboard}
+          subjects={filteredSubjectsForDashboard}
+          baseSubjects={filteredBaseSubjectsForDashboard}
+          users={filteredUsersForDashboard}
           onAddStudent={onAddStudent}
           onRemoveStudent={onRemoveStudent}
           onAssignStudent={onAssignStudent}

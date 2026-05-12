@@ -97,7 +97,7 @@ export function StudentManagementView({
 
     try {
       setIsUploading(true);
-      const result = await onBulkEnroll(file, formData.schoolYear);
+      const result = await onBulkEnroll(file, formData.schoolYear, formData.schoolId);
       
       // Check if backend returned success: false even with a 200 OK
       if (result && result.success === false) {
@@ -327,10 +327,10 @@ export function StudentManagementView({
           <div className="space-y-4">
             <button
               onClick={() => {
-                const headers = ['last_name', 'first_name', 'middle_name', 'gender', 'grade_level', 'school_year'];
+                const headers = ['last_name', 'first_name', 'middle_name', 'gender', 'grade_level', 'school_year', 'school_id'];
                 const samples = [
-                  ['DELA CRUZ', 'JUAN', 'PROTACIO', 'MALE', '10', '2025-2026'],
-                  ['SANTOS', 'MARIA', 'CLARA', 'FEMALE', '10', '2025-2026']
+                  ['DELA CRUZ', 'JUAN', 'PROTACIO', 'MALE', '10', '2025-2026', formData.schoolId || '123456'],
+                  ['SANTOS', 'MARIA', 'CLARA', 'FEMALE', '10', '2025-2026', formData.schoolId || '123456']
                 ];
                 const csvContent = "data:text/csv;charset=utf-8," + [headers, ...samples].map(e => e.join(",")).join("\n");
                 const encodedUri = encodeURI(csvContent);

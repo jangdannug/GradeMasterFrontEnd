@@ -649,7 +649,7 @@ export default function App() {
             } />
 
             <Route path="/student-management" element={
-              <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
+              <ProtectedRoute roles={['superadmin', 'adviser']}>
                 <>
                   <Header 
                     section={defaultSection} 

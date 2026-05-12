@@ -76,7 +76,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           />
         )}
 
-        {(role === 'superadmin' || role === 'admin' || role === 'adviser') && (
+        {(role === 'superadmin' || role === 'adviser') && (
           <SidebarLink 
             to="/student-management"
             icon={<UserPlus size={20} />}
