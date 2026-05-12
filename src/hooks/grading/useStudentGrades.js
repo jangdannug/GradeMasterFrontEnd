@@ -321,13 +321,14 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
 
 
   // New function for overall student registration (not necessarily assigned to a section yet)
-  const enrollStudentOverall = useCallback(async (lastName, firstName, middleName, gender, gradeLevel, schoolYear) => {
+  const enrollStudentOverall = useCallback(async (lastName, firstName, middleName, gender, gradeLevel, schoolYear, schoolId) => {
     const fullName = `${lastName.trim()}, ${firstName.trim()} ${middleName.trim()}`.toUpperCase().trim();
     const newStudent = {
       name: fullName,
       gender,
       gradeLevel,
       schoolYear,
+      schoolId,
       sectionId: null, // Initially unassigned
       grades: {}
     };

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, CheckCircle, Plus, Search, Trash2, Edit, X, Layers, GraduationCap, Users, Upload, Download } from 'lucide-react';
+import { User, CheckCircle, Plus, Search, Trash2, Edit, X, Layers, GraduationCap, Users, Upload, Download, School } from 'lucide-react';
 import { theme } from '../../theme';
+import schoolService from '../../services/schoolService';
 
 export function StudentManagementView({ 
   onEnrollStudent, 
@@ -11,7 +12,8 @@ export function StudentManagementView({
   onUpdateStudent,
   onRemoveStudent,
   onSync,
-  onBulkEnroll
+  onBulkEnroll,
+  currentUser
 }) {
   const [formData, setFormData] = useState({
     lastName: '',
@@ -20,12 +22,24 @@ export function StudentManagementView({
     gender: 'MALE',
     gradeLevel: '7',
     schoolYear: schoolYears[0] || '2025-2026',
+    schoolId: currentUser?.schoolId || '',
   });
   const [isSubmitted, setIsSubmitted] = useState(false); // For single enrollment success message
   const [activeTab, setActiveTab] = useState('enroll'); // 'enroll' | 'manage' | 'bulk-upload'
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [genderFilter, setGenderFilter] = useState('all');
+  const [schoolFilter, setSchoolFilter] = useState('all');
+  const [schools, setSchools] = useState([]);
+
+  React.useEffect(() => {
+    if (currentUser?.role === 'superadmin') {
+      schoolService.getSchools()
+        .then(setSchools)
+        .catch(err => console.error("Failed to fetch schools:", err));
+    }
+  }, [currentUser]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
 
@@ -42,7 +56,8 @@ export function StudentManagementView({
         formData.middleName,
         formData.gender,
         formData.gradeLevel,
-        formData.schoolYear
+        formData.schoolYear,
+        formData.schoolId
       );
       setIsSubmitted(true);
       // Optionally reset form after submission
@@ -53,6 +68,7 @@ export function StudentManagementView({
         gender: 'MALE',
         gradeLevel: '7',
         schoolYear: schoolYears[0] || '2025-2026',
+        schoolId: currentUser?.schoolId || '',
       });
     }
   };
@@ -61,8 +77,9 @@ export function StudentManagementView({
     let filtered = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
     if (gradeFilter !== 'all') filtered = filtered.filter(s => s.gradeLevel === gradeFilter);
     if (genderFilter !== 'all') filtered = filtered.filter(s => s.gender === genderFilter);
+    if (currentUser?.role === 'superadmin' && schoolFilter !== 'all') filtered = filtered.filter(s => String(s.schoolId) === String(schoolFilter));
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [students, searchQuery, gradeFilter, genderFilter]);
+  }, [students, searchQuery, gradeFilter, genderFilter, schoolFilter, currentUser]);
 
   const getStudentInitials = (fullName) => {
     const parts = fullName.split(',');
@@ -253,8 +270,22 @@ export function StudentManagementView({
                 <option value="MALE">Male</option>
                 <option value="FEMALE">Female</option>
               </select>
+              {currentUser?.role === 'superadmin' && (
+                <select 
+                  value={schoolFilter}
+                  onChange={(e) => setSchoolFilter(e.target.value)}
+                  className={`${theme.styles.input} text-sm w-full md:w-48`}
+                >
+                  <option value="all">All Schools</option>
+                  {schools.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
               <button 
-                onClick={() => { setSearchQuery(''); setGradeFilter('all'); setGenderFilter('all'); }}
+                onClick={() => { 
+                  setSearchQuery(''); setGradeFilter('all'); setGenderFilter('all'); setSchoolFilter('all');
+                }}
                 className={`${theme.styles.button} bg-slate-100 text-slate-600 hover:bg-slate-200 py-2.5`}
               >
                 Clear Filters

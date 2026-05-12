@@ -667,6 +667,7 @@ export default function App() {
                       onBulkEnroll={bulkEnrollStudents}
                       syncError={syncError} // Pass syncError to StudentManagementView
                       onRemoveStudent={removeStudent} // Pass removeStudent for deleting
+                      currentUser={currentUser}
                     />
                   </div>
                 </>

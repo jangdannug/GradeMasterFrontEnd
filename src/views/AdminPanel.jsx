@@ -14,6 +14,7 @@ import {
   Eye,
   Layers, Pencil,
   Settings,
+  School,
   BookOpen, 
   Mail,
   Clock,
@@ -64,7 +65,7 @@ export function AdminPanel({
   const [isUpdatingUser, setIsUpdatingUser] = React.useState(false);
   const [editingSectionId, setEditingSectionId] = React.useState(null);
   const [editingBaseSubjectId, setEditingBaseSubjectId] = React.useState(null);
-  const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7' });
+  const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7', schoolId: '' });
 
   const currentUserId = currentUser?.id;
   const currentUserRole = currentUser?.role?.toLowerCase();
@@ -82,7 +83,30 @@ export function AdminPanel({
     schoolId: ''
   });
   const [approvalForms, setApprovalForms] = React.useState({});
-  const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
+  const [baseSubjectForm, setBaseSubjectForm] = React.useState({ 
+    name: '', 
+    code: '', 
+    gradeLevel: '7',
+    schoolId: ''
+  });
+
+  const [schools, setSchools] = React.useState([]);
+
+  React.useEffect(() => {
+    if (currentUserRole === 'superadmin') {
+      schoolService.getSchools()
+        .then(setSchools)
+        .catch(err => console.error("Failed to fetch schools list:", err));
+    }
+  }, [currentUserRole]);
+
+  // Initialize baseSubjectForm schoolId when role is known
+  React.useEffect(() => {
+    if (currentUserRole === 'admin' && currentUserSchoolId) {
+        setBaseSubjectForm(prev => ({ ...prev, schoolId: currentUserSchoolId }));
+    }
+  }, [currentUserRole, currentUserSchoolId]);
+
   const [isCreatingBaseSubject, setIsCreatingBaseSubject] = React.useState(false);
   const [isUpdatingBaseSubject, setIsUpdatingBaseSubject] = React.useState(false);
   const [deletingBaseSubjectId, setDeletingBaseSubjectId] = React.useState(null);
@@ -274,7 +298,7 @@ export function AdminPanel({
   // Sort grade levels
   const sortedGrades = Object.keys(groupedSections).sort((a, b) => parseInt(a) - parseInt(b));
 
-  const groupedBaseSubjects = baseSubjects.reduce((acc, base) => {
+  const groupedBaseSubjects = filteredBaseSubjects.reduce((acc, base) => {
     const grade = base.gradeLevel;
     if (!acc[grade]) acc[grade] = [];
     acc[grade].push(base);
@@ -290,11 +314,16 @@ export function AdminPanel({
         Name: baseSubjectForm.name.toUpperCase(),
         Code: baseSubjectForm.code,
         GradeLevel: baseSubjectForm.gradeLevel,
-        SchoolId: currentUserSchoolId, // Auto-assign schoolId for new base subjects
+        SchoolId: baseSubjectForm.schoolId || currentUserSchoolId, 
         CategoriesJson: JSON.stringify([])
       };
       await onCreateBaseSubject(data);
-      setBaseSubjectForm({ name: '', code: '', gradeLevel: '7' });
+      setBaseSubjectForm({ 
+        name: '', 
+        code: '', 
+        gradeLevel: '7',
+        schoolId: currentUserRole === 'admin' ? currentUserSchoolId : ''
+      });
     } catch (error) {
       console.error('Failed to create base subject:', error);
       // Error will be caught by syncError, or specific error message can be displayed
@@ -314,7 +343,7 @@ export function AdminPanel({
       const data = {
         Name: baseEditFormData.name.toUpperCase(),
         Code: baseEditFormData.code.toUpperCase(),
-        SchoolId: baseEditFormData.schoolId, // Ensure schoolId is passed for updates
+        SchoolId: baseEditFormData.schoolId || currentUserSchoolId, // Ensure schoolId is passed for updates
         GradeLevel: baseEditFormData.gradeLevel,
         CategoriesJson: JSON.stringify(existing?.categories || []), // Stringify categories for backend
         PushToInstances: false // TODO: Add UI option to push changes to instances
@@ -795,6 +824,17 @@ export function AdminPanel({
                   className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2" 
                   required
                 />
+                {currentUserRole === 'superadmin' && (
+                  <select 
+                    value={baseSubjectForm.schoolId}
+                    onChange={e => setBaseSubjectForm({...baseSubjectForm, schoolId: e.target.value})}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs"
+                    required
+                  >
+                    <option value="" disabled>School Association</option>
+                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                )}
                 <div className="flex gap-2">
                   <select 
                     value={baseSubjectForm.gradeLevel}
@@ -845,6 +885,17 @@ export function AdminPanel({
                                 placeholder="NAME"
                                 autoFocus
                               />
+                              {currentUserRole === 'superadmin' && (
+                                <select 
+                                  value={baseEditFormData.schoolId}
+                                  onChange={e => setBaseEditFormData({...baseEditFormData, schoolId: e.target.value})}
+                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold outline-none"
+                                  required
+                                >
+                                  <option value="" disabled>Transfer to School...</option>
+                                  {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                              )}
                               <div className="flex gap-2">
                                 <button 
                                   onClick={() => handleUpdateBaseSubject(base.id)}
