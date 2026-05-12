@@ -2,7 +2,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react'; // Keep this line
-import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save, Layers } from 'lucide-react';
+import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save, Layers, Upload, FileDown } from 'lucide-react';
 import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
@@ -272,6 +272,84 @@ export function ClassRecord({
     }
   }, [isCurrentViewEditable, saveDraftClassRecord, currentUser, subject, section, students, quarter, draftStatus, hasUnsavedChanges, onDirtyChange]);
 
+  // Handle Dynamic Template Download
+  const handleDownloadTemplate = React.useCallback(() => {
+    if (!students.length) return;
+
+    // 1. Generate Headers
+    const headers = ['LRN', 'Learner Name'];
+    effectiveCategories.forEach(cat => {
+      cat.columnNames.forEach(col => {
+        headers.push(`"${cat.name} - ${col}"`);
+      });
+    });
+
+    const csvRows = [headers.join(',')];
+    
+    // 2. Add Student Rows with current scores if any
+    students.forEach(student => {
+      const row = [`"${student.id}"`, `"${student.name}"`];
+      const sg = student.grades?.[subject.id]?.[quarter]?.categoryGrades;
+      
+      effectiveCategories.forEach(cat => {
+        const catData = sg?.[cat.id];
+        cat.columnNames.forEach((_, idx) => {
+          const score = catData?.scores?.[idx]?.points;
+          row.push(score !== undefined && score !== null ? score : '');
+        });
+      });
+      csvRows.push(row.join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const componentName = activeComponent?.name || 'Main';
+    link.setAttribute("href", url);
+    link.setAttribute("download", `GradeMaster_${subject.code}_${section.name}_Q${quarter}_${componentName}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [students, subject.id, subject.code, section.name, quarter, effectiveCategories, activeComponent]);
+
+  // Handle CSV Score Upload
+  const handleBulkUploadScores = React.useCallback((event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      const lines = content.split(/\r?\n/);
+      if (lines.length < 2) return;
+
+      const scoreMapping = [];
+      effectiveCategories.forEach(cat => {
+        cat.columnNames.forEach((_, idx) => {
+          scoreMapping.push({ catId: cat.id, index: idx });
+        });
+      });
+
+      lines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        const lrn = cells[0].replace(/"/g, '').trim();
+        
+        if (lrn) {
+          scoreMapping.forEach((map, mIdx) => {
+            const cellVal = cells[mIdx + 2]; // Skip LRN and Name
+            if (cellVal !== undefined && cellVal.trim() !== '') {
+              const score = parseInt(cellVal.replace(/"/g, ''), 10);
+              if (!isNaN(score)) updateGrade(lrn, subject.id, map.catId, 'points', map.index, score, quarter);
+            }
+          });
+        }
+      });
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }, [subject.id, quarter, effectiveCategories, updateGrade]);
+
   // Handle Grade Calculations
   React.useEffect(() => {
     if (!students.length || !subject) return;
@@ -392,6 +470,28 @@ export function ClassRecord({
                     {draftStatus === 'saving' ? "Saving..." : draftStatus === 'error' ? "Save Error" : hasUnsavedChanges ? "Save Changes" : "Save Draft"}
                   </span>
                 </button>
+
+                {isCurrentViewEditable && activeComponentId !== 'summary' && effectiveCategories.length > 0 && (
+                  <div className="flex items-center gap-2 border-l border-white/20 pl-4 ml-2">
+                    <button 
+                      onClick={handleDownloadTemplate}
+                      className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all active:scale-95 shadow-sm"
+                      title="Download CSV Template for offline entry"
+                    >
+                      <FileDown size={18} />
+                      <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Template</span>
+                    </button>
+                    
+                    <label 
+                      className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all active:scale-95 shadow-sm cursor-pointer"
+                      title="Upload CSV to update scores"
+                    >
+                      <Upload size={18} />
+                      <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Bulk Input</span>
+                      <input type="file" accept=".csv" className="hidden" onChange={handleBulkUploadScores} />
+                    </label>
+                  </div>
+                )}
 
                   <button 
                     onClick={toggleFullscreen}
