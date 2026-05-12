@@ -24,7 +24,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
     <motion.aside 
       initial={false}
       animate={{ width: isOpen ? 280 : 80 }}
-      className="bg-white border-r border-slate-200 flex flex-col z-20 shrink-0 h-screen overflow-hidden"
+      className="bg-white border-r border-slate-200 flex flex-col z-20 shrink-0 h-screen overflow-hidden print:hidden"
     >
       <div className="p-6 flex items-center gap-3 border-b border-slate-100 h-20">
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -90,6 +90,15 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
             to="/record"
             icon={<ClipboardCheck size={20} />}
             label="Class Record"
+            collapsed={!isOpen}
+          />
+        )}
+
+        {(role === 'superadmin' || role === 'admin') && (
+          <SidebarLink 
+            to="/sf10"
+            icon={<FileText size={20} />}
+            label="SF10 Permanent Record"
             collapsed={!isOpen}
           />
         )}

@@ -19,6 +19,8 @@ const TemplatesView = lazy(() => import('./views/TemplatesView').then(m => ({ de
 const SubmittedRecords = lazy(() => import('./views/SubmittedRecords').then(m => ({ default: m.SubmittedRecords })));
 const ApiConnectionErrorDisplay = lazy(() => import('./components/ApiConnectionErrorDisplay').then(m => ({ default: m.ApiConnectionErrorDisplay }))); // NEW
 const StudentManagementView = lazy(() => import('./components/layout/StudentManagementView').then(m => ({ default: m.StudentManagementView }))); // Renamed
+const SF10JHSForm = lazy(() => import('./views/SF10JHSForm').then(m => ({ default: m.default })));
+const SF9Form = lazy(() => import('./views/SF9Form').then(m => ({ default: m.default })));
 const SchoolManagement = lazy(() => import('./views/SchoolManagement').then(m => ({ default: m.SchoolManagement })));
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
@@ -281,7 +283,7 @@ export default function App() {
             }}
           />
         ) : (
-      <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden print:h-auto print:overflow-visible">
         <Sidebar 
           isOpen={isSidebarOpen} 
           setIsOpen={setIsSidebarOpen} 
@@ -301,7 +303,7 @@ export default function App() {
           hasSubjects={userHasSubjects}
         />
 
-        <main className="flex-1 flex flex-col overflow-hidden relative">
+        <main className="flex-1 flex flex-col overflow-hidden relative print:overflow-visible">
           <Routes>
             <Route path="/" element={
               // UPDATED: All routes except login are protected
@@ -671,6 +673,22 @@ export default function App() {
                     />
                   </div>
                 </>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sf10" element={
+              <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
+                <div className="flex-1 overflow-auto bg-slate-200 print:overflow-visible print:bg-white print:p-0">
+                  <SF10JHSForm />
+                </div>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sf9" element={
+              <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
+                <div className="flex-1 overflow-auto bg-slate-200 print:overflow-visible print:bg-white print:p-0">
+                  <SF9Form />
+                </div>
               </ProtectedRoute>
             } />
           </Routes>

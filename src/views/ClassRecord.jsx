@@ -454,10 +454,10 @@ export function ClassRecord({
                 <div className="flex items-center gap-4">
                   <h2 className={`text-xl md:text-3xl ${theme.styles.heading}`}>Class Record</h2>
                   
-                <button 
-                  onClick={handleSaveDraft} // This will only run if isCurrentViewEditable is true
-                  disabled={draftStatus === 'saving' || !isCurrentViewEditable}
-                  className={`flex items-center gap-2 px-4 py-2 border ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed ${
+                  <button 
+                    onClick={handleSaveDraft}
+                    disabled={draftStatus === 'saving' || !isCurrentViewEditable}
+                    className={`flex items-center gap-2 px-4 py-2 border ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed ${
                     hasUnsavedChanges 
                       ? 'bg-pink-600 border-pink-400 text-white animate-pulse shadow-lg shadow-pink-500/40' 
                       : draftStatus === 'error' 
@@ -793,7 +793,7 @@ export function ClassRecord({
           </tbody>
         </table>
        </div>
-
+       
        {isCurrentViewEditable && onSubmitClassRecord && isMainTeacher && (
          <div className="p-6 md:p-10 bg-slate-50 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
            <div className={`flex items-center gap-5 p-5 ${hasUnsavedChanges ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-100'} border-2 rounded-[2rem] shadow-sm max-w-2xl transition-colors`}>
