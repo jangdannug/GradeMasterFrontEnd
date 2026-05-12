@@ -37,19 +37,6 @@ export function AdvisoryDashboardView({
     [allSections, currentTeacherId, assignedSectionId]
   );
 
-  // Top-level execution log
-  console.log(`[AdvisoryDashboardView] Render triggered. View: "${activeView}", SectionFound: ${!!adviserSection}`);
-
-  React.useEffect(() => {
-    if (adviserSection) {
-      console.log(`[AdvisoryDashboardView] Sync check: Section "${adviserSection.name}" (ID: ${adviserSection.id}) has ${subjects.filter(s => String(s.sectionId) === String(adviserSection.id)).length} subjects.`);
-    } else {
-      console.warn("[AdvisoryDashboardView] No adviserSection found. Checking ID mismatch...");
-      console.log("TeacherID:", currentTeacherId, "AssignedSectionID:", assignedSectionId);
-      console.log("Available Sections:", allSections.map(s => ({ id: s.id, adviserId: s.adviserId })));
-    }
-  }, [adviserSection, subjects.length, activeView]);
-
   const getStudentInitials = (fullName) => {
     const parts = fullName.split(',');
     if (parts.length < 2) return fullName.substring(0, 2).toUpperCase(); // Fallback
@@ -348,73 +335,75 @@ export function AdvisoryDashboardView({
                 if (!adviserSection) return null;
                 
                 const filtered = subjects.filter(s => String(s.sectionId) === String(adviserSection.id));
-                console.log(`[AdvisoryDashboardView] Found ${filtered.length} subjects for section ${adviserSection.id}`);
                 
-                // Log the raw categories before checking isComposite
                 return filtered.map(sub => {
-                // Since we normalized in useSubjectManagement, sub.categories is already an array
                 const resolvedCats = Array.isArray(sub.categories) ? sub.categories : [];
-                
-                const isComposite = Array.isArray(resolvedCats) && resolvedCats.some(c => {
-                  // Log each component's isComponent status
-                  console.log(`[AdvisoryDashboardView] Component check for ${sub.name} - ${c.name}: isComponent=${c.isComponent}`);
-                  return c.isComponent === true; // Explicitly check for boolean true
-                });
-
-
-                console.log(`[AdvisoryDashboardView] Subject: "${sub.name}"`, {
-                  id: sub.id,
-                  isComposite,
-                  // Log resolvedCats directly here to see its structure
-                  categoriesLength: resolvedCats.length,
-                  categoriesData: resolvedCats
-                });
-
+                const isComposite = resolvedCats.some(c => c.isComponent === true);
                 const components = isComposite ? resolvedCats : [];
 
                 return (
-                  <div key={sub.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col group hover:border-indigo-200 hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{sub.name} (G{sub.gradeLevel})</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sub.code}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors" title="Edit Subject"><History size={14} /></button>
-                        <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors" title="Delete Subject"><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                        <div className="size-9 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100 shadow-sm">
-                          <User size={18} />
+                  <div key={sub.id} className={`rounded-[2rem] border-2 border-slate-100 bg-white shadow-xl shadow-slate-200/30 overflow-hidden group hover:border-indigo-200 transition-all duration-500 relative`}>
+                    {/* Status Accent Line */}
+                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${isComposite ? 'bg-indigo-500' : 'bg-blue-500'} opacity-70`} />
+                    
+                    {/* Primary Subject Header */}
+                    <div className="p-7 bg-slate-50/40 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className={`size-16 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 transition-transform group-hover:scale-105 duration-500 ${isComposite ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
+                           {isComposite ? <Layers size={32} /> : <BookOpen size={32} />}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Main Teacher</p>
-                          <p className="text-xs font-black text-slate-800 uppercase truncate">{sub.teacherName}</p>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight truncate">{sub.name}</h4>
+                            {isComposite && <span className="text-[8px] font-black bg-indigo-600 text-white px-2 py-1 rounded-md uppercase tracking-[0.1em] shadow-sm">Composite</span>}
+                          </div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">{sub.code} • GRADE {sub.gradeLevel}</p>
                         </div>
                       </div>
 
-                      {isComposite && components.map(comp => (
-                        <div key={comp.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
-                          <div className="size-9 bg-white rounded-xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-50">
-                            <Layers size={16} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">{comp.name}</p>
-                            <select
-                              value={comp.teacherId || ''}
-                              onChange={(e) => handleComponentTeacherChange(sub, comp.id, e.target.value)}
-                              className="w-full bg-transparent text-xs font-black text-slate-700 uppercase outline-none cursor-pointer p-0 border-none focus:ring-0"
-                            >
-                              <option value="">(Unassigned)</option>
-                              {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                          </div>
+                      <div className="flex items-center gap-8">
+                        <div className="text-left md:text-right hidden sm:block">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 opacity-70">Primary Instructor</p>
+                          <p className="text-xs font-black text-slate-700 uppercase truncate flex items-center md:justify-end gap-2 italic">
+                            <User size={12} className="text-indigo-400" />
+                            {sub.teacherName}
+                          </p>
                         </div>
-                      ))}
+                        <div className="flex gap-2">
+                          <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-3 bg-white border border-slate-100 text-slate-300 hover:text-indigo-600 hover:border-indigo-100 hover:bg-white rounded-2xl transition-all shadow-sm" title="Edit Subject"><History size={18} /></button>
+                          <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-3 bg-white border border-slate-100 text-slate-300 hover:text-rose-500 hover:border-rose-100 hover:bg-white rounded-2xl transition-all shadow-sm" title="Delete Subject"><Trash2 size={18} /></button>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Components Section */}
+                    {isComposite && (
+                      <div className="p-8 bg-white/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-8 border-l-4 border-indigo-100/50 ml-6 relative">
+                           {/* Connector Dot */}
+                           <div className="absolute top-0 -left-[10px] size-4 rounded-full bg-indigo-100 border-4 border-white shadow-sm" />
+                           
+                           {components.map(comp => (
+                             <div key={comp.id} className="flex items-center gap-4 p-4 bg-white rounded-[1.5rem] border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/20 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 group/item">
+                                <div className="size-11 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 shrink-0 border border-slate-100 group-hover/item:bg-white group-hover/item:text-indigo-500 transition-all duration-300">
+                                   <User size={20} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                   <p className="text-[10px] font-black text-slate-400 group-hover/item:text-indigo-600 uppercase tracking-[0.1em] mb-1.5 transition-colors">{comp.name}</p>
+                                   <select
+                                     value={comp.teacherId || ''}
+                                     onChange={(e) => handleComponentTeacherChange(sub, comp.id, e.target.value)}
+                                     className="w-full bg-transparent text-xs font-black text-slate-700 uppercase outline-none cursor-pointer p-0 border-none focus:ring-0 h-auto leading-none italic"
+                                   >
+                                     <option value="">(Inherit Primary)</option>
+                                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                   </select>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               });
