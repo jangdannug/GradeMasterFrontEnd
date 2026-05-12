@@ -378,8 +378,8 @@ export function AdvisoryDashboardView({
 
                     {/* Components Section */}
                     {isComposite && (
-                      <div className="p-8 bg-white/40">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-8 border-l-4 border-indigo-100/50 ml-6 relative">
+                      <div className="p-8 bg-slate-50/30">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-8 border-l-4 border-indigo-100/50 ml-6 relative after:absolute after:bottom-0 after:-left-[4px] after:h-4 after:w-1 after:bg-white">
                            {/* Connector Dot */}
                            <div className="absolute top-0 -left-[10px] size-4 rounded-full bg-indigo-100 border-4 border-white shadow-sm" />
                            

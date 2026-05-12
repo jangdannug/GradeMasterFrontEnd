@@ -28,20 +28,35 @@ export function Dashboard({
   onAddSubject,
   onUpdateSubject,
   onDeleteSubject,
-  onRefresh
+  onRefresh,
+  currentUser
 }) {
   const [activeTab, setActiveTab] = React.useState('teaching');
   
   const navigate = useNavigate();
 
+  const currentUserRole = String(currentUser?.role || role).toLowerCase();
+  const currentUserSchoolId = currentUser?.schoolId;
+
+  const filteredSectionsForDashboard = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return allSections;
+    return allSections.filter(s => String(s.schoolId) === String(currentUserSchoolId));
+  }, [allSections, currentUserRole, currentUserSchoolId]);
+
+  const filteredSubjectsForDashboard = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return subjects;
+    const schoolSectionIds = new Set(filteredSectionsForDashboard.map(s => String(s.id)));
+    return subjects.filter(sub => schoolSectionIds.has(String(sub.sectionId)));
+  }, [subjects, filteredSectionsForDashboard, currentUserRole]);
+
   // DIAGNOSTIC LOG
   React.useEffect(() => {
     console.log("[Dashboard] Render State:", {
-      role,
+      role: currentUserRole,
       activeTab,
       hasAdviserSection: !!allSections.find(s => (assignedSectionId && String(s.id) === String(assignedSectionId)) || (s.adviserId || s.adviser_id) === currentTeacherId)
     });
-  }, [role, activeTab, allSections, assignedSectionId, currentTeacherId]);
+  }, [currentUserRole, activeTab, allSections, assignedSectionId, currentTeacherId]);
 
   // Fetch all necessary context data as soon as the dashboard mounts
   React.useEffect(() => {
@@ -58,15 +73,15 @@ export function Dashboard({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      {(String(role).toLowerCase() === 'admin' || String(role).toLowerCase() === 'superadmin') && (
+      {(currentUserRole === 'admin' || currentUserRole === 'superadmin') && (
         <AdminDashboardView 
           users={users} 
-          allSections={allSections} 
-          subjects={subjects} 
+          allSections={filteredSectionsForDashboard} 
+          subjects={filteredSubjectsForDashboard} 
         />
       )}
 
-      {String(role).toLowerCase() === 'adviser' && (
+      {currentUserRole === 'adviser' && (
         <div className="flex bg-slate-100 p-1 rounded-xl w-fit mb-8 shadow-sm">
           <TabButton 
             active={activeTab === 'teaching'} 
@@ -89,10 +104,10 @@ export function Dashboard({
         </div>
       )}
 
-      {((String(role).toLowerCase() === 'teacher') || (String(role).toLowerCase() === 'adviser' && activeTab === 'teaching')) && (
+      {((currentUserRole === 'teacher') || (currentUserRole === 'adviser' && activeTab === 'teaching')) && (
         <TeachingLoadView 
-          role={role}
-          subjects={subjects}
+          role={currentUserRole}
+          subjects={filteredSubjectsForDashboard}
           currentTeacherId={currentTeacherId}
           allSections={allSections}
           onSelectSubject={onSelectSubject}

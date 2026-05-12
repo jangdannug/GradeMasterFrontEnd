@@ -427,6 +427,7 @@ export function ClassRecord({
             <RecordMeta label="Subject" value={subject.name} italic />
             <RecordMeta label="Template" value={template?.code || 'N/A'} />
             <RecordMeta label="Grade & Section" value={`${section.gradeLevel} - ${section.name}`} />
+            <RecordMeta label="School ID" value={section.schoolId || 'N/A'} />
             <RecordMeta label="Grading Period" value={`${quarter}${quarter === 1 ? 'st' : quarter === 2 ? 'nd' : quarter === 3 ? 'rd' : 'th'} Quarter`} />
             <div className="flex flex-col">
               <p className="text-[9px] opacity-60 font-bold uppercase tracking-widest">Total Weight</p>

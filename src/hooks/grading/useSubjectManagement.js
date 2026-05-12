@@ -34,7 +34,8 @@ const normalizeBaseSubject = (item) => {
     name: item.name || item.Name,
     code: item.code || item.Code,
     gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
-    categories
+    categories,
+    schoolId: item.schoolId || item.SchoolId || item.school_id
   };
 };
 
@@ -52,7 +53,8 @@ const normalizeSubject = (item) => {
     name: item.name || item.Name,
     code: item.code || item.Code,
     gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
-    categories
+    categories,
+    schoolId: item.schoolId || item.SchoolId || item.school_id
   };
 };
 

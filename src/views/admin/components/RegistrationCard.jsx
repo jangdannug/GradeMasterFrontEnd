@@ -1,8 +1,9 @@
 import React from 'react';
-import { Mail, X, Check } from 'lucide-react';
+import { Mail, X, Check, GraduationCap } from 'lucide-react';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import schoolService from '../../../services/schoolService';
 
-export function RegistrationCard({ reg, form, setApprovalForms, sections, onRejectRegistration, handleApprove }) {
+export function RegistrationCard({ reg, form, setApprovalForms, sections, onRejectRegistration, handleApprove, currentUserRole }) {
   const isAdviserRole = form.role === 'adviser';
   const isApproveDisabled = isAdviserRole && !form.sectionId;
 
@@ -13,6 +14,21 @@ export function RegistrationCard({ reg, form, setApprovalForms, sections, onReje
       .map(s => ({ value: s.id, label: `Grade ${s.gradeLevel} - ${s.name}` }))
   ];
 
+  const [schoolName, setSchoolName] = React.useState('Loading...');
+
+  React.useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (reg.schoolId) {
+        try {
+          const schools = await schoolService.getSchools();
+          const school = schools.find(s => String(s.id) === String(reg.schoolId));
+          setSchoolName(school?.name || `Unknown School (ID: ${reg.schoolId})`);
+        } catch (error) { setSchoolName(`Error loading school (ID: ${reg.schoolId})`); }
+      } else { setSchoolName('No School ID provided'); }
+    };
+    fetchSchoolName();
+  }, [reg.schoolId]);
+
   return (
     <div className="bg-white rounded-3xl border-2 border-amber-100 shadow-sm flex flex-col md:flex-row">
       <div className="p-6 md:w-2/5 lg:w-1/3 bg-amber-50/50 border-b md:border-b-0 md:border-r border-amber-100 space-y-4 rounded-t-3xl md:rounded-tr-none md:rounded-l-3xl shrink-0">
@@ -21,8 +37,18 @@ export function RegistrationCard({ reg, form, setApprovalForms, sections, onReje
             <Mail size={24} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="font-black text-slate-800 uppercase italic leading-tight break-words whitespace-normal">{reg.name}</h4>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{reg.username}</p>
+            <h4 className="font-black text-slate-800 uppercase italic leading-tight break-words whitespace-normal flex items-center gap-2">
+              {reg.name}
+              {(reg.requestedRole || reg.requested_role) && (
+                <span className="not-italic text-[7px] font-black bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded shadow-sm">
+                  {reg.requestedRole || reg.requested_role}
+                </span>
+              )}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mb-1">{reg.username}</p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+              <GraduationCap size={10} className="text-slate-400" /> {schoolName}
+            </p>
           </div>
         </div>
         <button 
@@ -41,29 +67,28 @@ export function RegistrationCard({ reg, form, setApprovalForms, sections, onReje
               onChange={e => setApprovalForms(prev => ({ ...prev, [reg.id]: { ...form, role: e.target.value }}))}
               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700"
             >
+              <option value="admin">ADMIN</option>
               <option value="teacher">TEACHER</option>
               <option value="adviser">ADVISER</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-              Primary Class {isAdviserRole ? (
-                <span className="text-rose-500">*</span>
-              ) : (
-                <span className="text-slate-300 font-medium lowercase">(Optional)</span>
-              )}
-            </label>
-            <SearchableSelect 
-              options={sectionOptions}
-              value={form.sectionId}
-              onChange={(val) => setApprovalForms(prev => ({ 
-                ...prev, 
-                [reg.id]: { ...form, sectionId: val }
-              }))}
-              error={isApproveDisabled}
-              placeholder="Search for a class..."
-            />
-          </div>
+          {isAdviserRole && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                Primary Class <span className="text-rose-500">*</span>
+              </label>
+              <SearchableSelect 
+                options={sectionOptions}
+                value={form.sectionId}
+                onChange={(val) => setApprovalForms(prev => ({ 
+                  ...prev, 
+                  [reg.id]: { ...form, sectionId: val }
+                }))}
+                error={isApproveDisabled}
+                placeholder="Search for a class..."
+              />
+            </div>
+          )}
         </div>
         <button 
           onClick={() => handleApprove(reg.id)}

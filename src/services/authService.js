@@ -10,7 +10,9 @@ const normalizeProfile = (p) => {
         username: p.username || p.Username,
         role: p.role || p.Role,
         assignedSectionId: p.assignedSectionId || p.AssignedSectionId || p.assigned_section_id,
-        assignedSubjectIds: p.assignedSubjectIds || p.AssignedSubjectIds || p.assigned_subject_ids || []
+        assignedSubjectIds: p.assignedSubjectIds || p.AssignedSubjectIds || p.assigned_subject_ids || [],
+        schoolId: p.schoolId || p.SchoolId || p.school_id,
+        schoolName: p.schoolName || p.SchoolName || p.school_name
     };
 };
 

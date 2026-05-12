@@ -13,7 +13,8 @@ import {
   Layout,
   LogOut,
   ShieldAlert,
-  UserPlus,
+  UserPlus, 
+  GraduationCap,
   CheckCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -62,6 +63,15 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
             to="/admin"
             icon={<ShieldAlert size={20} />}
             label="Admin Panel"
+            collapsed={!isOpen}
+          />
+        )}
+
+        {role === 'superadmin' && (
+          <SidebarLink 
+            to="/schools"
+            icon={<GraduationCap size={20} />}
+            label="Manage Schools"
             collapsed={!isOpen}
           />
         )}

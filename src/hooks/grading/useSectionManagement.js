@@ -12,7 +12,7 @@ const normalizeSection = (item) => ({
   schoolYear: item.schoolYear || item.SchoolYear || item.school_year,
   region: item.region || item.Region,
   division: item.division || item.Division,
-  schoolId: item.schoolId || item.Id || item.school_id,
+  schoolId: item.schoolId || item.SchoolId || item.school_id,
   schoolName: item.schoolName || item.SchoolName || item.school_name
 });
 

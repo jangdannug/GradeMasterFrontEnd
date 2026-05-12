@@ -130,7 +130,8 @@ export function TemplatesView({
         Name: selectedSubject.name,
         Code: selectedSubject.code,
         GradeLevel: selectedSubject.gradeLevel,
-        CategoriesJson: selectedSubject.categories, // Send as array, backend handles serialization
+        SchoolId: selectedSubject.schoolId, // Pass the existing school ID back to the server
+        CategoriesJson: JSON.stringify(selectedSubject.categories), // Backend expects stringified JSON
         PushToInstances: true // Push structure changes to active classes
       });
       alert('Template saved to database successfully!');

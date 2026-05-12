@@ -19,6 +19,7 @@ const TemplatesView = lazy(() => import('./views/TemplatesView').then(m => ({ de
 const SubmittedRecords = lazy(() => import('./views/SubmittedRecords').then(m => ({ default: m.SubmittedRecords })));
 const ApiConnectionErrorDisplay = lazy(() => import('./components/ApiConnectionErrorDisplay').then(m => ({ default: m.ApiConnectionErrorDisplay }))); // NEW
 const StudentManagementView = lazy(() => import('./components/layout/StudentManagementView').then(m => ({ default: m.StudentManagementView }))); // Renamed
+const SchoolManagement = lazy(() => import('./views/SchoolManagement').then(m => ({ default: m.SchoolManagement })));
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
 // Global state for current user, selected quarter, and selected subject
@@ -194,10 +195,15 @@ export default function App() {
     if (!currentUser) return [];
     // If there's a sync error, no subjects can be filtered
     if (syncError) return [];
-    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return [];
+    
+    if (currentUser.role === 'superadmin') return [];
+    if (currentUser.role === 'admin') {
+       const schoolSectionIds = new Set(sections.filter(s => String(s.schoolId) === String(currentUser.schoolId)).map(s => String(s.id)));
+       return subjects.filter(s => schoolSectionIds.has(String(s.sectionId)));
+    }
 
     const myTeachingLoad = subjects.filter(s => {
-      const isMainTeacher = (currentUser.assignedSubjectIds || []).includes(s.id) || s.teacherId === currentUser.id;
+      const isMainTeacher = (currentUser.assignedSubjectIds || []).includes(s.id) || String(s.teacherId) === String(currentUser.id);
       const isComponentTeacher = s.categories?.some(cat => cat.isComponent && String(cat.teacherId) === String(currentUser.id));
       return isMainTeacher || isComponentTeacher;
     });
@@ -218,7 +224,13 @@ export default function App() {
   const reportSubjects = useMemo(() => {
     if (!currentUser) return [];
     if (syncError) return [];
-    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return subjects;
+    
+    if (currentUser.role === 'superadmin') return subjects;
+    if (currentUser.role === 'admin') {
+       const schoolSectionIds = new Set(sections.filter(s => String(s.schoolId) === String(currentUser.schoolId)).map(s => String(s.id)));
+       return subjects.filter(s => schoolSectionIds.has(String(s.sectionId)));
+    }
+
     if (currentUser.role === 'adviser' && currentUser.assignedSectionId) {
       return subjects.filter(s => s.sectionId === currentUser.assignedSectionId);
     }
@@ -322,8 +334,24 @@ export default function App() {
                     syncError={syncError} // Pass syncError to Dashboard
                     onRefresh={refreshGlobalData}
                     onDeleteSubject={deleteSubject}
+                    currentUser={currentUser}
                   />
                 </div>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/schools" element={
+              <ProtectedRoute roles={['superadmin']}>
+                <>
+                  <Header 
+                    section={defaultSection} 
+                    userName={currentUser.name}
+                    syncError={syncError}
+                  />
+                  <div className="flex-1 overflow-auto p-3 md:p-8">
+                    <SchoolManagement />
+                  </div>
+                </>
               </ProtectedRoute>
             } />
 
@@ -353,7 +381,7 @@ export default function App() {
                       onDeleteBaseSubject={deleteBaseSubject}
                       onUpdateUser={updateUser}
                       onDeleteUser={deleteUser}
-                      currentUserId={currentUser.id}
+                      currentUser={currentUser}
                       syncAuthData={syncAuthData}
                       syncSections={syncSections}
                       syncSubjects={syncSubjects}
@@ -519,7 +547,14 @@ export default function App() {
                   />
                   <div className="flex-1 overflow-auto p-4 md:p-8">
                     <ProgressReport 
-                      students={(currentUser.role === 'admin' || currentUser.role === 'superadmin') ? students : students.filter(s => s.sectionId === (currentUser.assignedSectionId || sections[0]?.id || ''))} 
+                      students={
+                        currentUser.role === 'superadmin' ? students : 
+                        currentUser.role === 'admin' ? students.filter(s => {
+                          const section = sections.find(sec => String(sec.id) === String(s.sectionId));
+                          return section && String(section.schoolId) === String(currentUser.schoolId);
+                        }) : 
+                        students.filter(s => String(s.sectionId) === String(currentUser.assignedSectionId || ''))
+                      }
                       subjects={reportSubjects} 
                       baseSubjects={baseSubjects}
                       transmutationTable={transmutationTable}

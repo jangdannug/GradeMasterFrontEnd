@@ -509,8 +509,11 @@ export function ProgressReport({
                     <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 w-12">No.</th>
                     <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r">Learner's Name</th>
                     {summarySubjectsList.map(sub => (
-                      <th key={sub.id} colSpan={maxQuarters + 1} className={`p-2 text-center text-[10px] font-black uppercase tracking-widest border-r border-slate-200 ${sub.isComponent ? 'bg-slate-100/50 text-slate-400 text-[8px]' : 'bg-slate-50/50 text-slate-500'}`}>
-                        {sub.name}
+                      <th key={sub.id} colSpan={maxQuarters + 1} className={`p-2 text-center text-[10px] font-black uppercase tracking-widest border-r border-slate-200 ${sub.isComponent ? 'bg-slate-50 text-indigo-400 text-[8px]' : 'bg-slate-100 text-slate-600'}`}>
+                        <div className="flex flex-col items-center">
+                          {sub.isComponent && <span className="text-[6px] opacity-50 block mb-0.5 tracking-tighter">↳ Component</span>}
+                          {sub.name}
+                        </div>
                       </th>
                     ))}
                     <th rowSpan={2} className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 w-24 border-l border-indigo-100">Gen. Avg</th>

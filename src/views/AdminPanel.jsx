@@ -22,6 +22,7 @@ import {
   Loader2
 } from 'lucide-react';
 import authService from '../services/authService';
+import schoolService from '../services/schoolService';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 import { SectionCard } from './admin/components/SectionCard';
 import { RegistrationCard } from './admin/components/RegistrationCard';
@@ -43,7 +44,7 @@ export function AdminPanel({
   onDeleteBaseSubject,
   onUpdateUser,
   onDeleteUser,
-  currentUserId,
+  currentUser,
   syncError,
   syncAuthData, // Function to sync auth data
   syncSections, // Function to sync sections data
@@ -65,6 +66,10 @@ export function AdminPanel({
   const [editingBaseSubjectId, setEditingBaseSubjectId] = React.useState(null);
   const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7' });
 
+  const currentUserId = currentUser?.id;
+  const currentUserRole = currentUser?.role?.toLowerCase();
+  const currentUserSchoolId = currentUser?.schoolId;
+
   // State for user editing
   const [editingUserId, setEditingUserId] = React.useState(null);
   const [editUserFormData, setEditUserFormData] = React.useState({
@@ -73,7 +78,8 @@ export function AdminPanel({
     role: '',
     assignedSectionId: '',
     assignedSubjectIds: [],
-    status: ''
+    status: '',
+    schoolId: ''
   });
   const [approvalForms, setApprovalForms] = React.useState({});
   const [baseSubjectForm, setBaseSubjectForm] = React.useState({ name: '', code: '', gradeLevel: '7' });
@@ -85,31 +91,108 @@ export function AdminPanel({
     name: '',
     gradeLevel: '7',
     schoolYear: '2025-2026',
-    schoolId: '123456', // Assuming this is a string ID
-    schoolName: 'STO. NINO HIGH SCHOOL',
+    schoolId: currentUserSchoolId || '', // Default to current user's schoolId
+    schoolName: currentUser?.schoolName || '', // Default to current user's schoolName
     region: 'REGION II',
     division: 'CAGAYAN VALLEY'
   });
 
+  // Sync form with currentUser context when it becomes available or changes
+  React.useEffect(() => {
+    if (currentUserRole === 'admin' && currentUserSchoolId) {
+      setFormData(prev => ({
+        ...prev,
+        schoolId: currentUserSchoolId,
+        schoolName: currentUser?.schoolName || prev.schoolName,
+      }));
+    }
+  }, [currentUserSchoolId, currentUser?.schoolName, currentUserRole]);
+  
   // EARLY RETURNS MUST HAPPEN AFTER ALL HOOKS ARE DEFINED
   if (syncError) return <ApiConnectionErrorDisplay />;
 
-  const teachers = users.filter(u => u.role === 'teacher' || u.role === 'adviser');
+  // NEW: Filter sections by school for Admins
+  const filteredSections = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return sections;
+    return sections.filter(s => String(s.schoolId) === String(currentUserSchoolId));
+  }, [sections, currentUserRole, currentUserSchoolId]);
+
+  // NEW: Filter users by school for Admins
+  const filteredUsers = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return users;
+    return users.filter(u => String(u.schoolId) === String(currentUserSchoolId));
+  }, [users, currentUserRole, currentUserSchoolId]);
+
+  const teachers = filteredUsers.filter(u => u.role === 'teacher' || u.role === 'adviser');
   // Filter out the current user from the list of assignable advisers for sections
-  const assignableAdvisers = users.filter(u => u.role === 'adviser' && u.id !== currentUserId);
-  const pendingRegistrations = registrations.filter(r => r.status === 'pending');
+  const assignableAdvisers = filteredUsers.filter(u => u.role === 'adviser' && u.id !== currentUserId);
+
+  // NEW: Hierarchical Registration filtering
+  const pendingRegistrations = React.useMemo(() => {
+    const pending = registrations.filter(r => r.status === 'pending');
+    if (currentUserRole === 'superadmin') {
+      // Superadmins only see/approve other admin accounts
+      return pending.filter(r => (r.requestedRole || r.requested_role) === 'admin');
+    }
+    if (currentUserRole === 'admin') {
+      // Admins see/approve faculty for their specific school
+      return pending.filter(r => 
+        (r.requestedRole || r.requested_role) !== 'admin' && 
+        String(r.schoolId) === String(currentUserSchoolId)
+      );
+    }
+    return [];
+  }, [registrations, currentUserRole, currentUserSchoolId]);
+
+  // NEW: Filter baseSubjects by school for Admins
+  const filteredBaseSubjects = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return baseSubjects;
+    return baseSubjects.filter(b => String(b.schoolId) === String(currentUserSchoolId));
+  }, [baseSubjects, currentUserRole, currentUserSchoolId]);
+
+  // NEW: Filter subjects (for user teaching load assignment) by school for Admins
+  const filteredSubjectsForSchool = React.useMemo(() => {
+    if (currentUserRole === 'superadmin') return subjects;
+    const schoolSectionIds = new Set(filteredSections.map(s => String(s.id)));
+    return subjects.filter(sub => schoolSectionIds.has(String(sub.sectionId)));
+  }, [subjects, filteredSections, currentUserRole]);
 
   const handleEditUser = (user) => {
     setEditingUserId(user.id);
     setEditUserFormData({
-      name: user.name,
+      name: user.name, // Ensure name is passed
       username: user.username,
       role: user.role,
       assignedSectionId: user.assignedSectionId ? String(user.assignedSectionId) : '',
       assignedSubjectIds: (user.assignedSubjectIds || []).map(String),
-      status: user.status
+      status: user.status,
+      schoolId: user.schoolId || (currentUserRole === 'admin' ? currentUserSchoolId : '')
     });
   };
+
+  // Auto-populate school details when schoolId changes in the form
+  React.useEffect(() => {
+    const fetchSchoolDetails = async () => {
+      if (!formData.schoolId) return;
+
+      try {
+        const school = await schoolService.getSchoolById(formData.schoolId);
+        if (school) {
+          // Update schoolName, region, and division based on fetched school details
+          setFormData(prev => ({
+            ...prev,
+            schoolName: (school.name || school.Name || school.schoolName || '').toUpperCase(),
+            region: (school.region || school.Region || prev.region).toUpperCase(),
+            division: (school.division || school.Division || prev.division).toUpperCase()
+          }));
+        }
+      } catch (error) {
+        // Background lookup failed, typically because ID is being typed
+        console.debug("Background school lookup failed for ID:", formData.schoolId);
+      }
+    };
+    fetchSchoolDetails();
+  }, [formData.schoolId]);
 
   const handleSaveUser = async (userId) => {
     setIsUpdatingUser(true);
@@ -120,7 +203,8 @@ export function AdminPanel({
         Role: editUserFormData.role,
         SectionId: editUserFormData.assignedSectionId ? parseInt(editUserFormData.assignedSectionId, 10) : null,
         SubjectIds: editUserFormData.assignedSubjectIds.map(id => parseInt(id, 10)),
-        Status: editUserFormData.status
+        Status: editUserFormData.status,
+        SchoolId: currentUserRole === 'admin' ? currentUserSchoolId : editUserFormData.schoolId
       });
       alert('User updated successfully!');
       setEditingUserId(null); // Exit edit mode
@@ -148,8 +232,8 @@ export function AdminPanel({
       name: '', 
       gradeLevel: '7',
       schoolYear: '2025-2026',
-      schoolId: '123456',
-      schoolName: 'STO. NINO HIGH SCHOOL',
+      schoolId: currentUserSchoolId || '', // Ensure schoolId is reset to current user's school
+      schoolName: currentUser?.schoolName || '',
       region: 'REGION II',
       division: 'CAGAYAN VALLEY'
     });
@@ -157,8 +241,8 @@ export function AdminPanel({
 
   const handleApprove = (regId) => {
     const reg = registrations.find(r => r.id === regId);
-    // Default to 'teacher' and no section if the admin hasn't interacted with the form yet
-    const form = approvalForms[regId] || { role: reg?.requestedRole || 'teacher', sectionId: '' };
+    // Pre-select the requested role from the registration
+    const form = approvalForms[regId] || { role: reg?.requestedRole || 'teacher', sectionId: '', subjectIds: [] };
     // Assuming onApproveRegistration handles its own loading/error
     try {
       onApproveRegistration(regId, form.role, form.sectionId);
@@ -180,7 +264,7 @@ export function AdminPanel({
   };
 
   // Group sections by grade level
-  const groupedSections = sections.reduce((acc, section) => {
+  const groupedSections = filteredSections.reduce((acc, section) => {
     const grade = section.gradeLevel;
     if (!acc[grade]) acc[grade] = [];
     acc[grade].push(section);
@@ -206,6 +290,7 @@ export function AdminPanel({
         Name: baseSubjectForm.name.toUpperCase(),
         Code: baseSubjectForm.code,
         GradeLevel: baseSubjectForm.gradeLevel,
+        SchoolId: currentUserSchoolId, // Auto-assign schoolId for new base subjects
         CategoriesJson: JSON.stringify([])
       };
       await onCreateBaseSubject(data);
@@ -229,8 +314,9 @@ export function AdminPanel({
       const data = {
         Name: baseEditFormData.name.toUpperCase(),
         Code: baseEditFormData.code.toUpperCase(),
+        SchoolId: baseEditFormData.schoolId, // Ensure schoolId is passed for updates
         GradeLevel: baseEditFormData.gradeLevel,
-        CategoriesJson: existing?.categories || [], 
+        CategoriesJson: JSON.stringify(existing?.categories || []), // Stringify categories for backend
         PushToInstances: false // TODO: Add UI option to push changes to instances
       };
       await onUpdateBaseSubject(id, data);
@@ -270,6 +356,11 @@ export function AdminPanel({
           </div>
           <div className="min-w-0">
             <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Admin Control Center</h2>
+            {currentUserSchoolId && (
+              <span className="inline-block bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter mt-1 border border-indigo-200">
+                School Scope: {currentUserSchoolId}
+              </span>
+            )}
             <p className="text-xs text-slate-500 font-medium mt-1">
               {activeTab === 'sections' && "Manage class sections and teacher assignments."}
               {activeTab === 'templates' && "Define global grading structures for subjects."}
@@ -374,14 +465,26 @@ export function AdminPanel({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">School ID</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. 123456"
+                      value={formData.schoolId}
+                      onChange={e => setFormData({...formData, schoolId: e.target.value})}
+                      disabled={currentUserRole === 'admin'}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 disabled:opacity-60"
+                    />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase">School Name</label>
                     <input 
+                      readOnly
                       type="text"
+                      placeholder="Auto-populated..."
                       value={formData.schoolName}
-                      onChange={e => setFormData({...formData, schoolName: e.target.value.toUpperCase()})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-500 cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-1">
@@ -453,7 +556,7 @@ export function AdminPanel({
             )}
             <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {users.map(user => (
+              {filteredUsers.map(user => (
                 <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
                   {editingUserId === user.id ? (
                     // Edit Form
@@ -485,10 +588,22 @@ export function AdminPanel({
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
                           disabled={user.id === currentUserId}
                         >
-                          <option value="admin">Admin</option>
+                          {currentUserRole === 'superadmin' && <option value="admin">Admin</option>}
                           <option value="teacher">Teacher</option>
                           <option value="adviser">Adviser</option>
                         </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School ID</label>
+                        <input
+                          type="text"
+                          value={editUserFormData.schoolId}
+                          onChange={e => setEditUserFormData({ ...editUserFormData, schoolId: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                          disabled={currentUserRole === 'admin'}
+                          placeholder={currentUserRole === 'admin' ? currentUserSchoolId : "Enter School ID"}
+                        />
                       </div>
 
                       {editUserFormData.role === 'adviser' && (
@@ -500,7 +615,7 @@ export function AdminPanel({
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
                           >
                             <option value="">None</option>
-                            {sections.map(section => (
+                            {filteredSections.map(section => (
                               <option key={section.id} value={section.id}>
                                 G{section.gradeLevel} - {section.name}
                               </option>
@@ -521,9 +636,9 @@ export function AdminPanel({
                             }}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500 h-24"
                           >
-                            {subjects.map(subject => (
+                          {filteredSubjectsForSchool.map(subject => (
                               <option key={subject.id} value={subject.id}>
-                                G{subject.gradeLevel} - {subject.name} ({sections.find(s => s.id === subject.sectionId)?.name || 'N/A'})
+                                G{subject.gradeLevel} - {subject.name} ({filteredSections.find(s => String(s.id) === String(subject.sectionId))?.name || 'N/A'})
                               </option>
                             ))}
                           </select>
@@ -581,11 +696,15 @@ export function AdminPanel({
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
                           <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School ID</label>
+                          <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.schoolId || 'N/A'}</p>
+                        </div>
                         {user.role === 'adviser' && user.assignedSectionId && (
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Adviser of</label>
                             <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
-                              G{sections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {sections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
+                              G{filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
                             </p>
                           </div>
                         )}
@@ -594,7 +713,7 @@ export function AdminPanel({
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Teaching</label>
                             <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
                               {user.assignedSubjectIds.map(subId => {
-                                const subject = subjects.find(s => String(s.id) === String(subId));
+                                const subject = filteredSubjectsForSchool.find(s => String(s.id) === String(subId));
                                 return subject ? <span key={subId} className="block">{subject.name} (G{subject.gradeLevel})</span> : null;
                               })}
                             </div>
@@ -702,14 +821,14 @@ export function AdminPanel({
               </form>
 
               <div className="space-y-6">
-                {sortedBaseGrades.map(grade => (
+                  {Object.keys(groupedBaseSubjects).sort((a, b) => parseInt(a) - parseInt(b)).map(grade => (
                   <div key={grade} className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade {grade}</h4>
                       <div className="h-px flex-1 bg-slate-100"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {groupedBaseSubjects[grade].sort((a, b) => a.name.localeCompare(b.name)).map(base => (
+                        {filteredBaseSubjects.filter(b => b.gradeLevel === grade).sort((a, b) => a.name.localeCompare(b.name)).map(base => (
                         <div key={base.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center group">
                           {editingBaseSubjectId === base.id ? (
                             <div className="flex-1 space-y-2 mr-4">
@@ -761,7 +880,12 @@ export function AdminPanel({
                               <button 
                                 onClick={() => {
                                   setEditingBaseSubjectId(base.id);
-                                  setBaseEditFormData({ name: base.name, code: base.code, gradeLevel: base.gradeLevel });
+                                  setBaseEditFormData({ 
+                                    name: base.name, 
+                                    code: base.code, 
+                                    gradeLevel: base.gradeLevel,
+                                    schoolId: base.schoolId || '' // Ensure schoolId is explicitly set from base object
+                                  });
                                 }}
                                 className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
                                 title="Edit Subject Label"
@@ -863,9 +987,10 @@ export function AdminPanel({
                     reg={reg}
                     form={form}
                     setApprovalForms={setApprovalForms}
-                    sections={sections}
+                    sections={filteredSections}
                     onRejectRegistration={onRejectRegistration}
                     handleApprove={handleApprove}
+                    currentUserRole={currentUserRole}
                   />
                 );
               })}

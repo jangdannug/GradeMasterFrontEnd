@@ -80,7 +80,7 @@ export function Login({ onLogin, onRegister }) {
            <div className="size-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200">
              <GraduationCap className="text-white size-10" />
            </div>
-           <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">DepEd GradeMaster</h1>
+           <h1 className="text-2xl font-black text-slate-800 tracking-tighter uppercase italic">GradeMaster</h1>
            <p className="text-slate-400 text-sm font-medium mt-1">Learner Information System Integration</p>
         </div>
 

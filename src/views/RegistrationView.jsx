@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { UserPlus, Mail, User, ShieldCheck, ArrowLeft, Send, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { UserPlus, Mail, User, ShieldCheck, ArrowLeft, Send, Lock, Eye, EyeOff, AlertCircle, GraduationCap } from 'lucide-react';
+import schoolService from '../services/schoolService';
 
 export function RegistrationView({ onRegister, onBack }) {
   const [formData, setFormData] = useState({
@@ -8,11 +9,26 @@ export function RegistrationView({ onRegister, onBack }) {
     username: '',
     password: '',
     confirmPassword: '',
-    email: ''
+    email: '',
+    schoolId: '',
+    requestedRole: 'teacher' // NEW: Add requestedRole to form data, default to 'teacher'
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [schools, setSchools] = useState([]);
+  const [isLoadingSchools, setIsLoadingSchools] = useState(true);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const data = await schoolService.getSchools();
+        setSchools(data);
+      } catch (err) { console.error(err); }
+      finally { setIsLoadingSchools(false); }
+    };
+    fetchSchools();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -122,6 +138,45 @@ export function RegistrationView({ onRegister, onBack }) {
               onChange={e => setFormData({ ...formData, email: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
+          </div>
+        </div>
+
+        {/* NEW: School ID Input */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select School</label>
+          <div className="relative group">
+            <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
+            <select 
+              required
+              value={formData.schoolId}
+              onChange={e => setFormData({ ...formData, schoolId: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
+            >
+              <option value="" disabled>{isLoadingSchools ? 'Loading schools...' : 'Choose your school'}</option>
+              {schools.map(school => (
+                <option key={school.id} value={school.id}>
+                  {school.name} ({school.id})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* NEW: Requested Role Input */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Desired Role</label>
+          <div className="relative group">
+            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
+            <select 
+              required
+              value={formData.requestedRole}
+              onChange={e => setFormData({ ...formData, requestedRole: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
+            >
+              <option value="admin">Admin</option>
+              <option value="teacher">Teacher</option>
+              <option value="adviser">Adviser</option>
+            </select>
           </div>
         </div>
 
