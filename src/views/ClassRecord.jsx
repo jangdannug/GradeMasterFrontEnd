@@ -49,15 +49,17 @@ export function ClassRecord({
 }) {
   const location = useLocation();
   const isSummaryOnly = location.state?.summaryOnly || false;
-  const isAdviser = userRole === 'adviser';
-  const isAdmin = userRole === 'admin';
+  const normalizedRole = String(userRole || '').toLowerCase();
+  const isAdviser = normalizedRole === 'adviser';
+  const isAdmin = normalizedRole === 'admin';
+  const isSuperAdmin = normalizedRole === 'superadmin';
   const isSubmitted = savedRecord?.isLocked;
   const isVerified = savedRecord?.isVerified; // New variable for clarity
 
-  const isMainTeacher = React.useMemo(() => 
-    currentUser && String(currentUser.id) === String(subject.teacherId),
-    [currentUser, subject.teacherId]
-  );
+  const isMainTeacher = React.useMemo(() => {
+    if (!currentUser || !subject.teacherId) return false;
+    return String(currentUser.id) === String(subject.teacherId);
+  }, [currentUser, subject.teacherId]);
 
   // Find the template associated with this subject to ensure we have the categories
   const template = React.useMemo(() => 
@@ -86,22 +88,29 @@ export function ClassRecord({
   const isCurrentUserComponentTeacher = React.useMemo(() => {
     if (!currentUser) return false;
 
-    if (isComposite && activeComponent) {
-      const componentTeacherId = activeComponent.teacherId;
-      if (componentTeacherId) {
-        return String(currentUser.id) === String(componentTeacherId);
-      } else {
-        return String(currentUser.id) === String(subject.teacherId);
+    if (isComposite) {
+      if (activeComponent) {
+        const componentTeacherId = activeComponent.teacherId;
+        // If a specific teacher is assigned to this component, only they can see HPS/Scores
+        if (componentTeacherId) {
+          return String(currentUser.id) === String(componentTeacherId);
+        }
+        // Fallback: If no component teacher is assigned, the Main Teacher handles it
+        return isMainTeacher;
       }
+      // Summary view or initialization: The Main Teacher is the responsible user
+      return isMainTeacher;
     }
-    return String(currentUser.id) === String(subject.teacherId);
-  }, [currentUser, isComposite, activeComponent, subject.teacherId]);
+    
+    // Standard subject: the Main Teacher is the teacher
+    return isMainTeacher;
+  }, [currentUser, isComposite, activeComponent, isMainTeacher]);
 
   // Filter components based on assignment: Admins, Main Teachers, and Section Advisers see all.
   // Specific component teachers only see the tabs they are assigned to.
   const visibleComponents = React.useMemo(() => {
     if (!isComposite) return [];
-    if (isAdmin || userRole === 'superadmin' || isMainTeacher) return resolvedCategories;
+    if (isAdmin || isSuperAdmin || isMainTeacher) return resolvedCategories;
     
     const isUserAdviserOfThisSection = isAdviser && String(currentUser?.assignedSectionId) === String(section?.id);
     if (isUserAdviserOfThisSection) return resolvedCategories;
@@ -109,9 +118,9 @@ export function ClassRecord({
     return resolvedCategories.filter(comp => 
       comp.teacherId && String(comp.teacherId) === String(currentUser?.id)
     );
-  }, [isComposite, resolvedCategories, isAdmin, userRole, isMainTeacher, isAdviser, currentUser, section]);
+  }, [isComposite, resolvedCategories, isAdmin, isSuperAdmin, isMainTeacher, isAdviser, currentUser, section]);
 
-  const effectiveSummaryOnly = isSummaryOnly || (isAdviser && !isMainTeacher && !isCurrentUserComponentTeacher);
+  const effectiveSummaryOnly = isSummaryOnly || (!isAdmin && !isSuperAdmin && !isCurrentUserComponentTeacher);
 
   // Sync activeComponentId when the subject or composite status changes
   React.useEffect(() => {
@@ -124,11 +133,10 @@ export function ClassRecord({
 
   const effectiveCategories = React.useMemo(() => {
     if (activeComponentId === 'summary') return [];
-    if (isComposite && activeComponentId) {
+    if (isComposite) {
+      if (!activeComponentId) return []; // Wait for effect to select default component
       const foundComponent = resolvedCategories.find(c => c.id === activeComponentId);
-      // If activeComponentId is set but the component is not found (e.g., deleted),
-      // fall back to the first component's categories if available.
-      return foundComponent?.categories || resolvedCategories[0]?.categories || [];
+      return foundComponent?.categories || [];
     }
     return resolvedCategories;
   }, [resolvedCategories, isComposite, activeComponentId]);
@@ -556,6 +564,9 @@ export function ClassRecord({
                   </React.Fragment>
                 );
               })}
+              {activeComponentId === 'summary' && resolvedCategories.map(comp => (
+                <td key={`hps-sum-${comp.id}`} className="bg-slate-800"></td>
+              ))}
               {effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => (
                 <td key={`weight-${cat.id}`} className="p-3 text-center bg-slate-800">
                   <div className={`p-1 font-black text-[10px] rounded ${idx % 2 === 0 ? 'bg-blue-900/50 text-blue-300' : 'bg-emerald-900/50 text-emerald-300'}`}>
@@ -682,7 +693,7 @@ export function ClassRecord({
         </table>
        </div>
 
-       {isCurrentViewEditable && onSubmitClassRecord && (
+       {isCurrentViewEditable && onSubmitClassRecord && isMainTeacher && (
          <div className="p-6 md:p-10 bg-slate-50 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
            <div className={`flex items-center gap-5 p-5 ${hasUnsavedChanges ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-100'} border-2 rounded-[2rem] shadow-sm max-w-2xl transition-colors`}>
              <div className={`size-12 bg-white rounded-2xl flex items-center justify-center ${hasUnsavedChanges ? 'text-amber-600 border-amber-100' : 'text-rose-600 border-rose-100'} shadow-sm shrink-0 border`}>
