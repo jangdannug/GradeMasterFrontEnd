@@ -196,9 +196,9 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
 
   const resetSubjectTemplate = useCallback((id, componentId = null) => {
     const defaultCategories = [
-      { id: `cat-ww-${Date.now()}`, name: 'WRITTEN WORKS', weight: 0.3, columnNames: ['1','2','3','4','5'] },
-      { id: `cat-pt-${Date.now()}`, name: 'PERFORMANCE TASKS', weight: 0.5, columnNames: ['1','2','3','4','5'] },
-      { id: `cat-qa-${Date.now()}`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['1'] },
+      { id: `cat-ww-${Date.now()}`, name: 'WRITTEN WORKS', weight: 0.2, columnNames: ['1','2','3','4','5'] },
+      { id: `cat-pt-${Date.now()}`, name: 'PERFORMANCE TASKS', weight: 0.6, columnNames: ['1','2','3','4','5'] },
+      { id: `cat-qa-${Date.now()}`, name: 'QUARTERLY ASSESSMENT', weight: 0.2, columnNames: ['ST1','ST2','TE'] },
     ];
 
     setBaseSubjects(prev => prev.map(baseSub => {
