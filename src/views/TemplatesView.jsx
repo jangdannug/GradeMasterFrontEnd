@@ -265,6 +265,7 @@ export function TemplatesView({
                       }}
                       onKeyDown={e => e.key === 'Enter' && updateComponentName(selectedSubject.id, comp.id, newComponentName)}
                       autoFocus
+                      placeholder="Component Name"
                       className="px-4 py-2 rounded-lg text-xs font-black uppercase bg-white text-indigo-600 shadow-sm border border-indigo-200 outline-none"
                     />
                   ) : (
@@ -280,7 +281,7 @@ export function TemplatesView({
                           : 'text-slate-400 hover:text-slate-600'
                       }`}
                     >
-                      {comp.name}
+                      {comp.name || <span className="italic opacity-50">Untitled Component</span>}
                     </button>
                   )}
                 </div>
@@ -324,6 +325,7 @@ export function TemplatesView({
                       <input
                         type="text"
                         value={category.name}
+                        placeholder="Category Title"
                         onChange={(e) => updateCategoryTitle(selectedSubject.id, category.id, e.target.value, activeComponentId)}
                         onBlur={() => setEditingCategoryId(null)}
                         onKeyDown={(e) => e.key === 'Enter' && setEditingCategoryId(null)}
@@ -338,7 +340,7 @@ export function TemplatesView({
                         }}
                         className="font-black text-slate-800 uppercase text-sm cursor-pointer hover:text-indigo-600 transition-colors"
                       >
-                        {category.name}
+                        {category.name || <span className="text-slate-400 italic">Untitled Category</span>}
                       </h4>
                     )}
                     <span className="text-xs text-slate-500 font-medium">({(category.weight * 100).toFixed(0)}%)</span>
@@ -375,7 +377,7 @@ export function TemplatesView({
                             }}
                             className="cursor-pointer hover:text-indigo-600"
                           >
-                            {colName}
+                            {colName || <span className="opacity-50">?</span>}
                           </span>
                         )}
                       </span>
