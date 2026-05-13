@@ -61,7 +61,8 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
 
   const updateGrade = useCallback((studentId, subjectId, categoryId, type, index, value, quarter) => {
     setStudents(prev => prev.map(student => {
-      if (studentId !== 'HPS' && student.id !== studentId) return student;
+      // Use String coercion to prevent mismatch between CSV strings and state IDs
+      if (studentId !== 'HPS' && String(student.id) !== String(studentId)) return student;
 
       const grades = { ...(student.grades || {}) };
       const subGrades = { ...(grades[subjectId] || {}) };

@@ -285,6 +285,18 @@ export function ClassRecord({
     });
 
     const csvRows = [headers.join(',')];
+
+    // 1.5 Add HPS Row (Highest Possible Score)
+    // This allows teachers to define max points in the CSV
+    const hpsValuesRow = ['"HPS"', '"HIGHEST POSSIBLE SCORE"'];
+    effectiveCategories.forEach(cat => {
+      const currentHps = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[cat.id]?.hps || [];
+      cat.columnNames.forEach((_, idx) => {
+        const val = currentHps[idx];
+        hpsValuesRow.push(val !== undefined && val !== null ? val : '');
+      });
+    });
+    csvRows.push(hpsValuesRow.join(','));
     
     // 2. Add Student Rows with current scores if any
     students.forEach(student => {
@@ -332,15 +344,21 @@ export function ClassRecord({
 
       lines.slice(1).forEach(line => {
         if (!line.trim()) return;
-        const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        const lrn = cells[0].replace(/"/g, '').trim();
+        // Regex to split by comma but ignore commas inside quotes
+        const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+        const lrn = cells[0];
         
         if (lrn) {
           scoreMapping.forEach((map, mIdx) => {
-            const cellVal = cells[mIdx + 2]; // Skip LRN and Name
-            if (cellVal !== undefined && cellVal.trim() !== '') {
-              const score = parseInt(cellVal.replace(/"/g, ''), 10);
-              if (!isNaN(score)) updateGrade(lrn, subject.id, map.catId, 'points', map.index, score, quarter);
+            const cellVal = cells[mIdx + 2]; // Scores start at column 3 (index 2)
+            if (cellVal !== undefined && cellVal !== '') {
+              const score = parseInt(cellVal, 10);
+              if (!isNaN(score)) {
+                const isHps = lrn.toUpperCase() === 'HPS';
+                const type = isHps ? 'hps' : 'points';
+                const targetId = isHps ? 'HPS' : lrn;
+                updateGrade(targetId, subject.id, map.catId, type, map.index, score, quarter);
+              }
             }
           });
         }
