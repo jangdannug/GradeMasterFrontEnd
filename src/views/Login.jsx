@@ -155,12 +155,6 @@ export function Login({ onLogin, onRegister }) {
            </div>
         </form>
 
-        <div className="mt-10 pt-6 border-t border-slate-100">
-           <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest leading-loose text-center">
-             Test Accs: admin, teacher1, teacher2, teacher3<br/>
-             Default Pass: password123
-           </p>
-        </div>
       </motion.div>
     </div>
   );

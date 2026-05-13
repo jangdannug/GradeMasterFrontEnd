@@ -300,7 +300,7 @@ export function ClassRecord({
     
     // 2. Add Student Rows with current scores if any
     students.forEach(student => {
-      const row = [`"${student.id}"`, `"${student.name}"`];
+      const row = [`="${student.lrn}"`, `"${student.name}"`];
       const sg = student.grades?.[subject.id]?.[quarter]?.categoryGrades;
       
       effectiveCategories.forEach(cat => {
