@@ -142,14 +142,14 @@ const SF10JHSForm = () => {
         <SectionHeader>Learner's Information</SectionHeader>
         <div className="space-y-1 mt-2">
           <div className="flex gap-4">
-            <UnderlinedField label="Last Name" value={data.student.name.split(',')[0]} />
-            <UnderlinedField label="First Name" value={data.student.name.split(',')[1]?.split(' ')[1]} />
+            <UnderlinedField label="Last Name" value={data.student.lastName} />
+            <UnderlinedField label="First Name" value={data.student.firstName} />
             <UnderlinedField label="Name Ext" value="" flex="w-20" />
-            <UnderlinedField label="Middle Name" value={data.student.name.split(' ').pop()} />
+            <UnderlinedField label="Middle Name" value={data.student.middleName} />
           </div>
           <div className="flex gap-4">
             <UnderlinedField label="LRN" value={data.student.lrn} />
-            <UnderlinedField label="Birthdate" value="N/A" />
+            <UnderlinedField label="Birthdate" value={data.student.birthdate ? new Date(data.student.birthdate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : ''} />
             <UnderlinedField label="Gender" value={data.student.gender} flex="w-32" />
           </div>
         </div>
