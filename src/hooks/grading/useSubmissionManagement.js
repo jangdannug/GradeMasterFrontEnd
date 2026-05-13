@@ -100,23 +100,20 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
     const finalLockedIds = lockedComponentIds || existing?.lockedComponentIds || [];
 
     const draftData = {
-      Id: existing?.dbId || 0, // Database primary key (int)
-      UniqueRecordKey: String(recordId), // Text unique key (e.g. 5-2-Q1)
-      SectionId: Number(section.id), // Backend expects int
+      Id: recordId, // This is the composite key (e.g., "5-3-Q1")
+      SectionId: String(section.id), // Change from int to string
       SectionName: section.name || '',
       GradeLevel: section.gradeLevel || '',
-      SubjectId: Number(subject.id), // Backend expects int
+      SubjectId: String(subject.id), // Change from int to string
       SubjectName: subject.name || '',
       Quarter: quarter,
       UpdatedAt: new Date().toISOString(),
       IsLocked: false,
       IsDraft: true,
-      TeacherId: Number(teacher.id), // Backend expects int
+      TeacherId: String(teacher.id), // Change from int to string
       TeacherName: teacher.name || '',
-      LockedComponentIdsJson: JSON.stringify(finalLockedIds), // Send as stringified JSON
-      StudentSnapshotsJson: JSON.stringify(students.map(s => ({
-        Id: String(s.id),
-        LRN: s.lrn || '',
+      StudentSnapshots: students.map(s => ({ // List<StudentSnapshotDto>
+        Id: String(s.id), // Change from int to string
         Name: s.name || '',
         Gender: s.gender || '',
         GradeLevel: s.gradeLevel || '',
@@ -127,9 +124,9 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
         Religion: s.religion || '',
         EthnicGroup: s.ethnicGroup || '',
         HasDisability: s.hasDisability || false,
-        SectionId: s.sectionId ? Number(s.sectionId) : null,
-        GradesJson: JSON.stringify(s.grades?.[subject.id]?.[quarter] || {}) // Backend expects stringified JSON
-      })))
+        SectionId: s.sectionId ? String(s.sectionId) : null, // Change from int? to string?
+        Grades: s.grades?.[subject.id]?.[quarter] || {} // JsonDocument, so send as object
+      }))
     };
 
     try {
