@@ -26,6 +26,16 @@ const normalize = (data) => {
         normalized.studentSnapshots = [];
       }
     }
+
+    // Handle lockedComponentIdsJson
+    if (normalized.lockedComponentIdsJson && typeof normalized.lockedComponentIdsJson === 'string') {
+      try {
+        normalized.lockedComponentIds = JSON.parse(normalized.lockedComponentIdsJson);
+      } catch (e) {
+        normalized.lockedComponentIds = [];
+      }
+    }
+
     // Deep normalize student snapshots if they exist
     if (normalized.studentSnapshots && Array.isArray(normalized.studentSnapshots)) {
       normalized.studentSnapshots = normalized.studentSnapshots.map(s => ({
@@ -81,30 +91,45 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
     });
   }, [rawRecords, allSubjects, allSections]);
 
-  const saveDraftClassRecord = useCallback(async ({ subject, section, teacher, students, quarter }) => {
+  const saveDraftClassRecord = useCallback(async (data) => {
+    const { subject, section, teacher, students, quarter, lockedComponentIds } = data;
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
+    
+    // Find existing to preserve metadata or dbId if available
+    const existing = rawRecords.find(r => r.id === recordId);
+    const finalLockedIds = lockedComponentIds || existing?.lockedComponentIds || [];
+
     const draftData = {
-      Id: String(recordId), // This is the text unique key (e.g. 5-2-Q1)
-      SectionId: String(section.id), // String is safer for both int and Guid DTOs
+      Id: existing?.dbId || 0, // Database primary key (int)
+      UniqueRecordKey: String(recordId), // Text unique key (e.g. 5-2-Q1)
+      SectionId: Number(section.id), // Backend expects int
       SectionName: section.name || '',
       GradeLevel: section.gradeLevel || '',
-      SubjectId: String(subject.id),
+      SubjectId: Number(subject.id), // Backend expects int
       SubjectName: subject.name || '',
       Quarter: quarter,
       UpdatedAt: new Date().toISOString(),
       IsLocked: false,
       IsDraft: true,
-      TeacherId: String(teacher.id),
+      TeacherId: Number(teacher.id), // Backend expects int
       TeacherName: teacher.name || '',
-      StudentSnapshots: students.map(s => ({
+      LockedComponentIdsJson: JSON.stringify(finalLockedIds), // Send as stringified JSON
+      StudentSnapshotsJson: JSON.stringify(students.map(s => ({
         Id: String(s.id),
+        LRN: s.lrn || '',
         Name: s.name || '',
         Gender: s.gender || '',
         GradeLevel: s.gradeLevel || '',
         SchoolYear: s.schoolYear || '',
-        SectionId: s.sectionId ? String(s.sectionId) : null,
-        Grades: s.grades?.[subject.id]?.[quarter] || {} // Send as raw object for JsonDocument
-      }))
+        Birthdate: s.birthdate || '',
+        Address: s.address || '',
+        MotherTongue: s.motherTongue || '',
+        Religion: s.religion || '',
+        EthnicGroup: s.ethnicGroup || '',
+        HasDisability: s.hasDisability || false,
+        SectionId: s.sectionId ? Number(s.sectionId) : null,
+        GradesJson: JSON.stringify(s.grades?.[subject.id]?.[quarter] || {}) // Backend expects stringified JSON
+      })))
     };
 
     try {
@@ -117,7 +142,7 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
       setError(error);
       return { success: false, message: error.message || 'Failed to save draft class record.' };
     }
-  }, []);
+  }, [rawRecords]);
 
   const loadClassRecordDraft = useCallback(async (recordId) => {
     try {
@@ -149,26 +174,42 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
     }
   }, []);
 
-  const submitClassRecord = useCallback(async ({ subject, section, teacher, students, quarter }) => {
+  const submitClassRecord = useCallback(async (submitData) => {
+    const { subject, section, teacher, students, quarter, activeComponentId } = submitData;
     const recordId = `${section.id}-${subject.id}-Q${quarter}`;
 
-    // Validation: Prevent re-submission if the quarter's record is already verified
-    const existing = savedClassRecords.find(r => r.id === recordId);
+    // Step 1: Ensure the latest state is saved as a draft
+    const saveResult = await saveDraftClassRecord(submitData);
+    if (!saveResult.success) {
+      return { success: false, message: saveResult.message || 'Failed to save latest draft before submission.' };
+    }
+
+    // Step 2: Find the record
+    let existing = savedClassRecords.find(r => r.id === recordId);
     
     if (existing && existing.isVerified) {
       return { success: false, message: `Quarter ${quarter} for ${subject.name} has already been verified and cannot be resubmitted.` };
     }
 
-    if (!existing || !existing.dbId) {
+    if (!existing || (!existing.dbId && existing.id !== recordId)) {
       return { success: false, message: "No draft found. Please save your changes as a draft before submitting." };
     }
     
-    try {
+    try { 
       setError(null);
-      // Call the lock endpoint as requested: PUT /api/classrecord/{id}/lock
-      const submittedRecord = await classRecordService.lockClassRecord(existing.dbId, true);
-      
-      setRawRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
+
+      const isMainTeacher = String(subject.teacherId) === String(teacher.id);
+
+      if (!isMainTeacher && activeComponentId) {
+        // Component Lock: Add to LockedComponentIdsJson via draft update
+        const lockedComponentIds = [...(existing.lockedComponentIds || []), activeComponentId];
+        const result = await saveDraftClassRecord({ ...submitData, lockedComponentIds });
+        if (!result.success) return result;
+      } else {
+        // Global Lock: Use the API lock endpoint
+        const submittedRecord = await classRecordService.lockClassRecord(existing.dbId, true);
+        setRawRecords(prev => [normalize(submittedRecord), ...prev.filter(r => r.id !== recordId)]);
+      }
       
       // Log the submission locally for UI consistency
       const logEntry = {
@@ -186,7 +227,7 @@ export function useSubmissionManagement(allSubjects, allSections) { // allSubjec
       setError(error);
       return { success: false, message: error.message || 'Failed to submit class record.' };
     }
-  }, [savedClassRecords]);
+  }, [savedClassRecords, saveDraftClassRecord]);
 
   const requestEditClassRecord = useCallback(async (recordId, teacherId, teacherName, reason) => {
     const existing = savedClassRecords.find(r => r.id === recordId);

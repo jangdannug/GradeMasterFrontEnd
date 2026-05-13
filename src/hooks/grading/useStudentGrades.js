@@ -9,8 +9,18 @@ const normalizeStudent = (item) => {
   return {
     ...item,
     id: item.id || item.Id,
+    lrn: item.lrn || item.LRN || '',
+    firstName: item.firstName || item.FirstName || item.first_name || '',
+    lastName: item.lastName || item.LastName || item.last_name || '',
+    middleName: item.middleName || item.MiddleName || item.middle_name || '',
     name: item.name || item.Name,
     gender: item.gender || item.Gender,
+    birthdate: item.birthdate || item.Birthdate || item.birth_date || '',
+    address: item.address || item.Address || '',
+    motherTongue: item.motherTongue || item.MotherTongue || item.mother_tongue || '',
+    religion: item.religion || item.Religion || '',
+    ethnicGroup: item.ethnicGroup || item.EthnicGroup || item.ethnic_group || '',
+    hasDisability: item.hasDisability || item.HasDisability || item.has_disability || false,
     gradeLevel: item.gradeLevel || item.GradeLevel || item.grade_level,
     schoolYear: item.schoolYear || item.SchoolYear || item.school_year,
     sectionId: item.sectionId ?? item.SectionId ?? item.section_id ?? null,
@@ -323,14 +333,30 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
 
 
   // New function for overall student registration (not necessarily assigned to a section yet)
-  const enrollStudentOverall = useCallback(async (lastName, firstName, middleName, gender, gradeLevel, schoolYear, schoolId) => {
+  const enrollStudentOverall = useCallback(async (studentData) => {
+    const { 
+        lastName, firstName, middleName, lrn, gender, 
+        gradeLevel, schoolYear, schoolId, birthdate,
+        address, motherTongue, religion, ethnicGroup, hasDisability 
+    } = studentData;
+    
     const fullName = `${lastName.trim()}, ${firstName.trim()} ${middleName.trim()}`.toUpperCase().trim();
     const newStudent = {
       name: fullName,
+      firstName: firstName.toUpperCase(),
+      lastName: lastName.toUpperCase(),
+      middleName: middleName.toUpperCase(),
+      lrn: lrn,
       gender,
       gradeLevel,
       schoolYear,
       schoolId,
+      birthdate,
+      address: address?.toUpperCase(),
+      motherTongue: motherTongue?.toUpperCase(),
+      religion: religion?.toUpperCase(),
+      ethnicGroup: ethnicGroup?.toUpperCase(),
+      hasDisability,
       sectionId: null, // Initially unassigned
       grades: {}
     };

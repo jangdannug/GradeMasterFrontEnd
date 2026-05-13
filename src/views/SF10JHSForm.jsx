@@ -150,7 +150,7 @@ const SF10JHSForm = () => {
           <div className="flex gap-4">
             <UnderlinedField label="LRN" value={data.student.id} />
             <UnderlinedField label="Birthdate" value="N/A" />
-            <UnderlinedField label="Sex" value={data.student.gender} flex="w-32" />
+            <UnderlinedField label="Gender" value={data.student.gender} flex="w-32" />
           </div>
         </div>
 
