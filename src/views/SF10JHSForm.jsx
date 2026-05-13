@@ -148,7 +148,7 @@ const SF10JHSForm = () => {
             <UnderlinedField label="Middle Name" value={data.student.name.split(' ').pop()} />
           </div>
           <div className="flex gap-4">
-            <UnderlinedField label="LRN" value={data.student.id} />
+            <UnderlinedField label="LRN" value={data.student.lrn} />
             <UnderlinedField label="Birthdate" value="N/A" />
             <UnderlinedField label="Gender" value={data.student.gender} flex="w-32" />
           </div>
@@ -212,7 +212,7 @@ const SF10JHSForm = () => {
           
           <div className="text-[11px] leading-loose text-justify">
             I CERTIFY that this is a true record of <span className="inline-block border-b border-black w-64 text-center h-4 font-bold">{data.student.name}</span> 
-            with LRN <span className="inline-block border-b border-black w-40 text-center h-4 font-bold">{data.student.id}</span> 
+            with LRN <span className="inline-block border-b border-black w-40 text-center h-4 font-bold">{data.student.lrn}</span> 
             and that he/she is eligible for admission to Grade <span className="inline-block border-b border-black w-16 text-center h-4 font-bold">{getNextGrade(data.student, data.sf10Data)}</span>.
           </div>
 

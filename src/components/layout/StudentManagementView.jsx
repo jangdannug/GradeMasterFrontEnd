@@ -126,11 +126,13 @@ export function StudentManagementView({
       '123456789012', '2012-05-15', '123 street, Manila', 'TAGALOG', 
       'ROMAN CATHOLIC', 'TAGALOG', 'false'
     ];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers, sample].map(e => e.join(",")).join("\n");
+    const csvString = [headers, sample].map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(csvString);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("href", csvContent);
     link.setAttribute("download", "student_bulk_template.csv");
     document.body.appendChild(link);
+    link.click();
     document.body.removeChild(link);
   };
 

@@ -6,10 +6,19 @@ import authService from '../../services/authService';
 // Helper to normalize Student properties (bridging C# PascalCase/snake_case to frontend camelCase)
 const normalizeStudent = (item) => {
   if (!item) return null;
+
+  // Fix for LRN scientific notation (e.g., 1.23457E+11)
+  const rawLrn = item.lrn || item.LRN || '';
+  let lrn = String(rawLrn);
+  if (lrn.toUpperCase().includes('E+')) {
+    const num = Number(rawLrn);
+    lrn = !isNaN(num) ? num.toLocaleString('fullwide', { useGrouping: false }) : lrn;
+  }
+
   return {
     ...item,
     id: item.id || item.Id,
-    lrn: item.lrn || item.LRN || '',
+    lrn: lrn,
     firstName: item.firstName || item.FirstName || item.first_name || '',
     lastName: item.lastName || item.LastName || item.last_name || '',
     middleName: item.middleName || item.MiddleName || item.middle_name || '',

@@ -106,7 +106,7 @@ const SF9Form = () => {
         <section className="space-y-2 mb-6 text-[11px]">
           <div className="flex gap-4">
             <UnderlinedField label="Name" value={data.student.name} flex="flex-[2]" />
-            <UnderlinedField label="LRN" value={data.student.id} />
+            <UnderlinedField label="LRN" value={data.student.lrn} />
           </div>
           <div className="flex gap-4">
             <UnderlinedField label="Grade & Section" value={`Grade ${data.student.gradeLevel} - ${data.section?.name}`} />
