@@ -7,9 +7,10 @@ import depedCircle from '../images/depedcircle.png';
 const SF9Form = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { student, reportData, section } = location.state || {};
+  const { student, reportData, section, isBulk, studentsData } = location.state || {};
+  const dataList = isBulk ? studentsData : [{ student, reportData, section }];
 
-  if (!student) {
+  if (!isBulk && !student) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center space-y-4 font-sans">
@@ -69,13 +70,18 @@ const SF9Form = () => {
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-colors">
           <ArrowLeft size={16} /> Back
         </button>
+        <div className="bg-slate-100 px-4 py-2 rounded-2xl text-[10px] font-black uppercase text-slate-500 border border-slate-200">
+          {isBulk ? `Bulk: ${dataList.length} Students` : 'Single Record'}
+        </div>
         <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">
           <Printer size={16} /> Print SF9
         </button>
       </div>
 
-      {/* FRONT PAGE */}
-      <div className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 break-after-page border border-slate-300 print:border-none relative flex flex-col">
+      {dataList.map((data, idx) => (
+        <React.Fragment key={idx}>
+          {/* FRONT PAGE */}
+          <div className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 break-after-page border border-slate-300 print:border-none relative flex flex-col mb-12 print:mb-0">
         <header className="flex items-center justify-between mb-4">
           <div className="size-16 flex items-center justify-center shrink-0">
             <img src={depedCircle} alt="DepEd Seal" className="w-full h-full object-contain" />
@@ -84,10 +90,10 @@ const SF9Form = () => {
             <p className="text-[10px] italic leading-none">Republic of the Philippines</p>
             <p className="text-xs font-bold uppercase">Department of Education</p>
             <div className="flex justify-center gap-4 text-[9px] uppercase font-bold mt-1">
-              <span>Region: {section?.region}</span>
-              <span>Division: {section?.division}</span>
+              <span>Region: {data.section?.region}</span>
+              <span>Division: {data.section?.division}</span>
             </div>
-            <p className="text-sm font-bold uppercase mt-1 tracking-tight border-b border-black inline-block px-4">{section?.schoolName}</p>
+            <p className="text-sm font-bold uppercase mt-1 tracking-tight border-b border-black inline-block px-4">{data.section?.schoolName}</p>
             <p className="text-[9px] italic leading-none mt-1">(Name of School)</p>
           </div>
           <div className="size-16 flex items-center justify-center shrink-0">
@@ -99,14 +105,14 @@ const SF9Form = () => {
 
         <section className="space-y-2 mb-6 text-[11px]">
           <div className="flex gap-4">
-            <UnderlinedField label="Name" value={student.name} flex="flex-[2]" />
-            <UnderlinedField label="LRN" value={student.id} />
+            <UnderlinedField label="Name" value={data.student.name} flex="flex-[2]" />
+            <UnderlinedField label="LRN" value={data.student.id} />
           </div>
           <div className="flex gap-4">
-            <UnderlinedField label="Grade & Section" value={`Grade ${student.gradeLevel} - ${section?.name}`} />
-            <UnderlinedField label="School Year" value={student.schoolYear} flex="w-48" />
+            <UnderlinedField label="Grade & Section" value={`Grade ${data.student.gradeLevel} - ${data.section?.name}`} />
+            <UnderlinedField label="School Year" value={data.student.schoolYear} flex="w-48" />
           </div>
-          <UnderlinedField label="Adviser" value={section?.adviserName} />
+          <UnderlinedField label="Adviser" value={data.section?.adviserName} />
           <p className="text-[9px] mt-4 leading-relaxed text-justify italic">
             Dear Parent/Guardian: This report card shows the ability and progress your child has made in the different learning areas as well as his/her core values. The school welcomes you should you desire to know more about your child's progress.
           </p>
@@ -126,7 +132,7 @@ const SF9Form = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
-              {(reportData.subjectGrades || []).map((sub, idx) => (
+              {(data.reportData.subjectGrades || []).map((sub, idx) => (
                 <tr key={idx} className={`divide-x divide-black h-5 ${sub.isComposite ? 'font-bold italic bg-slate-50' : ''}`}>
                   <td className={`px-2 uppercase ${sub.isComponent ? 'pl-6 text-slate-600' : ''}`}>{sub.name}</td>
                   {Array.from({ length: 4 }).map((_, i) => {
@@ -142,8 +148,8 @@ const SF9Form = () => {
               <tr className="divide-x divide-black font-bold h-6 uppercase bg-slate-50">
                 <td className="px-2 text-right italic uppercase text-[9px]">General Average</td>
                 <td colSpan={4}></td>
-                <td className="text-center text-xs">{reportData.genAvg}</td>
-                <td className="text-center text-[9px]">{reportData.genAvg >= 75 ? 'PASSED' : ''}</td>
+                <td className="text-center text-xs">{data.reportData.genAvg}</td>
+                <td className="text-center text-[9px]">{data.reportData.genAvg >= 75 ? 'PASSED' : ''}</td>
               </tr>
             </tbody>
           </table>
@@ -182,8 +188,8 @@ const SF9Form = () => {
         </div>
       </div>
 
-      {/* BACK PAGE */}
-      <div className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 border border-slate-300 print:border-none mt-12 print:mt-0 relative flex flex-col">
+          {/* BACK PAGE */}
+          <div className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 border border-slate-300 print:border-none mt-12 print:mt-0 relative flex flex-col break-after-page mb-24 print:mb-0">
         <h2 className="text-center font-black uppercase text-sm py-1 bg-slate-100 border border-black mb-4 italic">Report on Learner's Observed Values</h2>
         <table className="w-full border-collapse border border-black text-[10px]">
           <thead>
@@ -232,7 +238,7 @@ const SF9Form = () => {
 
         <div className="mt-auto space-y-10 pt-10">
           <div className="grid grid-cols-2 gap-20">
-            <div className="text-center"><div className="border-b border-black w-full h-4 font-bold uppercase mb-1">{section?.adviserName}</div><p className="text-[9px] font-black uppercase">Class Adviser</p></div>
+            <div className="text-center"><div className="border-b border-black w-full h-4 font-bold uppercase mb-1">{data.section?.adviserName}</div><p className="text-[9px] font-black uppercase">Class Adviser</p></div>
             <div className="text-center"><div className="border-b border-black w-full h-4 mb-1"></div><p className="text-[9px] font-black uppercase">Principal / School Head</p></div>
           </div>
           <div className="w-2/3 mx-auto text-center"><div className="border-b border-black w-full h-4 mb-1 italic text-slate-300">Signature</div><p className="text-[9px] font-black uppercase">Parent/Guardian Signature</p></div>
@@ -243,6 +249,8 @@ const SF9Form = () => {
            <p className="text-[8px] italic font-bold uppercase font-sans">GradeMaster Systems</p>
         </footer>
       </div>
+        </React.Fragment>
+      ))}
 
       <style>{`
         @media print { @page { size: legal portrait; margin: 0; } body { margin: 0; -webkit-print-color-adjust: exact; } }

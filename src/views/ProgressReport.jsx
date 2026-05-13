@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Trash2, Table, Eye, Search, Loader2, FileText, X, Printer } from 'lucide-react';
+import { Download, Trash2, Table, Eye, Search, Loader2, FileText, X, Printer, Files } from 'lucide-react';
 import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
@@ -187,6 +187,22 @@ export function ProgressReport({
     document.body.removeChild(link);
   }, [studentReportData, maxQuarters, section, summarySubjectsList]); // Dependencies for useCallback
 
+  const handleBulkPrint = (type) => {
+    const path = type === 'sf9' ? '/sf9' : '/sf10';
+    const dataKey = type === 'sf9' ? 'reportData' : 'sf10Data';
+    
+    const studentsData = studentReportData.map(({ student, subjectResults, generalAverage }) => ({
+      student,
+      [dataKey]: {
+        subjectGrades: subjectResults || [],
+        genAvg: generalAverage || 0
+      },
+      section: allSections.find(s => String(s.id) === String(student.sectionId))
+    }));
+
+    navigate(path, { state: { isBulk: true, studentsData } });
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -211,30 +227,50 @@ export function ProgressReport({
               className={`${theme.styles.input} pl-10 py-2.5 text-sm`}
             />
           </div>
-          <button 
-            onClick={handleDownloadSummary}
-            disabled={activeTab === 'cards'} // Disable if not on summary tab
-            className={`${theme.styles.button} ${theme.styles.buttonPrimary} py-2.5 ${activeTab === 'cards' ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Download size={18} />
-            <span className="hidden md:inline">Export All</span>
-          </button>
         </div>
       </div>
 
-      <div className="flex bg-slate-100 p-1 rounded-xl w-fit shadow-sm">
-        <TabButton 
-          active={activeTab === 'cards'} 
-          onClick={() => setActiveTab('cards')}
-          icon={<Table size={14} />}
-          label="Individual Cards"
-        />
-        <TabButton 
-          active={activeTab === 'summary'} 
-          onClick={() => setActiveTab('summary')}
-          icon={<Eye size={14} />}
-          label="Grade Summary"
-        />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex bg-slate-100 p-1 rounded-xl w-fit shadow-sm">
+          <TabButton 
+            active={activeTab === 'cards'} 
+            onClick={() => setActiveTab('cards')}
+            icon={<Table size={14} />}
+            label="Individual Cards"
+          />
+          <TabButton 
+            active={activeTab === 'summary'} 
+            onClick={() => setActiveTab('summary')}
+            icon={<Eye size={14} />}
+            label="Grade Summary"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {studentReportData.length > 0 && (
+            <>
+              <button 
+                onClick={() => handleBulkPrint('sf9')}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2"
+              >
+                <Printer size={14} /> Print All SF9
+              </button>
+              <button 
+                onClick={() => handleBulkPrint('sf10')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center gap-2"
+              >
+                <Printer size={14} /> Print All SF10
+              </button>
+            </>
+          )}
+          <button 
+            onClick={handleDownloadSummary}
+            disabled={activeTab === 'cards'}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'cards' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-black shadow-lg'}`}
+          >
+            <Download size={14} /> Summary CSV
+          </button>
+        </div>
       </div>
 
       {/* AnimatePresence for tab content (cards vs summary) */}

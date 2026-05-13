@@ -7,9 +7,10 @@ import depedCircle from '../images/depedcircle.png';
 const SF10JHSForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { student, sf10Data, section } = location.state || {};
+  const { student, sf10Data, section, isBulk, studentsData } = location.state || {};
+  const dataList = isBulk ? studentsData : [{ student, sf10Data, section }];
 
-  if (!student) {
+  if (!isBulk && !student) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
@@ -37,7 +38,7 @@ const SF10JHSForm = () => {
     </div>
   );
 
-  const ScholasticTable = ({ gradeData, gradeLevelLabel }) => (
+  const ScholasticTable = ({ gradeData, gradeLevelLabel, student, section }) => (
     <div className="mt-2 break-inside-avoid">
       <div className="grid grid-cols-5 text-[9px] gap-x-2">
         <UnderlinedField label="School" value={section?.schoolName} flex="col-span-2" />
@@ -45,9 +46,9 @@ const SF10JHSForm = () => {
         <UnderlinedField label="District" value={section?.district || 'N/A'} />
         <UnderlinedField label="Division" value={section?.division} />
         <UnderlinedField label="Region" value={section?.region} />
-        <UnderlinedField label="Grade" value={gradeData ? student.gradeLevel : gradeLevelLabel || ''} />
+        <UnderlinedField label="Grade" value={gradeData ? student?.gradeLevel : gradeLevelLabel || ''} />
         <UnderlinedField label="Section" value={section?.name} />
-        <UnderlinedField label="SY" value={student.schoolYear} />
+        <UnderlinedField label="SY" value={student?.schoolYear} />
         <UnderlinedField label="Adviser" value={section?.adviserName} />
         <UnderlinedField label="Signature" value="" />
       </div>
@@ -94,11 +95,11 @@ const SF10JHSForm = () => {
   );
 
   // Promotion logic
-  const nextGrade = React.useMemo(() => {
-    const current = parseInt(student.gradeLevel);
+  const getNextGrade = (student, sf10Data) => {
+    const current = parseInt(student?.gradeLevel);
     if (isNaN(current)) return '___';
-    return sf10Data.genAvg >= 75 ? String(current + 1) : String(current);
-  }, [student.gradeLevel, sf10Data.genAvg]);
+    return sf10Data?.genAvg >= 75 ? String(current + 1) : String(current);
+  };
 
   const principalName = "__________________________";
 
@@ -109,13 +110,16 @@ const SF10JHSForm = () => {
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-colors">
           <ArrowLeft size={16} /> Back
         </button>
+        <div className="bg-slate-100 px-4 py-2 rounded-2xl text-[10px] font-black uppercase text-slate-500 border border-slate-200">
+          {isBulk ? `Bulk: ${dataList.length} Students` : 'Single Record'}
+        </div>
         <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">
           <Printer size={16} /> Print SF10
         </button>
       </div>
 
-      {/* ==================================== FRONT PAGE ==================================== */}
-      <div className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 border border-slate-300 print:border-none relative flex flex-col">
+      {dataList.map((data, idx) => (
+        <div key={idx} className="w-[8.5in] min-h-[13in] mx-auto bg-white p-[0.5in] shadow-2xl print:shadow-none print:m-0 border border-slate-300 print:border-none relative flex flex-col break-after-page mb-24 print:mb-0">
         <div className="flex justify-between items-start">
           <span className="text-[8px] font-bold">SF10-JHS</span>
         </div>
@@ -138,15 +142,15 @@ const SF10JHSForm = () => {
         <SectionHeader>Learner's Information</SectionHeader>
         <div className="space-y-1 mt-2">
           <div className="flex gap-4">
-            <UnderlinedField label="Last Name" value={student.name.split(',')[0]} />
-            <UnderlinedField label="First Name" value={student.name.split(',')[1]?.split(' ')[1]} />
+            <UnderlinedField label="Last Name" value={data.student.name.split(',')[0]} />
+            <UnderlinedField label="First Name" value={data.student.name.split(',')[1]?.split(' ')[1]} />
             <UnderlinedField label="Name Ext" value="" flex="w-20" />
-            <UnderlinedField label="Middle Name" value={student.name.split(' ').pop()} />
+            <UnderlinedField label="Middle Name" value={data.student.name.split(' ').pop()} />
           </div>
           <div className="flex gap-4">
-            <UnderlinedField label="LRN" value={student.id} />
+            <UnderlinedField label="LRN" value={data.student.id} />
             <UnderlinedField label="Birthdate" value="N/A" />
-            <UnderlinedField label="Sex" value={student.gender} flex="w-32" />
+            <UnderlinedField label="Sex" value={data.student.gender} flex="w-32" />
           </div>
         </div>
 
@@ -171,7 +175,11 @@ const SF10JHSForm = () => {
         <SectionHeader>Scholastic Record</SectionHeader>
         <div className="space-y-1">
           {/* Slot 1: Current/Active Grade */}
-          <ScholasticTable gradeData={sf10Data} />
+          <ScholasticTable 
+            gradeData={data.sf10Data} 
+            student={data.student} 
+            section={data.section} 
+          />
         </div>
 
         <SectionHeader>Remedial Classes</SectionHeader>
@@ -203,15 +211,15 @@ const SF10JHSForm = () => {
           </div>
           
           <div className="text-[11px] leading-loose text-justify">
-            I CERTIFY that this is a true record of <span className="inline-block border-b border-black w-64 text-center h-4 font-bold">{student.name}</span> 
-            with LRN <span className="inline-block border-b border-black w-40 text-center h-4 font-bold">{student.id}</span> 
-            and that he/she is eligible for admission to Grade <span className="inline-block border-b border-black w-16 text-center h-4 font-bold">{nextGrade}</span>.
+            I CERTIFY that this is a true record of <span className="inline-block border-b border-black w-64 text-center h-4 font-bold">{data.student.name}</span> 
+            with LRN <span className="inline-block border-b border-black w-40 text-center h-4 font-bold">{data.student.id}</span> 
+            and that he/she is eligible for admission to Grade <span className="inline-block border-b border-black w-16 text-center h-4 font-bold">{getNextGrade(data.student, data.sf10Data)}</span>.
           </div>
 
           <div className="grid grid-cols-2 gap-x-10 gap-y-4">
-            <UnderlinedField label="Name of School" value={section?.schoolName} />
-            <UnderlinedField label="School ID" value={section?.schoolId} />
-            <UnderlinedField label="Last School Year Attended" value={student.schoolYear} />
+            <UnderlinedField label="Name of School" value={data.section?.schoolName} />
+            <UnderlinedField label="School ID" value={data.section?.schoolId} />
+            <UnderlinedField label="Last School Year Attended" value={data.student.schoolYear} />
           </div>
 
           <div className="flex justify-between items-end pt-8">
@@ -237,6 +245,7 @@ const SF10JHSForm = () => {
            <p className="text-[8px] italic font-bold uppercase">Revised 2025 based on DepEd Order No. 10, s. 2024</p>
         </footer>
       </div>
+      ))}
 
       <style>{`
         @media print {
