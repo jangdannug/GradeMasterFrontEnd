@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { LogIn, ShieldCheck, UserCircle, GraduationCap, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { RegistrationView } from './RegistrationView';
+import { ForgotPasswordView } from './ForgotPasswordView';
 // UPDATED: Use the new authService
 import authService from '../services/authService';
 
 export function Login({ onLogin, onRegister }) {
   const navigate = useNavigate(); // The onRegister prop is no longer needed here
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isForgotPass, setIsForgotPass] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,10 +47,10 @@ export function Login({ onLogin, onRegister }) {
     setIsRegisteringUser(true);
     try {
       await authService.register(registrationData);
-      alert('Registration successful! Please wait for admin approval.');
-      setIsRegistering(false); // Go back to login form after successful registration
+      // RegistrationView now handles its own success message and step transition
     } catch (err) {
       setRegistrationError(err);
+      throw err; // Re-throw so RegistrationView knows it failed
     } finally {
       setIsRegisteringUser(false);
     }
@@ -56,25 +58,39 @@ export function Login({ onLogin, onRegister }) {
 
   if (isRegistering) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <RegistrationView 
-          onBack={() => setIsRegistering(false)} 
-          onRegister={handleRegistrationSubmit} // Pass the new handler
-          isLoading={isRegisteringUser} // Pass loading state to RegistrationView
-          error={registrationError} // Pass error state to RegistrationView
-        />
-      </div>
+      <RegistrationView 
+        onBack={() => setIsRegistering(false)} 
+        onRegister={handleRegistrationSubmit}
+        isLoading={isRegisteringUser}
+        error={registrationError}
+      />
+    );
+  }
+
+  if (isForgotPass) {
+    return (
+      <ForgotPasswordView 
+        onBack={() => setIsForgotPass(false)} 
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Abstract Background Design */}
       <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-40"></div>
-      
+
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div animate={{ x: [0, 40, 0], y: [0, 60, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/15 rounded-full blur-[120px]" />
+        <motion.div animate={{ x: [0, -60, 0], y: [0, 40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[20%] -right-[10%] w-[45%] h-[45%] bg-purple-500/15 rounded-full blur-[100px]" />
+        <motion.div animate={{ x: [0, 30, 0], y: [0, -50, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] left-[10%] w-[40%] h-[40%] bg-blue-500/15 rounded-full blur-[110px]" />
+        <motion.div animate={{ x: [0, -40, 0], y: [0, -30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-sky-500/15 rounded-full blur-[130px]" />
+      </div>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 backdrop-blur-sm bg-white/90 relative z-10"
+        className="w-full max-w-md rounded-[2.5rem] border border-white shadow-2xl p-8 backdrop-blur-2xl bg-white/80 relative z-10"
       >
         <div className="text-center mb-10">
            <div className="size-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-200">
@@ -126,6 +142,15 @@ export function Login({ onLogin, onRegister }) {
                  placeholder="••••••••"
                  required
                />
+             </div>
+             <div className="text-right">
+               <button 
+                 type="button" 
+                 onClick={() => setIsForgotPass(true)}
+                 className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+               >
+                 Forgot Password?
+               </button>
              </div>
            </div>
 
