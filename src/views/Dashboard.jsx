@@ -25,7 +25,8 @@ export function Dashboard({
   onAssignStudent,
   onAddSubject,
   onUpdateSubject,
-  onDeleteSubject
+  onDeleteSubject,
+  syncError
 }) {
   const [activeTab, setActiveTab] = React.useState('teaching');
   
@@ -93,6 +94,7 @@ export function Dashboard({
           onAddSubject={onAddSubject}
           onUpdateSubject={onUpdateSubject}
           onDeleteSubject={onDeleteSubject}
+          syncError={syncError}
         />
       )}
     </motion.div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, Trash2, BookOpen, User, History, X, Search, Check } from 'lucide-react';
+import { Users, Plus, Trash2, BookOpen, User, History, X, Search, Check, AlertCircle } from 'lucide-react';
 import { theme } from '../../theme';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 
@@ -17,7 +17,8 @@ export function AdvisoryDashboardView({
   onAddSubject,
   onUpdateSubject,
   onDeleteSubject,
-  activeView = 'students'
+  activeView = 'students',
+  syncError
 }) {
   const [isAdding, setIsAdding] = React.useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = React.useState('');
@@ -25,6 +26,7 @@ export function AdvisoryDashboardView({
   const [isAddingSubject, setIsAddingSubject] = React.useState(false);
   const [editingSubjectId, setEditingSubjectId] = React.useState(null);
   const [subjectFormData, setSubjectFormData] = React.useState({ baseSubjectId: '', teacherId: '' });
+  const [localError, setLocalError] = React.useState('');
 
   const adviserSection = allSections.find(s => s.adviserId === currentTeacherId);
   const myStudents = adviserSection ? students.filter(s => s.sectionId === adviserSection.id) : [];
@@ -52,31 +54,45 @@ export function AdvisoryDashboardView({
 
   const handleAddSubject = (e) => {
     e.preventDefault();
+    setLocalError('');
     if (subjectFormData.baseSubjectId && subjectFormData.teacherId && adviserSection) {
       const teacher = teachers.find(t => t.id === subjectFormData.teacherId);
       if (!teacher) return;
-      onAddSubject({
-        baseSubjectId: subjectFormData.baseSubjectId,
-        teacherId: teacher.id,
-        teacherName: teacher.name,
-        sectionId: adviserSection.id
-      });
-      setSubjectFormData({ baseSubjectId: '', teacherId: '' });
-      setIsAddingSubject(false);
+      try {
+        onAddSubject({
+          baseSubjectId: subjectFormData.baseSubjectId,
+          teacherId: teacher.id,
+          teacherName: teacher.name,
+          sectionId: adviserSection.id
+        });
+        setSubjectFormData({ baseSubjectId: '', teacherId: '' });
+        setIsAddingSubject(false);
+      } catch (err) {
+        setLocalError(err.message || 'Failed to add subject');
+      }
+    } else {
+      setLocalError('Please select both a subject template and a teacher.');
     }
   };
 
   const handleUpdateSubject = (e) => {
     e.preventDefault();
+    setLocalError('');
     if (editingSubjectId && subjectFormData.teacherId) {
       const teacher = teachers.find(t => t.id === subjectFormData.teacherId);
       if (!teacher) return;
-      onUpdateSubject(editingSubjectId, {
-        teacherId: teacher.id,
-        teacherName: teacher.name
-      });
-      setEditingSubjectId(null);
-      setSubjectFormData({ baseSubjectId: '', teacherId: '' });
+      try {
+        onUpdateSubject(editingSubjectId, {
+          teacherId: teacher.id,
+          teacherName: teacher.name
+        });
+        setEditingSubjectId(null);
+        setSubjectFormData({ baseSubjectId: '', teacherId: '' });
+      } catch (err) {
+        setLocalError(err.message || 'Failed to update subject');
+      }
+    } else {
+      setLocalError('Please select a teacher.');
     }
   };
 
@@ -92,6 +108,26 @@ export function AdvisoryDashboardView({
   const toggleStudentSelection = (studentId) => {
     setSelectedStudentsToAssign(prev => prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]);
   };
+
+  const handleSelectAllStudents = () => {
+  const visibleStudentIds = availableStudents.map(s => s.id);
+
+  const allSelected = visibleStudentIds.every(id =>
+    selectedStudentsToAssign.includes(id)
+  );
+
+  if (allSelected) {
+    // Unselect all visible students
+    setSelectedStudentsToAssign(prev =>
+      prev.filter(id => !visibleStudentIds.includes(id))
+    );
+  } else {
+    // Select all visible students
+    setSelectedStudentsToAssign(prev => [
+      ...new Set([...prev, ...visibleStudentIds])
+    ]);
+  }
+};
 
   const assignedCodes = React.useMemo(() => {
     if (!adviserSection) return new Set();
@@ -109,12 +145,30 @@ export function AdvisoryDashboardView({
 
   if (!adviserSection) return null;
 
+  const isAllSelected =
+  availableStudents.length > 0 &&
+  availableStudents.every(student =>
+    selectedStudentsToAssign.includes(student.id)
+  );
+  
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="space-y-6"
     >
+      {(syncError || localError) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold uppercase tracking-tight shadow-sm"
+        >
+          <AlertCircle size={20} className="shrink-0" />
+          <div className="flex-1">{localError || (syncError?.message || String(syncError))}</div>
+          <button onClick={() => setLocalError('')} className="p-1 hover:bg-rose-100 rounded-lg transition-colors"><X size={16} /></button>
+        </motion.div>
+      )}
+
       {activeView === 'students' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
           <div className={`${theme.styles.card} p-8 flex flex-col md:flex-row md:items-center justify-between gap-6`}>
@@ -143,6 +197,17 @@ export function AdvisoryDashboardView({
                     <h3 className="text-sm font-black uppercase italic text-slate-800">Available Enrolled Students</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Assign unassigned Grade {adviserSection.gradeLevel} students to your section</p>
                   </div>
+                  {availableStudents.length > 0 && (
+                    <button 
+                      onClick={handleSelectAllStudents}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-white hover:text-indigo-600 transition-all"
+                    >
+                      <div className={`size-3 rounded border flex items-center justify-center ${isAllSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'}`}>
+                        {isAllSelected && <Check size={8} className="text-white" />}
+                      </div>
+                      {isAllSelected ? 'Unselect All' : 'Select All'}
+                    </button>
+                  )}
                   <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                     <X size={20} />
                   </button>

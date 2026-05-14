@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { LogIn, ShieldCheck, UserCircle, GraduationCap, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { LogIn, ShieldCheck, UserCircle, GraduationCap, Lock, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { RegistrationView } from './RegistrationView';
 import { ForgotPasswordView } from './ForgotPasswordView';
 // UPDATED: Use the new authService
@@ -16,6 +16,7 @@ export function Login({ onLogin, onRegister }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => { // UPDATED: Async login flow
     // ... existing login logic ...
@@ -135,13 +136,20 @@ export function Login({ onLogin, onRegister }) {
                  <Lock size={18} />
                </div>
                <input 
-                 type="password"
+                 type={showPassword ? "text" : "password"}
                  value={password}
                  onChange={(e) => setPassword(e.target.value)}
-                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-medium outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-12 text-sm font-medium outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all"
                  placeholder="••••••••"
                  required
                />
+               <button
+                 type="button"
+                 onClick={() => setShowPassword(!showPassword)}
+                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors"
+               >
+                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+               </button>
              </div>
              <div className="text-right">
                <button 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   UserPlus,
   Mail,
@@ -15,6 +15,7 @@ import {
   Loader2,
   KeyRound,
   Timer,
+  ChevronRight,
   CheckCircle2,
 } from "lucide-react";
 import schoolService from "../services/schoolService";
@@ -45,7 +46,7 @@ function PasswordRule({ valid, text }) {
     </div>
   );
 }
-export function RegistrationView({ onRegister, onBack }) {
+export function RegistrationView({ onRegister, onBack, isLoading: parentLoading, error: parentError }) {
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -55,7 +56,7 @@ export function RegistrationView({ onRegister, onBack }) {
     schoolId: "",
     requestedRole: "teacher", // NEW: Add requestedRole to form data, default to 'teacher'
   });
-  const [step, setStep] = useState(1); // 1: Registration Form, 2: OTP Verification, 3: Submission Success
+  const [step, setStep] = useState(1); // 1: Identity, 2: Professional, 3: Security, 4: OTP, 5: Success
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [otpMessage, setOtpMessage] = useState('');
@@ -89,7 +90,7 @@ export function RegistrationView({ onRegister, onBack }) {
     }
     return () => clearInterval(interval);
   }, [resendTimer]);
-  const passwordChecks = React.useMemo(() => {
+  const passwordChecks = useMemo(() => {
     const password = formData.password;
 
     return {
@@ -103,7 +104,7 @@ export function RegistrationView({ onRegister, onBack }) {
 
   const passwordScore = Object.values(passwordChecks).filter(Boolean).length;
 
-  const passwordStrength = React.useMemo(() => {
+  const passwordStrength = useMemo(() => {
     if (!formData.password) {
       return {
         label: "",
@@ -139,21 +140,22 @@ export function RegistrationView({ onRegister, onBack }) {
     e.preventDefault();
     setError('');
 
-    if (step === 1) { // Initial registration form submission
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      setStep(3);
+    } else if (step === 3) {
       if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match. Please verify your entry.");
+        setError("Passwords do not match.");
         return;
       }
-
       const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
       if (!strongPasswordRegex.test(formData.password)) {
-        setError("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).");
+        setError("Password is not strong enough.");
         return;
       }
-      
-      // Request OTP
       await handleRequestOTP();
-    } else if (step === 2) { // OTP verification form submission
+    } else if (step === 4) {
       await handleVerifyOTP();
     }
   };
@@ -169,13 +171,13 @@ export function RegistrationView({ onRegister, onBack }) {
 
       if (data.success) {
         setOtpMessage('OTP sent! Please check your email inbox.');
-        setStep(2);
+        setStep(4);
         setResendTimer(60); // 60 seconds cooldown for resend
       } else {
         setError(data.message || 'Failed to send OTP.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Connection error. Please try again later.');
+      setError(err.response?.data?.message || err.message || 'Connection error. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -193,18 +195,18 @@ export function RegistrationView({ onRegister, onBack }) {
         // OTP verified, now proceed with actual registration
         const { confirmPassword, ...submissionData } = formData;
         await onRegister(submissionData); // Call the parent's registration handler
-        setStep(3); // Transition to success step
+        setStep(5); // Transition to success step
       } else {
         setError(data.message || 'Invalid or expired OTP.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Verification failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Verification failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (step === 3) { // Submission Success
+  if (step === 5) { // Submission Success
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-40"></div>
@@ -258,7 +260,7 @@ export function RegistrationView({ onRegister, onBack }) {
       >
       <div className="flex items-center gap-4">
         <button
-          onClick={onBack}
+          onClick={step > 1 && step < 5 ? () => setStep(step - 1) : onBack}
           className="size-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft size={20} />
@@ -274,17 +276,28 @@ export function RegistrationView({ onRegister, onBack }) {
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-5">
-        {error && step !== 3 && ( // Only show error if not in success step
+        {(error || parentError) && step < 5 && ( // Only show error if not in success step
             <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-600 text-[10px] font-bold uppercase tracking-tight"
+                key={error || String(parentError)}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 text-rose-600 shadow-sm"
             >
-                <AlertCircle size={14} /> {error}
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <div className="text-[10px] font-bold uppercase tracking-tight">{error || (parentError?.message || String(parentError))}</div>
             </motion.div>
         )}
 
-        <div className="space-y-1.5">
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-5"
+            >
+              <div className="space-y-1.5">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
             Full Name
           </label>
@@ -333,7 +346,7 @@ export function RegistrationView({ onRegister, onBack }) {
             />
           </div>
         </div>
-        
+
         <div className="space-y-1.5">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
             Email Address
@@ -347,7 +360,6 @@ export function RegistrationView({ onRegister, onBack }) {
               required
               type="email"
               placeholder="name@school.edu"
-              disabled={step === 2} // Disable email input during OTP step
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value.toLowerCase() })
@@ -356,7 +368,23 @@ export function RegistrationView({ onRegister, onBack }) {
             />
           </div>
         </div>
+              <button
+                type="submit"
+                className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-900 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
+              >
+                Continue <ChevronRight size={16} />
+              </button>
+            </motion.div>
+          )}
 
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-5"
+            >
         {/* School ID Input */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
@@ -370,7 +398,6 @@ export function RegistrationView({ onRegister, onBack }) {
             <select
               required
               value={formData.schoolId}
-              disabled={step === 2} // Disable during OTP step
               onChange={(e) =>
                 setFormData({ ...formData, schoolId: e.target.value })
               }
@@ -401,7 +428,6 @@ export function RegistrationView({ onRegister, onBack }) {
             <select
               required
               value={formData.requestedRole}
-              disabled={step === 2} // Disable during OTP step
               onChange={(e) =>
                 setFormData({ ...formData, requestedRole: e.target.value })
               }
@@ -413,8 +439,25 @@ export function RegistrationView({ onRegister, onBack }) {
             </select>
           </div>
         </div>
+              <button
+                type="submit"
+                className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-900 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
+              >
+                Next Step <ChevronRight size={16} />
+              </button>
+            </motion.div>
+          )}
 
-        <div className={`space-y-1.5 ${step === 2 ? 'opacity-50 pointer-events-none' : ''}`}>
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-5"
+            >
+
+        <div className="space-y-1.5">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
             Password
           </label>
@@ -500,7 +543,7 @@ export function RegistrationView({ onRegister, onBack }) {
           </div>
         </div>
 
-        <div className={`space-y-1.5 ${step === 2 ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className="space-y-1.5">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
             Confirm Password
           </label>
@@ -520,23 +563,28 @@ export function RegistrationView({ onRegister, onBack }) {
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-12 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
           </div>
+          {formData.confirmPassword && (
+            <div className="px-1">
+              <PasswordRule 
+                valid={formData.password === formData.confirmPassword} 
+                text={formData.password === formData.confirmPassword ? "Passwords match" : "Passwords do not match"} 
+              />
+            </div>
+          )}
         </div>
-        
-        {step === 1 && (
-            <motion.button
-                key="submit-reg"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+
+            <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || parentLoading}
                 className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs hover:bg-slate-900 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
             >
-                {isLoading ? <Loader2 className="animate-spin" size={16} /> : <><Send size={16} /> Submit for Approval</>}
-            </motion.button>
-        )}
+                {(isLoading || parentLoading) ? <Loader2 className="animate-spin" size={16} /> : <><Send size={16} /> Submit for Approval</>}
+            </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {step === 2 && (
+        {step === 4 && (
             <motion.div
                 key="otp-verify"
                 initial={{ opacity: 0, y: 10 }}
@@ -575,10 +623,10 @@ export function RegistrationView({ onRegister, onBack }) {
                 {otpMessage && <p className="text-[9px] text-emerald-600 italic px-1">{otpMessage}</p>}
                 <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || parentLoading}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-black transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
                 >
-                    {isLoading ? <Loader2 className="animate-spin" size={16} /> : <><ShieldCheck size={16} /> Verify & Proceed</>}
+                    {(isLoading || parentLoading) ? <Loader2 className="animate-spin" size={16} /> : <><ShieldCheck size={16} /> Verify & Proceed</>}
                 </button>
             </motion.div>
         )}
