@@ -209,12 +209,12 @@ export function RegistrationView({ onRegister, onBack, isLoading: parentLoading,
   if (step === 5) { // Submission Success
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-40"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#d1d5db_2px,transparent_1px)] [background-size:40px_40px] opacity-30"></div>
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div animate={{ x: [0, 40, 0], y: [0, 60, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/15 rounded-full blur-[120px]" />
-          <motion.div animate={{ x: [0, -60, 0], y: [0, 40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[20%] -right-[10%] w-[45%] h-[45%] bg-purple-500/15 rounded-full blur-[100px]" />
-          <motion.div animate={{ x: [0, 30, 0], y: [0, -50, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] left-[10%] w-[40%] h-[40%] bg-blue-500/15 rounded-full blur-[110px]" />
-          <motion.div animate={{ x: [0, -40, 0], y: [0, -30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[10%] right-[10%] w-[50%] h-[50%] bg-sky-500/15 rounded-full blur-[130px]" />
+          <motion.div animate={{ x: [0, 150, 0], y: [0, 100, 0], scale: [1, 1.3, 1] }} transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[25%] -left-[15%] w-[75%] h-[75%] bg-indigo-600/20 rounded-full blur-[150px]" />
+          <motion.div animate={{ x: [0, -120, 0], y: [0, 150, 0], scale: [1.2, 1, 1.2] }} transition={{ duration: 35, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[15%] -right-[20%] w-[70%] h-[70%] bg-purple-600/20 rounded-full blur-[130px]" />
+          <motion.div animate={{ x: [0, 100, 0], y: [0, -180, 0], scale: [1, 1.4, 1] }} transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[20%] left-[10%] w-[65%] h-[65%] bg-blue-600/20 rounded-full blur-[140px]" />
+          <motion.div animate={{ x: [0, -150, 0], y: [0, -80, 0], scale: [1.3, 1, 1.3] }} transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[10%] right-[10%] w-[80%] h-[80%] bg-sky-600/20 rounded-full blur-[160px]" />
         </div>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

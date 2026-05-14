@@ -1,5 +1,6 @@
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { useGradeManagement } from './hooks/useGradeManagement';
@@ -283,7 +284,16 @@ export default function App() {
             }}
           />
         ) : (
-      <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden print:h-auto print:overflow-visible">
+      <div className="flex h-screen bg-[#f0f4f8] font-sans text-slate-900 overflow-hidden print:h-auto print:overflow-visible relative">
+        {/* Global Mesh Gradient Background */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute inset-0 bg-[radial-gradient(#d1d5db_2px,transparent_1px)] [background-size:40px_40px] opacity-30"></div>
+          <motion.div animate={{ x: [0, 150, 0], y: [0, 100, 0], scale: [1, 1.3, 1] }} transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[25%] -left-[15%] w-[75%] h-[75%] bg-indigo-600/20 rounded-full blur-[150px]" />
+          <motion.div animate={{ x: [0, -120, 0], y: [0, 150, 0], scale: [1.2, 1, 1.2] }} transition={{ duration: 35, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[15%] -right-[20%] w-[70%] h-[70%] bg-purple-600/20 rounded-full blur-[130px]" />
+          <motion.div animate={{ x: [0, 100, 0], y: [0, -180, 0], scale: [1, 1.4, 1] }} transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[20%] left-[10%] w-[65%] h-[65%] bg-blue-600/20 rounded-full blur-[140px]" />
+          <motion.div animate={{ x: [0, -150, 0], y: [0, -80, 0], scale: [1.3, 1, 1.3] }} transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[10%] right-[10%] w-[80%] h-[80%] bg-sky-600/20 rounded-full blur-[160px]" />
+        </div>
+
         <Sidebar 
           isOpen={isSidebarOpen} 
           setIsOpen={setIsSidebarOpen} 

@@ -22,6 +22,7 @@ import {
   Trash2,
   Loader2
 } from 'lucide-react';
+import { theme } from '../theme';
 import authService from '../services/authService';
 import schoolService from '../services/schoolService';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
@@ -378,7 +379,7 @@ export function AdminPanel({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-6 ${theme.styles.card}`}>
         <div className="flex items-center gap-4 min-w-0">
           <div className="size-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
             <Shield size={24} />
@@ -467,7 +468,7 @@ export function AdminPanel({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 onSubmit={handleSubmit}
-                className="bg-white p-6 rounded-2xl border-2 border-indigo-100 shadow-xl space-y-4"
+                className={`p-6 rounded-2xl border-2 border-indigo-100 shadow-xl space-y-4 ${theme.styles.card}`}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
@@ -475,7 +476,7 @@ export function AdminPanel({
                     <select 
                       value={formData.gradeLevel}
                       onChange={e => setFormData({...formData, gradeLevel: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700"
+                      className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-slate-700`}
                     >
                       {['7', '8', '9', '10', '11', '12'].map(g => (
                         <option key={g} value={g}>Grade {g}</option>
@@ -490,7 +491,7 @@ export function AdminPanel({
                       placeholder="e.g. ST. AUGUSTINE"
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700"
+                      className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-slate-700`}
                     />
                   </div>
                 </div>
@@ -502,8 +503,8 @@ export function AdminPanel({
                       placeholder="e.g. 123456"
                       value={formData.schoolId}
                       onChange={e => setFormData({...formData, schoolId: e.target.value})}
-                      disabled={currentUserRole === 'admin'}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 disabled:opacity-60"
+                      disabled={currentUserRole === 'admin'} // Use theme.styles.input
+                      className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-slate-700 disabled:opacity-60`}
                     />
                   </div>
                   <div className="space-y-1">
@@ -513,7 +514,7 @@ export function AdminPanel({
                       type="text"
                       placeholder="Auto-populated..."
                       value={formData.schoolName}
-                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-500 cursor-not-allowed"
+                      className={`${theme.styles.input} !bg-slate-100/50 !border-slate-200/50 !rounded-xl px-4 py-2 font-bold text-slate-500 cursor-not-allowed`}
                     />
                   </div>
                   <div className="space-y-1">
@@ -522,7 +523,7 @@ export function AdminPanel({
                       type="text"
                       value={formData.schoolYear}
                       onChange={e => setFormData({...formData, schoolYear: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700"
+                      className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-slate-700`}
                     />
                   </div>
                 </div>
@@ -588,7 +589,7 @@ export function AdminPanel({
               {filteredUsers.map(user => (
                 <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
                   {editingUserId === user.id ? (
-                    // Edit Form
+                    // Edit Form (using theme.styles.input for consistency)
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Name</label>
@@ -596,7 +597,7 @@ export function AdminPanel({
                           type="text"
                           value={editUserFormData.name}
                           onChange={e => setEditUserFormData({ ...editUserFormData, name: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                          className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-xs font-bold uppercase`}
                         />
                       </div>
                       <div className="space-y-1">
@@ -605,7 +606,7 @@ export function AdminPanel({
                           type="text"
                           value={editUserFormData.username}
                           onChange={e => setEditUserFormData({ ...editUserFormData, username: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                          className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-xs font-bold`}
                           disabled // Username usually not editable
                         />
                       </div>
@@ -614,7 +615,7 @@ export function AdminPanel({
                         <select
                           value={editUserFormData.role}
                           onChange={e => setEditUserFormData({ ...editUserFormData, role: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                          className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-[10px] font-bold uppercase`}
                           disabled={user.id === currentUserId}
                         >
                           {currentUserRole === 'superadmin' && <option value="admin">Admin</option>}
@@ -629,7 +630,7 @@ export function AdminPanel({
                           type="text"
                           value={editUserFormData.schoolId}
                           onChange={e => setEditUserFormData({ ...editUserFormData, schoolId: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                          className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-xs font-bold`}
                           disabled={currentUserRole === 'admin'}
                           placeholder={currentUserRole === 'admin' ? currentUserSchoolId : "Enter School ID"}
                         />
@@ -641,7 +642,7 @@ export function AdminPanel({
                           <select
                             value={editUserFormData.assignedSectionId}
                             onChange={e => setEditUserFormData({ ...editUserFormData, assignedSectionId: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                            className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-[10px] font-bold uppercase`}
                           >
                             <option value="">None</option>
                             {filteredSections.map(section => (
@@ -663,7 +664,7 @@ export function AdminPanel({
                               const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
                               setEditUserFormData({ ...editUserFormData, assignedSubjectIds: selectedOptions });
                             }}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500 h-24"
+                            className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-[10px] font-bold uppercase h-24`}
                           >
                           {filteredSubjectsForSchool.map(subject => (
                               <option key={subject.id} value={subject.id}>
@@ -679,7 +680,7 @@ export function AdminPanel({
                         <select
                           value={editUserFormData.status}
                           onChange={e => setEditUserFormData({ ...editUserFormData, status: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500"
+                          className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-3 py-2 text-[10px] font-bold uppercase`}
                         >
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
@@ -689,7 +690,7 @@ export function AdminPanel({
                       <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                         <button
                           onClick={() => setEditingUserId(null)}
-                          className="px-3 py-1 bg-white border border-slate-200 text-slate-500 text-xs font-black uppercase rounded-lg hover:bg-slate-50 transition-colors"
+                          className="px-3 py-1 bg-white/50 border border-white/60 text-slate-500 text-xs font-black uppercase rounded-lg hover:bg-white/70 transition-colors"
                         >
                           Cancel
                         </button>
@@ -723,16 +724,16 @@ export function AdminPanel({
                       <div className="space-y-3">
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
-                          <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
+                          <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School ID</label>
-                          <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.schoolId || 'N/A'}</p>
+                          <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.schoolId || 'N/A'}</p>
                         </div>
                         {user.role === 'adviser' && user.assignedSectionId && (
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Adviser of</label>
-                            <p className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
+                            <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
                               G{filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
                             </p>
                           </div>
@@ -740,7 +741,7 @@ export function AdminPanel({
                         {(user.role === 'teacher' || user.role === 'adviser') && user.assignedSubjectIds && user.assignedSubjectIds.length > 0 && (
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Teaching</label>
-                            <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
+                            <div className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
                               {user.assignedSubjectIds.map(subId => {
                                 const subject = filteredSubjectsForSchool.find(s => String(s.id) === String(subId));
                                 return subject ? <span key={subId} className="block">{subject.name} (G{subject.gradeLevel})</span> : null;
@@ -750,7 +751,7 @@ export function AdminPanel({
                         )}
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
-                          <p className={`w-full border rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none ${user.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
+                          <p className={`w-full border rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none ${user.status === 'active' ? 'bg-emerald-50/50 text-emerald-600 border-emerald-200/50' : 'bg-rose-50/50 text-rose-600 border-rose-200/50'}`}>
                             {user.status}
                           </p>
                         </div>
@@ -802,7 +803,7 @@ export function AdminPanel({
                 <BookOpen className="text-indigo-600" /> Global Subject Templates
               </h3>
               
-              <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 text-slate-700">
                 <input 
                   placeholder="AUTO-GENERATED CODE" 
                   value={baseSubjectForm.code}
@@ -810,7 +811,7 @@ export function AdminPanel({
                   className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs cursor-not-allowed opacity-70" 
                   required
                 />
-                <input 
+                <input // Subject Name
                   placeholder="SUBJECT LABEL" 
                   value={baseSubjectForm.name}
                   onChange={e => {
@@ -821,14 +822,14 @@ export function AdminPanel({
                       code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
                     });
                   }}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2" 
+                  className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2`} 
                   required
                 />
                 {currentUserRole === 'superadmin' && (
                   <select 
                     value={baseSubjectForm.schoolId}
                     onChange={e => setBaseSubjectForm({...baseSubjectForm, schoolId: e.target.value})}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs"
+                    className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs`}
                     required
                   >
                     <option value="" disabled>School Association</option>
@@ -846,7 +847,7 @@ export function AdminPanel({
                         code: `${newGrade}${baseSubjectForm.name.replace(/\s+/g, '')}`
                       });
                     }}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs"
+                    className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs`}
                   >
                     {['7','8','9','10','11','12'].map(g => <option key={g} value={g}>G{g}</option>)}
                   </select>
@@ -868,20 +869,20 @@ export function AdminPanel({
                       <div className="h-px flex-1 bg-slate-100"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {filteredBaseSubjects.filter(b => b.gradeLevel === grade).sort((a, b) => a.name.localeCompare(b.name)).map(base => (
-                        <div key={base.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center group">
+                        {filteredBaseSubjects.filter(b => b.gradeLevel === grade).sort((a, b) => a.name.localeCompare(b.name)).map(base => ( // Base Subject Card
+                        <div key={base.id} className="p-4 bg-white/50 rounded-xl border border-white/60 flex justify-between items-center group">
                           {editingBaseSubjectId === base.id ? (
                             <div className="flex-1 space-y-2 mr-4">
                               <input 
                                 value={baseEditFormData.code}
                                 onChange={e => setBaseEditFormData({ ...baseEditFormData, code: e.target.value.toUpperCase() })}
-                                className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-lg px-2 py-1 text-[10px] font-black`}
                                 placeholder="CODE"
                               />
                               <input 
                                 value={baseEditFormData.name}
                                 onChange={e => setBaseEditFormData({ ...baseEditFormData, name: e.target.value.toUpperCase() })}
-                                className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-lg px-2 py-1 text-xs font-bold`}
                                 placeholder="NAME"
                                 autoFocus
                               />
@@ -889,7 +890,7 @@ export function AdminPanel({
                                 <select 
                                   value={baseEditFormData.schoolId}
                                   onChange={e => setBaseEditFormData({...baseEditFormData, schoolId: e.target.value})}
-                                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold outline-none"
+                                  className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-lg px-2 py-1 text-[10px] font-bold`}
                                   required
                                 >
                                   <option value="" disabled>Transfer to School...</option>
@@ -905,7 +906,7 @@ export function AdminPanel({
                                 </button>
                                 <button 
                                   onClick={() => setEditingBaseSubjectId(null)}
-                                  className="px-2 py-1 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase rounded hover:bg-slate-50 transition-colors"
+                                  className="px-2 py-1 bg-white/50 border border-white/60 text-slate-400 text-[10px] font-black uppercase rounded hover:bg-white/70 transition-colors"
                                 >
                                   Cancel
                                 </button>

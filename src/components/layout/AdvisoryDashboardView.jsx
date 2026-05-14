@@ -206,7 +206,7 @@ export function AdvisoryDashboardView({
                     <X size={20} />
                   </button>
                 </div>
-
+                
                 <div className="space-y-4">
                   {availableStudents.length > 0 ? (
                     availableStudents.map(student => (
@@ -240,7 +240,7 @@ export function AdvisoryDashboardView({
                       placeholder="Search student name..."
                       value={studentSearchQuery}
                       onChange={(e) => setStudentSearchQuery(e.target.value)}
-                      className={`${theme.styles.input} pl-10 py-2.5 text-sm`}
+                      className={`${theme.styles.input} !bg-white/50 !border-white/60 pl-10 py-2.5 text-sm`}
                     />
                   </div>
                   <button 
@@ -300,7 +300,7 @@ export function AdvisoryDashboardView({
                   <p className={`text-[10px] font-black text-${theme.styles.primary} uppercase tracking-widest`}>
                     {editingSubjectId ? 'Edit Subject' : 'New Subject'}
                   </p>
-                  <div className="space-y-3">
+                  <div className="space-y-3 text-slate-700">
                     {!editingSubjectId && (
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Subject Template</label>
@@ -312,7 +312,7 @@ export function AdvisoryDashboardView({
                         />
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-slate-700">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Assign Teacher</label>
                       <SearchableSelect 
                         options={teacherOptions}
@@ -324,7 +324,7 @@ export function AdvisoryDashboardView({
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="submit" className={`flex-1 ${theme.styles.button} ${theme.styles.buttonPrimary} py-2`}>{editingSubjectId ? 'Update' : 'Add Subject'}</button>
-                    <button type="button" onClick={() => { setIsAddingSubject(false); setEditingSubjectId(null); }} className={`px-4 py-2 bg-white text-slate-400 border border-slate-200 ${theme.styles.radiusSm} text-[10px] font-black uppercase`}>Cancel</button>
+                    <button type="button" onClick={() => { setIsAddingSubject(false); setEditingSubjectId(null); }} className={`px-4 py-2 bg-white/50 text-slate-400 border border-white/60 ${theme.styles.radiusSm} text-[10px] font-black uppercase`}>Cancel</button>
                   </div>
                 </motion.form>
               )}
@@ -349,7 +349,7 @@ export function AdvisoryDashboardView({
                     {/* Primary Subject Header */}
                     <div className="p-7 bg-slate-50/40 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className={`size-16 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 transition-transform group-hover:scale-105 duration-500 ${isComposite ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
+                        <div className={`size-16 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 transition-transform group-hover:scale-105 duration-500 ${isComposite ? 'bg-indigo-100/50 border-indigo-200/50 text-indigo-600' : 'bg-blue-100/50 border-blue-200/50 text-blue-600'}`}>
                            {isComposite ? <Layers size={32} /> : <BookOpen size={32} />}
                         </div>
                         <div className="min-w-0">
@@ -370,8 +370,8 @@ export function AdvisoryDashboardView({
                           </p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-3 bg-white border border-slate-100 text-slate-300 hover:text-indigo-600 hover:border-indigo-100 hover:bg-white rounded-2xl transition-all shadow-sm" title="Edit Subject"><History size={18} /></button>
-                          <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-3 bg-white border border-slate-100 text-slate-300 hover:text-rose-500 hover:border-rose-100 hover:bg-white rounded-2xl transition-all shadow-sm" title="Delete Subject"><Trash2 size={18} /></button>
+                          <button onClick={() => { setEditingSubjectId(sub.id); setSubjectFormData({ teacherId: sub.teacherId }); }} className="p-3 bg-white/50 border border-white/60 text-slate-400 hover:text-indigo-600 transition-colors rounded-2xl" title="Edit Subject"><History size={14} /></button>
+                          <button onClick={() => { if (window.confirm(`Are you sure you want to remove ${sub.name} from this class?`)) onDeleteSubject(sub.id); }} className="p-3 bg-white/50 border border-white/60 text-slate-400 hover:text-rose-500 transition-colors rounded-2xl" title="Delete Subject"><Trash2 size={14} /></button>
                         </div>
                       </div>
                     </div>
@@ -383,7 +383,7 @@ export function AdvisoryDashboardView({
                            {/* Connector Dot */}
                            <div className="absolute top-0 -left-[10px] size-4 rounded-full bg-indigo-100 border-4 border-white shadow-sm" />
                            
-                           {components.map(comp => (
+                           {components.map(comp => ( // Ensure this is `components` not `resolvedCats`
                              <div key={comp.id} className="flex items-center gap-4 p-4 bg-white rounded-[1.5rem] border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/20 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 group/item">
                                 <div className="size-11 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 shrink-0 border border-slate-100 group-hover/item:bg-white group-hover/item:text-indigo-500 transition-all duration-300">
                                    <User size={20} />

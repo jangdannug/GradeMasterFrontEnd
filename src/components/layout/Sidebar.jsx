@@ -18,36 +18,37 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { theme } from '../../theme';
 
 export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
   return (
     <motion.aside 
       initial={false}
       animate={{ width: isOpen ? 280 : 80 }}
-      className="bg-white border-r border-slate-200 flex flex-col z-20 shrink-0 h-screen overflow-hidden print:hidden"
+      className={`${theme.styles.sidebar} flex flex-col z-20 shrink-0 h-screen overflow-hidden print:hidden`}
     >
-      <div className="p-6 flex items-center gap-3 border-b border-slate-100 h-20">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+      <div className="p-6 flex items-center gap-3 border-b border-white/5 h-24">
+        <div className="size-10 bg-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20">
           <BookOpen className="text-white size-6" />
         </div>
 
         {isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="overflow-hidden">
-            <h1 className="font-bold text-lg leading-tight uppercase tracking-tight">
+            <h1 className={`${theme.styles.heading} text-lg leading-none text-white`}>
               GradeMaster
             </h1>
-            <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">
-              DepEd Order 8, s. 2015
+            <p className="text-[8px] text-indigo-100 font-black tracking-[0.2em] uppercase mt-1">
+              L.I.S Integration
             </p>
           </motion.div>
         )}
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        <div className={`mb-2 px-4 flex items-center gap-2 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-          <UserCircle size={14} className="text-blue-500" />
-          <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-            {role} Profile
+        <div className={`mb-4 px-4 flex items-center gap-2 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+          <UserCircle size={14} className="text-indigo-200" />
+          <span className="text-[9px] font-black text-indigo-300 tracking-[0.25em] uppercase">
+            {role} Portal
           </span>
         </div>
 
@@ -132,25 +133,19 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
 
         {(role === 'admin' || role === 'superadmin') && (
           <>
-            <div className={`mt-6 mb-2 px-4 flex items-center gap-2 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <Layout size={14} className="text-indigo-500" />
-              <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-                Planning
-              </span>
+            <div className={`${theme.styles.navLabel} mt-8 ${!isOpen && 'opacity-0'}`} style={{ transition: 'opacity 0.3s ease-in-out' }}>
+              Planning
             </div>
 
             <SidebarLink 
               to="/templates"
               icon={<Layout size={20} />}
-              label="Grading Templates"
+              label="Templates"
               collapsed={!isOpen}
             />
 
-            <div className={`mt-4 mb-2 px-4 flex items-center gap-2 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-              <Table size={14} className="text-indigo-500" />
-              <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">
-                Grading Standards
-              </span>
+            <div className={`${theme.styles.navLabel} mt-6 ${!isOpen && 'opacity-0'}`}>
+              Standards
             </div>
 
             <SidebarLink 
@@ -163,14 +158,14 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
             <SidebarLink 
               to="/descriptors"
               icon={<FileText size={20} />}
-              label="Grading Descriptors"
+              label="Descriptors"
               collapsed={!isOpen}
             />
           </>
         )}
       </nav>
 
-      <div className="p-4 border-t border-slate-100 text-[10px] text-slate-400 text-center uppercase tracking-widest font-black italic">
+      <div className="p-4 border-t border-white/10 text-[9px] text-indigo-200 text-center uppercase tracking-[0.2em] font-black italic">
         {isOpen && <span>Session: {role}</span>}
       </div>
 
@@ -178,18 +173,18 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         <button 
           onClick={onLogout}
           title={!isOpen ? "Logout" : ""}
-          className={`w-full flex items-center gap-3 h-12 rounded-xl text-rose-500 hover:bg-rose-50 transition-all ${
-            isOpen ? 'px-4' : 'justify-center'
+          className={`w-full flex items-center gap-3 h-14 rounded-3xl text-rose-300 hover:bg-rose-500/10 transition-all ${
+            isOpen ? 'px-8' : 'justify-center'
           }`}
         >
           <LogOut size={20} />
-          {isOpen && <span className="text-sm font-bold">Logout</span>}
+          {isOpen && <span className="text-xs font-black uppercase tracking-widest">Logout</span>}
         </button>
 
         <button 
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-          className="w-full flex items-center justify-center h-10 rounded-lg hover:bg-slate-50 text-slate-500"
+          className="w-full flex items-center justify-center h-12 rounded-2xl hover:bg-indigo-500/10 text-indigo-300 transition-colors"
         >
           {isOpen ? <Menu size={20} /> : <ChevronRight size={20} />}
         </button>
@@ -204,11 +199,9 @@ function SidebarLink({ to, icon, label, collapsed }) {
       to={to}
       title={collapsed ? label : ""}
       className={({ isActive }) =>
-        `w-full flex items-center gap-3 h-12 rounded-xl transition-all duration-200 ${
-          isActive
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-100'
-            : 'text-slate-500 hover:bg-slate-50'
-        } ${collapsed ? 'justify-center' : 'px-4'}`
+        `${theme.styles.navItem} ${
+          isActive ? theme.styles.navActive : ''
+        } ${collapsed ? 'justify-center px-0' : ''}`
       }
     >
       {icon}

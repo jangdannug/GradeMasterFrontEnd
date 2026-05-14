@@ -209,7 +209,7 @@ export function ProgressReport({
       animate={{ opacity: 1, x: 0 }}
       className="space-y-6 md:space-y-8"
     >
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-6 rounded-2xl border border-slate-200 gap-4">
+      <div className={`flex flex-col sm:flex-row justify-between sm:items-center p-6 ${theme.styles.card} gap-4`}>
         <div>
           <h2 className={`text-xl ${theme.styles.heading} text-slate-800`}>Progress Report Cards</h2>
           <p className="text-sm text-slate-500">
@@ -224,7 +224,7 @@ export function ProgressReport({
               placeholder="Search student name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`${theme.styles.input} pl-10 py-2.5 text-sm`}
+              className={`${theme.styles.input} !bg-white/50 !border-white/60 pl-10 py-2.5 text-sm`}
             />
           </div>
         </div>
@@ -283,7 +283,7 @@ export function ProgressReport({
             exit={{ opacity: 0, y: -10 }}
             className="grid grid-cols-1 gap-6"
           >
-            {studentReportData.map(({ student, subjectResults, generalAverage, avgDescriptor }) => (
+            {studentReportData.map(({ student, subjectResults, generalAverage, avgDescriptor }) => ( // Individual Student Cards
               <div key={student.id} className={`${theme.styles.card} overflow-hidden group`}>
                  <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-slate-100/50 transition-colors gap-4">
                    <div className="flex items-center gap-4">
@@ -317,7 +317,7 @@ export function ProgressReport({
                            {res.quarterlyGrades.map(q => (
                              <div key={q.quarter} className={`text-center py-1.5 rounded-lg border ${q.score === null ? 'border-transparent' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
                                <p className="text-[6px] text-slate-400 font-black uppercase mb-0.5">Q{q.quarter}</p>
-                               <p className={`text-xs font-black leading-none ${q.score === null ? 'text-slate-200' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
+                               <p className={`text-xs font-black leading-none ${q.score === null ? 'text-slate-300' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
                                  {q.score || '--'}
                                </p>
                                {q.score !== null && (

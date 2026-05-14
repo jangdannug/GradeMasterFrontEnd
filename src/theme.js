@@ -21,20 +21,26 @@ export const theme = {
     warning: "amber-500",
     
     // Layout Defaults
-    radius: "rounded-3xl", // More modern, softer look
-    radiusSm: "rounded-xl",
-    shadow: "shadow-xl shadow-slate-200/50",
-    glass: "backdrop-blur-md bg-white/90",
+    radius: "rounded-[3rem]", 
+    radiusSm: "rounded-2xl",
+    shadow: "shadow-[0_20px_50px_rgba(79,70,229,0.08)]",
+    glass: "backdrop-blur-3xl bg-white/20 border border-white/30 shadow-2xl",
     
     // Common Components
-    card: "bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300",
-    input: "w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all",
-    button: "px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-2",
-    buttonPrimary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100",
+    card: "backdrop-blur-3xl bg-white/30 rounded-[2.5rem] border border-white/50 shadow-2xl shadow-indigo-100/5 hover:shadow-indigo-200/20 transition-all duration-500 hover:-translate-y-1",
+    input: "w-full bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl px-6 py-4 font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400 shadow-inner",
+    button: "px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:translate-y-0.5",
+    buttonPrimary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-2xl shadow-indigo-200/50",
     
+    // Sidebar & Navigation Specifics
+    sidebar: "backdrop-blur-[120px] bg-white/10 border-r border-white/20 shadow-2xl z-30",
+    navItem: "flex items-center gap-3 px-6 py-4 rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all hover:bg-white/50 text-slate-600 hover:text-indigo-700 group",
+    navActive: "bg-indigo-600 text-white shadow-2xl shadow-indigo-200/60 hover:bg-indigo-700 hover:text-white scale-[1.02]",
+    navLabel: "text-[9px] font-black text-indigo-300 uppercase tracking-[0.25em] mb-4 px-8",
+
     // Typography
     heading: "font-black uppercase italic tracking-tighter",
-    subheading: "text-[10px] font-bold text-slate-400 uppercase tracking-widest",
+    subheading: "text-[11px] font-black text-slate-400 uppercase tracking-[0.25em]",
   },
   // Status color mapping for dynamic logic
   status: {

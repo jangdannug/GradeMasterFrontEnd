@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Save, RefreshCw, Trash2, Plus, Loader2 } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
+import { theme } from '../theme';
 
 export function TransmutationSettings({ data, onSave, syncStandards, isLoading, syncError }) {
   const [localData, setLocalData] = React.useState([]);
@@ -40,7 +41,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 max-w-4xl"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 ${theme.styles.card}`}>
         <div>
           <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Transmutation Table</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">Configure the relationship between Initial Grades and Transmuted Grades (DepEd Order 8, s. 2015).</p>
@@ -68,7 +69,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className={`${theme.styles.card} overflow-hidden`}>
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -80,14 +81,14 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
           </thead>
           <tbody className="divide-y divide-slate-100">
             {localData.map((row, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+              <tr key={idx} className="hover:bg-white/50 transition-colors">
                 <td className="p-4">
                   <input
                     type="number"
                     step="0.01"
                     value={row.min}
                     onChange={(e) => handleUpdate(idx, 'min', parseFloat(e.target.value))}
-                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600"
+                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4">
@@ -96,7 +97,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     step="0.01"
                     value={row.max}
                     onChange={(e) => handleUpdate(idx, 'max', parseFloat(e.target.value))}
-                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600"
+                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4">
@@ -104,7 +105,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     type="number"
                     value={row.transmutedValue}
                     onChange={(e) => handleUpdate(idx, 'transmutedValue', parseInt(e.target.value))}
-                    className="w-full bg-transparent font-black text-slate-900 outline-none focus:text-blue-600"
+                    className="w-full bg-transparent font-black text-slate-900 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4 text-right">

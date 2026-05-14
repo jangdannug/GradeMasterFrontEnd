@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
+import { theme } from '../theme';
 
 export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syncError }) {
   const [localData, setLocalData] = React.useState([]);
@@ -33,7 +34,7 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 max-w-4xl"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 ${theme.styles.card}`}>
         <div>
           <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Grading Descriptors</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">Define the labels and ranges for finalized term grades.</p>
@@ -53,7 +54,7 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className={`${theme.styles.card} overflow-hidden`}>
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -66,13 +67,13 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
           </thead>
           <tbody className="divide-y divide-slate-100">
             {localData.map((row, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+              <tr key={idx} className="hover:bg-white/50 transition-colors">
                 <td className="p-4">
                   <input 
                     type="number" 
                     value={row.min}
                     onChange={(e) => handleUpdate(idx, 'min', parseInt(e.target.value))}
-                    className="w-16 bg-transparent font-bold text-slate-700 outline-none"
+                    className="w-16 bg-transparent font-bold text-slate-700 outline-none ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4">
@@ -80,7 +81,7 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
                     type="number" 
                     value={row.max}
                     onChange={(e) => handleUpdate(idx, 'max', parseInt(e.target.value))}
-                    className="w-16 bg-transparent font-bold text-slate-700 outline-none"
+                    className="w-16 bg-transparent font-bold text-slate-700 outline-none ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4">
@@ -88,15 +89,15 @@ export function DescriptorSettings({ data, onSave, syncStandards, isLoading, syn
                     type="text" 
                     value={row.label}
                     onChange={(e) => handleUpdate(idx, 'label', e.target.value)}
-                    className={`w-full bg-transparent font-black uppercase italic outline-none ${row.color}`}
+                    className={`w-full bg-transparent font-black uppercase italic outline-none ${row.color} ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
                 <td className="p-4">
                   <input 
                     type="text" 
                     value={row.color}
-                    onChange={(e) => handleUpdate(idx, 'color', e.target.value)}
-                    className="w-full bg-transparent font-mono text-[10px] text-slate-400 outline-none"
+                    onChange={(e) => handleUpdate(idx, 'color', e.target.value)} // Use theme.styles.input
+                    className="w-full bg-transparent font-mono text-[10px] text-slate-400 outline-none ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
                   />
                 </td>
                 <td className="p-4 text-right">

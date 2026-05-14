@@ -23,7 +23,7 @@ export function TeachingLoadView({ role, subjects, currentTeacherId, allSections
         {mySubjects.map(subject => {
           const subjectSection = allSections.find(s => s.id === subject.sectionId);
           return (
-            <div key={subject.id} className={`${theme.styles.card} overflow-hidden group border-b-4 border-b-transparent hover:border-b-emerald-500`}>
+            <div key={subject.id} className={`${theme.styles.card} overflow-hidden group border-b-4 border-b-transparent hover:border-b-emerald-500 hover:shadow-emerald-100/30`}>
               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div className="size-8 bg-white rounded-lg flex items-center justify-center text-emerald-600 font-black shadow-sm">
                   {subject.name.charAt(0)}

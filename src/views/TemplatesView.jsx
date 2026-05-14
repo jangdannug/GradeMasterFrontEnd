@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen, Plus, Trash2, Settings, Loader2, RefreshCw, Save, Layers, X, Info, User } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
+import { theme } from '../theme';
 
 export function TemplatesView({
   subjects,
@@ -169,7 +170,7 @@ export function TemplatesView({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 max-w-4xl mx-auto"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 ${theme.styles.card}`}>
         <div>
           <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Subject Grading Templates</h2>
           <p className="text-xs text-slate-500 font-medium mt-1">Configure grading categories and weights for each subject template.</p>
@@ -180,7 +181,7 @@ export function TemplatesView({
             id="select-template"
             value={selectedBaseSubjectId}
             onChange={(e) => setSelectedBaseSubjectId(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-slate-700 text-sm"
+            className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-slate-700 text-sm`}
           >
             {[...subjects].sort((a, b) => a.name.localeCompare(b.name)).map((sub, idx) => (
               <option key={sub.id || idx} value={sub.id}>{sub.name} (G{sub.gradeLevel})</option>
@@ -188,9 +189,9 @@ export function TemplatesView({
           </select>
         </div>
       </div>
-
-      {selectedSubject && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-6 space-y-6">
+      
+      {selectedSubject && ( // Main content area
+        <div className={`${theme.styles.card} p-6 space-y-6`}>
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-black uppercase italic text-slate-800 flex items-center gap-2">
               <BookOpen size={20} className="text-indigo-600" /> 
@@ -286,7 +287,7 @@ export function TemplatesView({
                   )}
                 </div>
               ))}
-              <button
+              <button // Add Component Button
                 onClick={handleAddComponent}
                 className="px-4 py-2 rounded-lg text-xs font-black uppercase text-slate-400 hover:text-indigo-600 transition-all flex items-center gap-1"
               >
@@ -296,7 +297,7 @@ export function TemplatesView({
           )}
 
           {isComposite && activeComponent && (
-            <div className="flex items-center gap-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+            <div className="flex items-center gap-4 p-4 bg-indigo-100/50 rounded-xl border border-indigo-200/50">
               <div className="size-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0">
                 <User size={16} />
               </div>
@@ -304,7 +305,7 @@ export function TemplatesView({
                 <label className="text-[10px] font-black uppercase text-indigo-400 block mb-1">Assigned Component Teacher</label>
                 <select
                   value={activeComponent.teacherId || ''}
-                  onChange={(e) => updateComponentTeacher(selectedSubject.id, activeComponent.id, e.target.value)}
+                  onChange={(e) => updateComponentTeacher(selectedSubject.id, activeComponent.id, e.target.value || null)}
                   className="w-full bg-white border border-indigo-100 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="">Default (Main Subject Teacher)</option>
@@ -318,7 +319,7 @@ export function TemplatesView({
 
           <div className="space-y-4">
             {currentCategories.map((category, idx) => (
-              <div key={category.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div key={category.id || idx} className="bg-white/50 p-4 rounded-xl border border-white/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     {editingCategoryId === category.id && editingColumnIndex === null ? (
@@ -327,7 +328,7 @@ export function TemplatesView({
                         value={category.name}
                         placeholder="Category Title"
                         onChange={(e) => updateCategoryTitle(selectedSubject.id, category.id, e.target.value, activeComponentId)}
-                        onBlur={() => setEditingCategoryId(null)}
+                        onBlur={() => setEditingCategoryId(null)} // Save on blur
                         onKeyDown={(e) => e.key === 'Enter' && setEditingCategoryId(null)}
                         autoFocus
                         className="bg-white border border-indigo-200 rounded-lg px-2 py-1 text-sm font-black uppercase outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -365,7 +366,7 @@ export function TemplatesView({
                                 setEditedColumnName('');
                               }
                             }}
-                            className="w-16 bg-white border border-indigo-200 rounded-lg px-1 text-[10px] font-bold outline-none"
+                            className="w-16 bg-white/50 border border-indigo-200 rounded-lg px-1 text-[10px] font-bold outline-none"
                             autoFocus
                           />
                         ) : (
@@ -395,7 +396,7 @@ export function TemplatesView({
                     max="100"
                     step="1"
                     value={Math.round(category.weight * 100)}
-                    onChange={(e) => updateCategoryWeight(selectedSubject.id, category.id, parseInt(e.target.value), activeComponentId)}
+                    onChange={(e) => updateCategoryWeight(selectedSubject.id, category.id, parseInt(e.target.value || '0'), activeComponentId)}
                     className="w-24 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
                   <div className="flex items-center bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
@@ -403,7 +404,7 @@ export function TemplatesView({
                       type="number"
                       min="0"
                       max="100"
-                      value={Math.round(category.weight * 100)}
+                      value={Math.round(category.weight * 100) || 0}
                       onChange={(e) => {
                         const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                         if (!isNaN(val) && val >= 0 && val <= 100) {

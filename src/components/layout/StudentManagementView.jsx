@@ -303,19 +303,19 @@ export function StudentManagementView({
             <h2 className={`text-2xl ${theme.styles.heading} text-slate-800`}>Manage Enrolled Students</h2>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
                   type="text"
                   placeholder="Search LRN or Name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`${theme.styles.input} pl-10 py-2.5 text-sm w-full md:w-64`}
+                  className={`${theme.styles.input} !pl-11 py-2.5 text-sm w-full md:w-64`}
                 />
               </div>
               <select 
                 value={gradeFilter}
                 onChange={(e) => setGradeFilter(e.target.value)}
-                className={`${theme.styles.input} text-sm w-full md:w-36`}
+                className={`${theme.styles.input} !bg-white/50 !border-white/60 text-sm w-full md:w-36`}
               >
                 <option value="all">All Grades</option>
                 {['7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
@@ -323,7 +323,7 @@ export function StudentManagementView({
               <select 
                 value={genderFilter}
                 onChange={(e) => setGenderFilter(e.target.value)}
-                className={`${theme.styles.input} text-sm w-full md:w-36`}
+                className={`${theme.styles.input} !bg-white/50 !border-white/60 text-sm w-full md:w-36`}
               >
                 <option value="all">All Genders</option>
                 <option value="MALE">Male</option>
@@ -333,7 +333,7 @@ export function StudentManagementView({
                 <select 
                   value={schoolFilter}
                   onChange={(e) => setSchoolFilter(e.target.value)}
-                  className={`${theme.styles.input} text-sm w-full md:w-48`}
+                  className={`${theme.styles.input} !bg-white/50 !border-white/60 text-sm w-full md:w-48`}
                 >
                   <option value="all">All Schools</option>
                   {schools.map(s => (

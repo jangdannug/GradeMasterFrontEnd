@@ -464,11 +464,16 @@ export function ClassRecord({
       ref={containerRef}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`${theme.styles.card} ${theme.styles.shadow} overflow-hidden min-w-full border-none ${isFullscreen ? 'h-screen overflow-y-auto bg-white rounded-none' : ''}`}
+      className={`${theme.styles.card} ${theme.styles.shadow} overflow-hidden min-w-full border-none relative ${isFullscreen ? 'h-screen overflow-y-auto bg-[#f0f4f8] rounded-none' : ''}`}
     >
+       {isFullscreen && (
+         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40 z-0">
+           <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]"></div>
+         </div>
+       )}
        <div className={`bg-${theme.styles.primary} text-white p-4 md:p-8`}>
             <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
-              <div>
+              <div className="flex-1">
                 <div className="flex items-center gap-4">
                   <h2 className={`text-xl md:text-3xl ${theme.styles.heading}`}>Class Record</h2>
                   
@@ -476,7 +481,7 @@ export function ClassRecord({
                     onClick={handleSaveDraft}
                     disabled={draftStatus === 'saving' || !isCurrentViewEditable}
                     className={`flex items-center gap-2 px-4 py-2 border ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed ${
-                    hasUnsavedChanges 
+                    hasUnsavedChanges && draftStatus !== 'error'
                       ? 'bg-pink-600 border-pink-400 text-white animate-pulse shadow-lg shadow-pink-500/40' 
                       : draftStatus === 'error' 
                         ? 'bg-rose-500/20 border-rose-400 text-white' 
@@ -484,7 +489,7 @@ export function ClassRecord({
                   }`}
                 >
                   {draftStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : draftStatus === 'error' ? <ShieldAlert size={18} className="text-rose-300" /> : <Save size={18} />}
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">
+                  <span className="text-[10px] font-black uppercase tracking-widest">
                     {draftStatus === 'saving' ? "Saving..." : draftStatus === 'error' ? "Save Error" : hasUnsavedChanges ? "Save Changes" : "Save Draft"}
                   </span>
                 </button>
@@ -494,7 +499,7 @@ export function ClassRecord({
                     <button 
                       onClick={handleDownloadTemplate}
                       className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all active:scale-95 shadow-sm"
-                      title="Download CSV Template for offline entry"
+                      title="Download CSV Template for offline score entry"
                     >
                       <FileDown size={18} />
                       <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline-block">Template</span>
@@ -513,7 +518,7 @@ export function ClassRecord({
 
                   <button 
                     onClick={toggleFullscreen}
-                    className={`flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm group`}
+                    className={`flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 ${theme.styles.radiusSm} transition-all active:scale-95 shadow-sm`}
                     title={isFullscreen ? "Exit Full View" : "Enter Full View"}
                   >
                     {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -560,7 +565,7 @@ export function ClassRecord({
          <div className="px-8 py-4 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto scrollbar-hide">
            <button
              onClick={() => setActiveComponentId('summary')}
-             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
+             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 shadow-sm ${
                activeComponentId === 'summary' 
                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
                  : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
@@ -574,7 +579,7 @@ export function ClassRecord({
              <button
                key={comp.id}
                onClick={() => setActiveComponentId(comp.id)}
-               className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+               className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm ${
                  activeComponentId === comp.id 
                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
                    : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
@@ -590,7 +595,7 @@ export function ClassRecord({
 
         <div className="overflow-x-auto overflow-y-hidden">
           <table className="w-full border-collapse border border-slate-200">
-          <thead>
+          <thead className="bg-white/50 backdrop-blur-sm">
             {/* Category Header */}
             <tr className="bg-slate-100 text-xs font-black text-slate-600 uppercase divide-x divide-slate-300 border-b border-slate-300">
               <th rowSpan={2} className="p-4 text-left w-64 min-w-[250px] sticky left-0 bg-slate-100 z-20 shadow-[2px_0_4px_rgba(0,0,0,0.05)] border-r border-slate-300">LEARNERS' NAMES</th>
@@ -609,7 +614,7 @@ export function ClassRecord({
                 <th key={`h-sum-${comp.id}`} className="p-4 text-center bg-indigo-100/50">
                   <div className="flex flex-col items-center">
                     <span className="font-black text-xs text-indigo-800 italic uppercase">{comp.name}</span>
-                    <span className="text-[8px] opacity-50">Component Grade</span>
+                    <span className="text-[8px] opacity-60">Component Grade</span>
                   </div>
                 </th>
               ))}
@@ -618,9 +623,9 @@ export function ClassRecord({
                   <span>Initial Grade</span>
                   <span className="text-[8px] opacity-50 whitespace-nowrap">(WS TOTAL)</span>
                 </div>
-              </th>
-              <th rowSpan={2} className="p-3 w-16 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Term Grade</th>
-              <th rowSpan={2} className="p-3 w-32 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Descriptor</th>
+              </th> {/* Initial Grade */}
+              <th rowSpan={2} className="p-3 w-16 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Term Grade</th> {/* Transmuted Grade */}
+              <th rowSpan={2} className="p-3 w-32 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Descriptor</th> {/* Descriptor */}
               <th rowSpan={2} className="p-3 w-24 bg-slate-900 text-white sticky right-0 z-30 shadow-[-4px_0_8px_rgba(0,0,0,0.2)] border-l border-slate-700">Quarterly Grade</th>
             </tr>
             {/* Sub-header (1-5, Total, PS, WS) */}
@@ -645,7 +650,7 @@ export function ClassRecord({
           </thead>
           <tbody className="divide-y divide-slate-200 text-xs">
             {/* HIGHEST POSSIBLE SCORE ROW */}
-            <tr className="bg-slate-900 text-white divide-x divide-slate-700 font-black">
+            <tr className="bg-slate-900/90 text-white divide-x divide-slate-700 font-black">
               <td className="p-3 sticky left-0 bg-slate-900 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)] border-r border-slate-700 uppercase">
                  {effectiveSummaryOnly ? 'Standard Weights' : 'Highest Possible Score'}
               </td>
@@ -668,14 +673,14 @@ export function ClassRecord({
                             updateGrade('HPS', subject.id, cat.id, 'hps', i, val, quarter);
                           }}
                           disabled={!isCurrentViewEditable}
-                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isCurrentViewEditable ? 'bg-slate-800/50 cursor-not-allowed opacity-30 select-none' : 'bg-transparent focus:bg-slate-800 transition-colors'}`}
+                          className={`w-full h-full py-2 px-1 text-center outline-none text-white font-black ${!isCurrentViewEditable ? 'bg-slate-800/50 cursor-not-allowed opacity-50 select-none' : 'bg-transparent focus:bg-slate-800 transition-colors'}`}
                           placeholder="0"
                         />
                       </td>
                     ))}
                     <td className="p-2 text-center bg-slate-800">{(hpsValues || []).slice(0, count).reduce((a, b) => a + b, 0)}</td>
                     <td className="p-2 text-center bg-slate-800">100.00</td>
-                    <td className="p-0 text-center bg-slate-800">
+                    <td className="p-0 text-center bg-slate-800/80">
                       <div className={`p-2 font-black text-xs ${idx % 2 === 0 ? 'bg-blue-900/50 text-blue-100' : 'bg-emerald-900/50 text-emerald-100'}`}>
                         {Math.round(cat.weight * 100)}
                       </div>
@@ -693,7 +698,7 @@ export function ClassRecord({
                   </div>
                 </td>
               ))}
-              <td className="bg-slate-800"></td>
+              <td className="bg-slate-800/80"></td>
               <td className="bg-slate-800 sticky right-0 z-20"></td>
             </tr>
 
@@ -714,7 +719,7 @@ export function ClassRecord({
               }
 
               return (
-                <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-slate-50/50 transition-colors divide-x divide-slate-200">
+                <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-white/50 transition-colors divide-x divide-slate-200">
                   <td className="p-3 sticky left-0 bg-inherit z-10 shadow-[2px_0_4px_rgba(0,0,0,0.02)] border-r border-slate-200">
                     <div className="flex gap-2">
                        <span className="text-[9px] font-bold text-slate-400 w-4">{sIdx + 1}</span>
@@ -754,7 +759,7 @@ export function ClassRecord({
                                     updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
                                   }
                                 }}
-                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isCurrentViewEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/60 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
+                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isCurrentViewEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/50 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
                                 disabled={hps === 0 || !isCurrentViewEditable}
                               />
                             </td>
@@ -762,8 +767,8 @@ export function ClassRecord({
                         })}
                         <td className={`p-2 text-center font-bold text-slate-500 select-none cursor-default ${idx % 2 === 0 ? 'bg-blue-50/30' : 'bg-emerald-50/30'}`}>{catRes.total}</td>
                         <td className={`p-2 text-center font-bold select-none cursor-default ${idx % 2 === 0 ? 'text-blue-400 bg-blue-50/40' : 'text-emerald-400 bg-emerald-50/40'}`}>{catRes.ps.toFixed(2)}</td>
-                        <td className={`p-2 text-center font-black select-none cursor-default ${idx % 2 === 0 ? 'text-blue-500 bg-blue-100/30' : 'text-emerald-500 bg-emerald-100/30'}`}>{catRes.ws.toFixed(2)}</td>
-                      </React.Fragment>
+                        <td className={`p-2 text-center font-black select-none cursor-default ${idx % 2 === 0 ? 'text-blue-500 bg-blue-100/40' : 'text-emerald-500 bg-emerald-100/40'}`}>{catRes.ws.toFixed(2)}</td>
+                      </React.Fragment> 
                     );
                   })}
 
@@ -779,7 +784,7 @@ export function ClassRecord({
                   })}
                   
                   {/* Final results */}
-                  <td className="p-2 text-center font-black bg-slate-200/50 text-slate-500 select-none cursor-default">{(results.initial || 0).toFixed(2)}</td>
+                  <td className="p-2 text-center font-black bg-slate-200/60 text-slate-500 select-none cursor-default">{(results.initial || 0).toFixed(2)}</td>
                   <td className="p-2 text-center font-bold bg-slate-100/50 text-slate-400 border-l border-slate-200 select-none cursor-default">
                     {calculatingGrades ? (
                       <div className="flex items-center justify-center">
@@ -789,7 +794,7 @@ export function ClassRecord({
                       results.quarterly || 0
                     )}
                   </td>
-                  <td className={`p-2 text-center font-black bg-slate-50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor?.color || ''}`}>
+                  <td className={`p-2 text-center font-black bg-white/50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor?.color || ''}`}>
                     {results.descriptor?.label || ''}
                   </td>
                   <td className="p-3 bg-slate-900 text-white sticky right-0 z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.2)]">
@@ -813,7 +818,7 @@ export function ClassRecord({
        </div>
        
        {isCurrentViewEditable && onSubmitClassRecord && isMainTeacher && (
-         <div className="p-6 md:p-10 bg-slate-50 border-t border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+         <div className="p-6 md:p-10 bg-white/50 border-t border-white/60 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
            <div className={`flex items-center gap-5 p-5 ${hasUnsavedChanges ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-100'} border-2 rounded-[2rem] shadow-sm max-w-2xl transition-colors`}>
              <div className={`size-12 bg-white rounded-2xl flex items-center justify-center ${hasUnsavedChanges ? 'text-amber-600 border-amber-100' : 'text-rose-600 border-rose-100'} shadow-sm shrink-0 border`}>
                <ShieldAlert size={28} />
@@ -854,7 +859,7 @@ export function ClassRecord({
        )}
 
        {isSubmitted && !isVerified && ( // Show this if locked but not yet verified
-         <div className="p-4 md:p-8 bg-amber-50 border-t border-amber-200 flex items-center gap-3">
+         <div className="p-4 md:p-8 bg-amber-50/50 border-t border-amber-200/50 flex items-center gap-3">
            <div className="text-2xl">🔒</div>
            <div>
              <p className="font-bold text-amber-900">Record Submitted & Locked</p>
@@ -866,7 +871,7 @@ export function ClassRecord({
        )}
 
        {isVerified && ( // NEW: Condition for "Record Verified & Finalized" message
-         <div className="p-4 md:p-8 bg-emerald-50 border-t border-emerald-200 flex items-center gap-3">
+         <div className="p-4 md:p-8 bg-emerald-50/50 border-t border-emerald-200/50 flex items-center gap-3">
            <div className="text-2xl">✅</div>
            <div>
              <p className="font-bold text-emerald-900">Record Verified & Finalized</p>

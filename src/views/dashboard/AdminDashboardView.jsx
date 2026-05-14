@@ -38,7 +38,7 @@ export function AdminDashboardView({ users, allSections, subjects }) {
               const assignedSection = allSections.find(s => s.adviserId === teacher.id);
               
               return (
-                <div key={teacher.id} className={`p-4 ${theme.styles.radiusSm} bg-slate-50 border border-slate-100 space-y-3 hover:bg-white transition-all`}>
+                <div key={teacher.id} className={`p-4 ${theme.styles.radiusSm} bg-white/50 border border-white/60 space-y-3 hover:bg-white/70 transition-all`}>
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-slate-800 uppercase text-sm">{teacher.name}</p>
                     <span className="text-[9px] font-black uppercase tracking-tighter px-2 py-1 bg-white rounded-full border border-slate-200 text-slate-400">

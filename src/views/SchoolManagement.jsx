@@ -73,7 +73,7 @@ export function SchoolManagement() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
+        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
           <table className="w-full text-left">
@@ -87,7 +87,7 @@ export function SchoolManagement() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {schools.map(school => (
-                <tr key={school.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={school.id} className="hover:bg-white/50 transition-colors">
                   <td className="p-4 font-mono text-xs font-bold text-blue-600">{school.id}</td>
                   <td className="p-4 font-black text-slate-800 uppercase text-sm">{school.name}</td>
                   <td className="p-4 text-slate-500 text-xs flex items-center gap-2">
@@ -128,7 +128,7 @@ export function SchoolManagement() {
                     placeholder="e.g. 300123"
                     value={formData.id}
                     onChange={e => setFormData({ ...formData, id: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
+                    className={`${theme.styles.input} disabled:opacity-50`}
                   />
                 </div>
                 <div className="space-y-1">
@@ -139,7 +139,7 @@ export function SchoolManagement() {
                     placeholder="e.g. STO. NINO HIGH SCHOOL"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className={theme.styles.input}
                   />
                 </div>
                 <div className="space-y-1">
@@ -149,13 +149,13 @@ export function SchoolManagement() {
                     placeholder="Street, Barangay, City, Province"
                     value={formData.address}
                     onChange={e => setFormData({ ...formData, address: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 h-24 resize-none"
+                    className={`${theme.styles.input} h-24 resize-none`}
                   />
                 </div>
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full py-4 mt-2 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-100 disabled:opacity-50"
+                  className={`${theme.styles.button} ${theme.styles.buttonPrimary} w-full py-4 mt-2 disabled:opacity-50`}
                 >
                   {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> {editingSchool ? 'Update School' : 'Save School'}</>}
                 </button>
