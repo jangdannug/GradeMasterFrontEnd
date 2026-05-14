@@ -32,10 +32,19 @@ export function RegistrationView({ onRegister, onBack }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match. Please verify your entry.');
       return;
     }
+
+    // Strong password validation: 8+ chars, upper, lower, digit, special character
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!strongPasswordRegex.test(formData.password)) {
+      setError('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).');
+      return;
+    }
+
     setError('');
     const { confirmPassword, ...submissionData } = formData;
     onRegister(submissionData);
@@ -105,7 +114,7 @@ export function RegistrationView({ onRegister, onBack }) {
               type="text" 
               placeholder="e.g. MARIA SANTOS"
               value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
+              onChange={e => setFormData({ ...formData, name: e.target.value.replace(/[0-9]/g, '').toUpperCase() })}
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
           </div>
@@ -200,6 +209,9 @@ export function RegistrationView({ onRegister, onBack }) {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          <p className="text-[9px] text-slate-400 font-medium px-2 italic">
+            Requires 8+ characters, uppercase, lowercase, number, and special character (@$!%*?&).
+          </p>
         </div>
 
         <div className="space-y-1.5">
