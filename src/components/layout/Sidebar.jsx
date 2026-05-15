@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { theme } from '../../theme';
+import gradeMasterLogo from '../../images/gradeMasterLogo.png';
 
 export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
   return (
@@ -27,17 +28,18 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
       animate={{ width: isOpen ? 280 : 80 }}
       className={`${theme.styles.sidebar} flex flex-col z-20 shrink-0 h-screen overflow-hidden print:hidden`}
     >
-      <div className="p-6 flex items-center gap-3 border-b border-white/5 h-24">
-        <div className="size-10 bg-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20">
-          <BookOpen className="text-white size-6" />
-        </div>
-
+      <div className={`flex items-center border-b border-white/5 h-28 transition-all duration-300 ${isOpen ? 'px-6' : 'px-0 justify-center'}`}>
+        <img 
+          src={gradeMasterLogo} 
+          alt="GradeMaster Logo" 
+          className={`transition-all duration-300 flex-shrink-0 ${isOpen ? 'h-16 w-auto' : 'h-14 w-14 object-contain'}`}
+        />
         {isOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="overflow-hidden">
-            <h1 className={`${theme.styles.heading} text-lg leading-none text-white`}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="ml-3 flex-1 min-w-0">
+            <h1 className={`${theme.styles.heading} text-xl leading-none text-indigo-600`}>
               GradeMaster
             </h1>
-            <p className="text-[10px] text-indigo-200 font-black tracking-[0.1em] uppercase mt-1">
+            <p className="text-[11px] text-indigo-400 font-black tracking-normal uppercase mt-1">
               L.I.S Integration
             </p>
           </motion.div>
@@ -173,8 +175,8 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         <button 
           onClick={onLogout}
           title={!isOpen ? "Logout" : ""}
-          className={`w-full flex items-center gap-3 h-14 rounded-3xl text-rose-300 hover:bg-rose-500/10 transition-all ${
-            isOpen ? 'px-8' : 'justify-center'
+          className={`w-full flex items-center h-14 rounded-3xl text-rose-300 hover:bg-rose-500/10 transition-all ${
+            isOpen ? 'px-8 gap-3' : 'justify-center gap-0'
           }`}
         >
           <LogOut size={20} />
@@ -201,7 +203,7 @@ function SidebarLink({ to, icon, label, collapsed }) {
       className={({ isActive }) =>
         `${theme.styles.navItem} ${
           isActive ? theme.styles.navActive : ''
-        } ${collapsed ? 'justify-center px-0' : ''}`
+        } ${collapsed ? '!px-0 justify-center !gap-0' : ''}`
       }
     >
       {icon}
