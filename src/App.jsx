@@ -8,6 +8,7 @@ import { ShieldAlert, Loader2, ShieldCheck } from 'lucide-react'; // Removed Wif
 import ProtectedRoute from './components/ProtectedRoute'; // UPDATED
 import authService from './services/authService'; // UPDATED
 import { theme } from './theme';
+import gradeMasterLogo from './images/gradeMasterLogo.png';
 
 // Lazy loaded views for code splitting
 const Dashboard = lazy(() => import('./components/layout/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -31,6 +32,18 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => authService.getProfile());
 
   const [selectedQuarter, setSelectedQuarter] = useState(1);
+
+  // Set application favicon dynamically using the GradeMaster logo
+  React.useEffect(() => {
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = gradeMasterLogo;
+  }, []);
+
   const [maxQuarters, setMaxQuarters] = useState(() => {
     return parseInt(localStorage.getItem('gradeMaster_maxQuarters')) || 4;
   });

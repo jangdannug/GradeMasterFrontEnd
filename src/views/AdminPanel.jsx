@@ -391,7 +391,7 @@ export function AdminPanel({
                 School Scope: {currentUserSchoolId}
               </span>
             )}
-            <p className="text-xs text-slate-500 font-medium mt-1">
+            <p className="text-xs text-slate-600 font-medium mt-1">
               {activeTab === 'sections' && "Manage class sections and teacher assignments."}
               {activeTab === 'templates' && "Define global grading structures for subjects."}
               {activeTab === 'users' && "Manage system users and access levels."}
@@ -447,7 +447,7 @@ export function AdminPanel({
             className="space-y-6"
           >
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">Class Section Management</h3>
+              <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">Class Section Management</h3>
               <button 
                 onClick={() => setIsCreating(!isCreating)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
@@ -472,7 +472,7 @@ export function AdminPanel({
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Grade Level</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase">Grade Level</label>
                     <select 
                       value={formData.gradeLevel}
                       onChange={e => setFormData({...formData, gradeLevel: e.target.value})}
@@ -484,7 +484,7 @@ export function AdminPanel({
                     </select>
                   </div>
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Section Name</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase">Section Name</label>
                     <input 
                       required
                       type="text"
@@ -497,7 +497,7 @@ export function AdminPanel({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">School ID</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase">School ID</label>
                     <input 
                       type="text"
                       placeholder="e.g. 123456"
@@ -508,7 +508,7 @@ export function AdminPanel({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">School Name</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase">School Name</label>
                     <input 
                       readOnly
                       type="text"
@@ -518,7 +518,7 @@ export function AdminPanel({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">School Year</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase">School Year</label>
                     <input 
                       type="text"
                       value={formData.schoolYear}
@@ -541,7 +541,7 @@ export function AdminPanel({
                 <div key={grade} className="space-y-4">
                   <div className="flex items-center gap-4 px-2">
                     <div className="h-px flex-1 bg-slate-200"></div>
-                    <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">Grade {grade} Sections</h3>
+                    <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">Grade {grade} Sections</h3>
                     <div className="h-px flex-1 bg-slate-200"></div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -584,7 +584,7 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading users...</span>
               </div>
             )}
-            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-400">System User Management</h3>
+            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">System User Management</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredUsers.map(user => (
                 <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
@@ -592,7 +592,7 @@ export function AdminPanel({
                     // Edit Form (using theme.styles.input for consistency)
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Name</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Name</label>
                         <input
                           type="text"
                           value={editUserFormData.name}
@@ -601,7 +601,7 @@ export function AdminPanel({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Username</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Username</label>
                         <input
                           type="text"
                           value={editUserFormData.username}
@@ -611,7 +611,7 @@ export function AdminPanel({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Access Level</label>
                         <select
                           value={editUserFormData.role}
                           onChange={e => setEditUserFormData({ ...editUserFormData, role: e.target.value })}
@@ -625,7 +625,7 @@ export function AdminPanel({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School ID</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">School ID</label>
                         <input
                           type="text"
                           value={editUserFormData.schoolId}
@@ -638,7 +638,7 @@ export function AdminPanel({
 
                       {editUserFormData.role === 'adviser' && (
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Assigned Section (Adviser)</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Assigned Section (Adviser)</label>
                           <select
                             value={editUserFormData.assignedSectionId}
                             onChange={e => setEditUserFormData({ ...editUserFormData, assignedSectionId: e.target.value })}
@@ -656,7 +656,7 @@ export function AdminPanel({
 
                       {(editUserFormData.role === 'teacher' || editUserFormData.role === 'adviser') && (
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Assigned Subjects (Teacher)</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Assigned Subjects (Teacher)</label>
                           <select
                             multiple
                             value={editUserFormData.assignedSubjectIds}
@@ -676,7 +676,7 @@ export function AdminPanel({
                       )}
 
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
                         <select
                           value={editUserFormData.status}
                           onChange={e => setEditUserFormData({ ...editUserFormData, status: e.target.value })}
@@ -713,7 +713,7 @@ export function AdminPanel({
                           </div>
                           <div className="min-w-0 flex-1">
                             <h4 className="font-black text-slate-800 uppercase italic text-xs leading-tight">{user.name}</h4>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{user.username}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{user.username}</p>
                           </div>
                         </div>
                         {user.id === currentUserId && (
@@ -723,16 +723,16 @@ export function AdminPanel({
 
                       <div className="space-y-3">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Access Level</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Access Level</label>
                           <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School ID</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">School ID</label>
                           <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.schoolId || 'N/A'}</p>
                         </div>
                         {user.role === 'adviser' && user.assignedSectionId && (
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Adviser of</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Adviser of</label>
                             <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
                               G{filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
                             </p>
@@ -740,7 +740,7 @@ export function AdminPanel({
                         )}
                         {(user.role === 'teacher' || user.role === 'adviser') && user.assignedSubjectIds && user.assignedSubjectIds.length > 0 && (
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Teaching</label>
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Teaching</label>
                             <div className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
                               {user.assignedSubjectIds.map(subId => {
                                 const subject = filteredSubjectsForSchool.find(s => String(s.id) === String(subId));
@@ -750,7 +750,7 @@ export function AdminPanel({
                           </div>
                         )}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
                           <p className={`w-full border rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none ${user.status === 'active' ? 'bg-emerald-50/50 text-emerald-600 border-emerald-200/50' : 'bg-rose-50/50 text-rose-600 border-rose-200/50'}`}>
                             {user.status}
                           </p>
@@ -865,7 +865,7 @@ export function AdminPanel({
                   {Object.keys(groupedBaseSubjects).sort((a, b) => parseInt(a) - parseInt(b)).map(grade => (
                   <div key={grade} className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade {grade}</h4>
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Grade {grade}</h4>
                       <div className="h-px flex-1 bg-slate-100"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1014,14 +1014,14 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading registrations...</span>
               </div>
             )}
-          <div className="flex items-center gap-3 text-slate-400 mb-6 pb-2 border-b border-slate-100 overflow-hidden">
+          <div className="flex items-center gap-3 text-slate-500 mb-6 pb-2 border-b border-slate-100 overflow-hidden">
             <div className="size-8 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
               {/* Icon */}
               <Mail size={16} />
             </div>
             {/* Title and Count */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 flex-1 min-w-0">
-              <h3 className="text-sm font-black uppercase tracking-normal sm:tracking-widest truncate flex-1 min-w-0">
+              <h3 className="text-sm font-black uppercase tracking-normal sm:tracking-widest truncate flex-1 min-w-0 text-slate-500">
                 Pending Registrations
               </h3>
               <span className="w-fit bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black border border-amber-200/50 shrink-0 uppercase tracking-tighter">
