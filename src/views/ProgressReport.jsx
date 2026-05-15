@@ -21,14 +21,85 @@ export function ProgressReport({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeTab, setActiveTab] = React.useState('cards'); // 'cards' | 'summary'
 
+  // Helper function to parse the full name into its components
+  const parseFullName = (fullName) => {
+    const parts = fullName.split(',');
+    let lastName = '';
+    let firstName = '';
+    let middleName = '';
+
+    if (parts.length >= 2) {
+      lastName = parts[0].trim();
+      const names = parts[1].trim().split(/\s+/);
+      if (names.length > 1) {
+        middleName = names.pop();
+        firstName = names.join(' ');
+      } else {
+        firstName = names[0] || '';
+      }
+    } else {
+      const names = fullName.trim().split(/\s+/);
+      if (names.length >= 3) {
+        lastName = names[0];
+        middleName = names.pop();
+        firstName = names.slice(1).join(' ');
+      } else if (names.length === 2) {
+        lastName = names[0];
+        firstName = names[1];
+      } else {
+        lastName = fullName;
+      }
+    }
+    return { lastName, firstName, middleName };
+  };
+
   const getStudentInitials = (fullName) => {
     const parts = fullName.split(',');
-    if (parts.length < 2) return fullName.substring(0, 2).toUpperCase(); // Fallback
-    const lastName = parts[0].trim();
-    const firstNameParts = parts[1].trim().split(' ');
-    const firstName = firstNameParts[0].trim();
-    if (!firstName || !lastName) return fullName.substring(0, 2).toUpperCase(); // Fallback
-    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    let lastNameInitial = ''; // Initial for Last Name
+    let firstNameInitial = ''; // Initial for First Name
+    let middleNameInitial = ''; // Initial for Middle Name
+
+    if (parts.length >= 2) {
+      // Format: LastName, FirstName MiddleName
+      const lastName = parts[0].trim();
+      const firstNameAndMiddleNameParts = parts[1].trim().split(' ');
+      const firstName = firstNameAndMiddleNameParts[0].trim();
+      
+      if (lastName) lastNameInitial = lastName[0];
+      if (firstName) firstNameInitial = firstName[0];
+      
+      // If there are more than one part after the comma, assume the last one is the middle name
+      if (firstNameAndMiddleNameParts.length > 1) {
+        middleNameInitial = firstNameAndMiddleNameParts[firstNameAndMiddleNameParts.length - 1][0].trim();
+      }
+
+    } else {
+      // Assume format: LastName FirstName MiddleName (if no comma)
+      const nameParts = fullName.trim().split(' ');
+      if (nameParts.length >= 3) {
+        lastNameInitial = nameParts[0][0];
+        firstNameInitial = nameParts[1][0];
+        middleNameInitial = nameParts[nameParts.length - 1][0];
+      } else if (nameParts.length === 2) {
+        lastNameInitial = nameParts[0][0];
+        firstNameInitial = nameParts[1][0];
+      } else if (nameParts.length === 1 && nameParts[0].length > 0) {
+        // Only one word, use its first two letters if available
+        return nameParts[0].substring(0, 2).toUpperCase();
+      }
+    }
+    
+    let initials = `${lastNameInitial}${firstNameInitial}`;
+    if (middleNameInitial) {
+      initials += middleNameInitial;
+    }
+
+    // Fallback if no initials could be determined
+    if (!lastNameInitial && !firstNameInitial && !middleNameInitial) {
+      return fullName.substring(0, 2).toUpperCase();
+    }
+    
+    return initials.toUpperCase();
   };
 
   const filteredStudents = React.useMemo(() => {
@@ -292,7 +363,16 @@ export function ProgressReport({
                        {getStudentInitials(student.name)}
                      </div>
                      <div className="min-w-0 flex-1">
-                       <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">{student.name}</h4>
+                       {(() => {
+                         const { lastName, firstName, middleName } = parseFullName(student.name);
+                         return (
+                           <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">
+                             <span className="text-indigo-600" title="Last Name">{lastName}</span>
+                             {firstName && <>, <span className="text-emerald-600" title="First Name">{firstName}</span></>}
+                             {middleName && <>, <span className="text-slate-500" title="Middle Name">{middleName}</span></>}
+                           </h4>
+                         );
+                       })()}
                        <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate mt-1">
                          {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • LRN: {student.lrn}
                        </p>
