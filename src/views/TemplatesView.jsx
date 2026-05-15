@@ -176,7 +176,7 @@ export function TemplatesView({
           <p className="text-xs text-slate-500 font-medium mt-1">Configure grading categories and weights for each subject template.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label htmlFor="select-template" className="text-xs font-black uppercase text-slate-400">Select Template:</label>
+          <label htmlFor="select-template" className="text-xs font-black uppercase text-slate-500">Select Template:</label>
           <select
             id="select-template"
             value={selectedBaseSubjectId}
@@ -204,7 +204,7 @@ export function TemplatesView({
             </h3>
             <div className="flex gap-2">
               <div className="hidden md:flex flex-col items-end justify-center mr-4 pr-4 border-r border-slate-200">
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Total Weight</span>
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Total Weight</span>
                 <span className={`text-sm font-black ${isWeightValid ? 'text-emerald-600' : 'text-rose-500 animate-pulse'}`}>
                   {Math.round(totalWeight * 100)}%
                 </span>
@@ -279,7 +279,7 @@ export function TemplatesView({
                       className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${
                         activeComponentId === comp.id
                           ? 'bg-white text-indigo-600 shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-600'
+                          : 'text-slate-500 hover:text-slate-700'
                       }`}
                     >
                       {comp.name || <span className="italic opacity-50">Untitled Component</span>}
@@ -289,7 +289,7 @@ export function TemplatesView({
               ))}
               <button // Add Component Button
                 onClick={handleAddComponent}
-                className="px-4 py-2 rounded-lg text-xs font-black uppercase text-slate-400 hover:text-indigo-600 transition-all flex items-center gap-1"
+                className="px-4 py-2 rounded-lg text-xs font-black uppercase text-slate-500 hover:text-indigo-600 transition-all flex items-center gap-1"
               >
                 <Plus size={14} /> Add Component
               </button>
@@ -302,13 +302,13 @@ export function TemplatesView({
                 <User size={16} />
               </div>
               <div className="flex-1">
-                <label className="text-[10px] font-black uppercase text-indigo-400 block mb-1">Assigned Component Teacher</label>
+                <label className="text-[11px] font-black uppercase text-indigo-500 block mb-1">Assigned Component Teacher</label>
                 <select
                   value={activeComponent.teacherId || ''}
                   onChange={(e) => updateComponentTeacher(selectedSubject.id, activeComponent.id, e.target.value || null)}
                   className="w-full bg-white border border-indigo-100 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
-                  <option value="">Default (Main Subject Teacher)</option>
+                  <option value="" className="text-slate-400">Default (Main Subject Teacher)</option>
                   {users.filter(u => u.role === 'teacher' || u.role === 'adviser').map(u => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
@@ -344,11 +344,11 @@ export function TemplatesView({
                         {category.name || <span className="text-slate-400 italic">Untitled Category</span>}
                       </h4>
                     )}
-                    <span className="text-xs text-slate-500 font-medium">({(category.weight * 100).toFixed(0)}%)</span>
+                    <span className="text-xs text-slate-600 font-medium">({(category.weight * 100).toFixed(0)}%)</span>
                   </div>
                   <div className="flex flex-wrap gap-2 items-center">
                     {category.columnNames?.map((colName, colIdx) => (
-                      <span key={colIdx} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                      <span key={colIdx} className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
                         {editingCategoryId === category.id && editingColumnIndex === colIdx ? (
                           <input
                             type="text"

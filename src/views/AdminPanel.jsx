@@ -12,6 +12,7 @@ import {
   Check, 
   X,
   Eye,
+  Search,
   Layers, Pencil,
   Settings,
   School,
@@ -67,6 +68,7 @@ export function AdminPanel({
   const [editingSectionId, setEditingSectionId] = React.useState(null);
   const [editingBaseSubjectId, setEditingBaseSubjectId] = React.useState(null);
   const [baseEditFormData, setBaseEditFormData] = React.useState({ name: '', code: '', gradeLevel: '7', schoolId: '' });
+  const [userSearchQuery, setUserSearchQuery] = React.useState('');
 
   const currentUserId = currentUser?.id;
   const currentUserRole = currentUser?.role?.toLowerCase();
@@ -147,6 +149,16 @@ export function AdminPanel({
     if (currentUserRole === 'superadmin') return users;
     return users.filter(u => String(u.schoolId) === String(currentUserSchoolId));
   }, [users, currentUserRole, currentUserSchoolId]);
+
+  // NEW: Filter users by search query for display in the Users tab
+  const searchedUsers = React.useMemo(() => {
+    if (!userSearchQuery.trim()) return filteredUsers;
+    const q = userSearchQuery.toLowerCase();
+    return filteredUsers.filter(u => 
+      (u.name || "").toLowerCase().includes(q) || 
+      (u.username || "").toLowerCase().includes(q)
+    );
+  }, [filteredUsers, userSearchQuery]);
 
   const teachers = filteredUsers.filter(u => u.role === 'teacher' || u.role === 'adviser');
   // Filter out the current user from the list of assignable advisers for sections
@@ -584,15 +596,31 @@ export function AdminPanel({
                 <span className="text-sm font-medium">Loading users...</span>
               </div>
             )}
-            <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">System User Management</h3>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+              <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">System User Management</h3>
+              <div className="relative w-full md:w-80 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                <input 
+                  type="text"
+                  placeholder="Search user name or username..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className={`${theme.styles.input} !py-2.5 !pl-12 !pr-4 text-sm`}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredUsers.map(user => (
-                <div key={user.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
+              {searchedUsers.map(user => (
+                <div key={user.id} className={`${theme.styles.card} p-6 flex flex-col gap-5 group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10`}>
+                  {/* Role Accent Line */}
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${user.role === 'admin' || user.role === 'superadmin' ? 'bg-indigo-500' : user.role === 'adviser' ? 'bg-emerald-500' : 'bg-blue-400'}`} />
+
                   {editingUserId === user.id ? (
                     // Edit Form (using theme.styles.input for consistency)
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Name</label>
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Name</label>
                         <input
                           type="text"
                           value={editUserFormData.name}
@@ -601,7 +629,7 @@ export function AdminPanel({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Username</label>
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Username</label>
                         <input
                           type="text"
                           value={editUserFormData.username}
@@ -611,7 +639,7 @@ export function AdminPanel({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Access Level</label>
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Access Level</label>
                         <select
                           value={editUserFormData.role}
                           onChange={e => setEditUserFormData({ ...editUserFormData, role: e.target.value })}
@@ -625,7 +653,7 @@ export function AdminPanel({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">School ID</label>
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">School ID</label>
                         <input
                           type="text"
                           value={editUserFormData.schoolId}
@@ -638,7 +666,7 @@ export function AdminPanel({
 
                       {editUserFormData.role === 'adviser' && (
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Assigned Section (Adviser)</label>
+                          <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Assigned Section (Adviser)</label>
                           <select
                             value={editUserFormData.assignedSectionId}
                             onChange={e => setEditUserFormData({ ...editUserFormData, assignedSectionId: e.target.value })}
@@ -656,7 +684,7 @@ export function AdminPanel({
 
                       {(editUserFormData.role === 'teacher' || editUserFormData.role === 'adviser') && (
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Assigned Subjects (Teacher)</label>
+                          <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Assigned Subjects (Teacher)</label>
                           <select
                             multiple
                             value={editUserFormData.assignedSubjectIds}
@@ -676,7 +704,7 @@ export function AdminPanel({
                       )}
 
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Status</label>
                         <select
                           value={editUserFormData.status}
                           onChange={e => setEditUserFormData({ ...editUserFormData, status: e.target.value })}
@@ -707,61 +735,67 @@ export function AdminPanel({
                     // Display View
                     <>
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="size-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 shrink-0 mt-0.5">
-                            <User size={20} />
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div className={`size-12 rounded-2xl flex items-center justify-center shadow-inner shrink-0 ${user.role === 'admin' || user.role === 'superadmin' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500'}`}>
+                            {user.role === 'admin' || user.role === 'superadmin' ? <Shield size={24} /> : <User size={24} />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-black text-slate-800 uppercase italic text-xs leading-tight">{user.name}</h4>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{user.username}</p>
+                            <h4 className="font-black text-slate-800 uppercase italic text-sm leading-tight truncate tracking-tight">{user.name}</h4>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] truncate">@{user.username}</p>
                           </div>
                         </div>
                         {user.id === currentUserId && (
-                          <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100 uppercase shrink-0">You</span>
+                          <span className="text-[8px] font-black text-white bg-indigo-600 px-2 py-1 rounded-full uppercase tracking-tighter shadow-sm shrink-0">You</span>
                         )}
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Access Level</label>
-                          <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.role}</p>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Access Level</label>
+                          <div className="flex items-center gap-1.5">
+                            <div className={`size-2 rounded-full ${user.role === 'admin' || user.role === 'superadmin' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
+                            <span className="text-[10px] font-black text-slate-700 uppercase">{user.role}</span>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">School ID</label>
-                          <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">{user.schoolId || 'N/A'}</p>
+                        <div className="space-y-1 text-right">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</label>
+                          <div>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter ${user.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                              {user.status === 'active' ? <Check size={8} /> : <X size={8} />}
+                              {user.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 px-1">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-slate-500 uppercase tracking-wider">School ID</span>
+                          <span className="font-black text-slate-700 font-mono">{user.schoolId || 'N/A'}</span>
                         </div>
                         {user.role === 'adviser' && user.assignedSectionId && (
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Adviser of</label>
-                            <p className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
-                              G{filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.gradeLevel} - {filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.name}
-                            </p>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider">Advisory</span>
+                            <span className="font-black text-indigo-600 truncate max-w-[140px] text-right">
+                              {filteredSections.find(s => String(s.id) === String(user.assignedSectionId))?.name || 'Assigned'}
+                            </span>
                           </div>
                         )}
                         {(user.role === 'teacher' || user.role === 'adviser') && user.assignedSubjectIds && user.assignedSubjectIds.length > 0 && (
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Teaching</label>
-                            <div className="w-full bg-white/50 border border-white/60 rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none">
-                              {user.assignedSubjectIds.map(subId => {
-                                const subject = filteredSubjectsForSchool.find(s => String(s.id) === String(subId));
-                                return subject ? <span key={subId} className="block">{subject.name} (G{subject.gradeLevel})</span> : null;
-                              })}
-                            </div>
+                          <div className="flex justify-between items-start text-[10px] gap-2">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider shrink-0">Teaching</span>
+                            <span className="font-black text-slate-600 text-right line-clamp-1 leading-tight">
+                              {user.assignedSubjectIds.length} Active Subjects
+                            </span>
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
-                          <p className={`w-full border rounded-xl px-3 py-2 text-[10px] font-bold uppercase outline-none ${user.status === 'active' ? 'bg-emerald-50/50 text-emerald-600 border-emerald-200/50' : 'bg-rose-50/50 text-rose-600 border-rose-200/50'}`}>
-                            {user.status}
-                          </p>
-                        </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                      <div className="pt-3 border-t border-slate-100 flex justify-end gap-1">
                         <button
                           onClick={() => handleEditUser(user)}
                           disabled={user.id === currentUserId} // Prevent editing self for now, or allow specific fields
-                          className="p-2 text-slate-300 hover:text-indigo-600 transition-all disabled:opacity-0"
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-0"
                           title="Edit User"
                         >
                           <Pencil size={16} />
@@ -769,7 +803,7 @@ export function AdminPanel({
                         <button
                           disabled={user.id === currentUserId}
                           onClick={() => onDeleteUser(user.id)}
-                          className="p-2 text-slate-300 hover:text-rose-500 transition-all disabled:opacity-0"
+                          className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-0"
                           title="Delete User"
                         >
                           <Trash2 size={16} />
@@ -798,79 +832,113 @@ export function AdminPanel({
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-              <h3 className="text-lg font-black uppercase italic text-slate-800 mb-6 flex items-center gap-3">
-                <BookOpen className="text-indigo-600" /> Global Subject Templates
-              </h3>
-              
-              <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 text-slate-700">
-                <input 
-                  placeholder="AUTO-GENERATED CODE" 
-                  value={baseSubjectForm.code}
-                  readOnly
-                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 font-bold text-xs cursor-not-allowed opacity-70" 
-                  required
-                />
-                <input // Subject Name
-                  placeholder="SUBJECT LABEL" 
-                  value={baseSubjectForm.name}
-                  onChange={e => {
-                    const newName = e.target.value.toUpperCase();
-                    setBaseSubjectForm({
-                      ...baseSubjectForm, 
-                      name: newName,
-                      code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
-                    });
-                  }}
-                  className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs sm:col-span-2 lg:col-span-2`} 
-                  required
-                />
-                {currentUserRole === 'superadmin' && (
-                  <select 
-                    value={baseSubjectForm.schoolId}
-                    onChange={e => setBaseSubjectForm({...baseSubjectForm, schoolId: e.target.value})}
-                    className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs`}
-                    required
-                  >
-                    <option value="" disabled>School Association</option>
-                    {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                )}
-                <div className="flex gap-2">
-                  <select 
-                    value={baseSubjectForm.gradeLevel}
-                    onChange={e => {
-                      const newGrade = e.target.value;
-                      setBaseSubjectForm({
-                        ...baseSubjectForm, 
-                        gradeLevel: newGrade,
-                        code: `${newGrade}${baseSubjectForm.name.replace(/\s+/g, '')}`
-                      });
-                    }}
-                    className={`${theme.styles.input} !bg-white/50 !border-white/60 !rounded-xl px-4 py-2 font-bold text-xs`}
-                  >
-                    {['7','8','9','10','11','12'].map(g => <option key={g} value={g}>G{g}</option>)}
-                  </select>
-                  <button 
-                    type="submit" 
-                    disabled={isBaseSubjectCreatingOrUpdating}
-                    className="bg-indigo-600 text-white p-2 rounded-xl disabled:opacity-50"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </div>
-              </form>
+            <div className={`${theme.styles.card} p-8`}>
+              <div className="mb-10 border-b border-white/40 pb-6">
+                <h3 className="text-xl font-black uppercase italic text-slate-800 flex items-center gap-3">
+                  <BookOpen className="text-indigo-600" size={24} /> Global Subject Templates
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-tight">Define standard grading structures and categories for subjects.</p>
+              </div>
 
-              <div className="space-y-6">
+              {/* Add Template Form Panel */}
+              <div className="bg-slate-100/30 rounded-3xl p-6 border border-slate-200/50 mb-10 shadow-inner">
+                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 ml-1">New Template Entry</p>
+                <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 text-slate-700 items-end">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">System Code</label>
+                    <input 
+                      placeholder="AUTO" 
+                      value={baseSubjectForm.code}
+                      readOnly
+                      className="w-full bg-slate-100/50 border border-slate-200/50 rounded-xl px-4 py-3 font-bold text-xs cursor-not-allowed opacity-70" 
+                    />
+                  </div>
+                  <div className="space-y-1 lg:col-span-2">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Subject Name</label>
+                    <input 
+                      placeholder="e.g. SCIENCE" 
+                      value={baseSubjectForm.name}
+                      onChange={e => {
+                        const newName = e.target.value.toUpperCase();
+                        setBaseSubjectForm({
+                          ...baseSubjectForm, 
+                          name: newName,
+                          code: `${baseSubjectForm.gradeLevel}${newName.replace(/\s+/g, '')}`
+                        });
+                      }}
+                      className={`${theme.styles.input} !bg-white/80 !border-white/90 !rounded-xl px-4 py-3 font-bold text-xs`} 
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Grade Level</label>
+                    <select 
+                      value={baseSubjectForm.gradeLevel}
+                      onChange={e => {
+                        const newGrade = e.target.value;
+                        setBaseSubjectForm({
+                          ...baseSubjectForm, 
+                          gradeLevel: newGrade,
+                          code: `${newGrade}${baseSubjectForm.name.replace(/\s+/g, '')}`
+                        });
+                      }}
+                      className={`${theme.styles.input} !bg-white/80 !border-white/90 !rounded-xl px-4 py-3 font-bold text-xs`}
+                    >
+                      {['7','8','9','10','11','12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1 lg:col-span-2">
+                    {currentUserRole === 'superadmin' ? (
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School Scope</label>
+                          <select 
+                            value={baseSubjectForm.schoolId}
+                            onChange={e => setBaseSubjectForm({...baseSubjectForm, schoolId: e.target.value})}
+                            className={`${theme.styles.input} !bg-white/80 !border-white/90 !rounded-xl px-4 py-3 font-bold text-xs`}
+                            required
+                          >
+                            <option value="" disabled>Select School</option>
+                            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </div>
+                        <button 
+                          type="submit" 
+                          disabled={isBaseSubjectCreatingOrUpdating}
+                          className="bg-indigo-600 text-white p-3 rounded-xl disabled:opacity-50 shadow-lg shadow-indigo-100"
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        type="submit" 
+                        disabled={isBaseSubjectCreatingOrUpdating}
+                        className="w-full bg-indigo-600 text-white py-3 rounded-xl disabled:opacity-50 font-black uppercase text-[10px] tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                      >
+                        <Plus size={16} /> Create Template
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              <div className="space-y-8">
                   {Object.keys(groupedBaseSubjects).sort((a, b) => parseInt(a) - parseInt(b)).map(grade => (
-                  <div key={grade} className="space-y-3">
+                  <div key={grade} className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
-                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Grade {grade}</h4>
+                      <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.25em] px-2 italic">Grade {grade} Curriculum</h4>
                       <div className="h-px flex-1 bg-slate-100"></div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {filteredBaseSubjects.filter(b => b.gradeLevel === grade).sort((a, b) => a.name.localeCompare(b.name)).map(base => ( // Base Subject Card
-                        <div key={base.id} className="p-4 bg-white/50 rounded-xl border border-white/60 flex justify-between items-center group">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredBaseSubjects.filter(b => b.gradeLevel === grade).sort((a, b) => a.name.localeCompare(b.name)).map(base => {
+                          const isConfigured = base.categories && base.categories.length > 0;
+                          const isComposite = base.categories?.some(c => c.isComponent);
+                          return (
+                        <div key={base.id} className="p-5 bg-white rounded-3xl border border-slate-100 flex justify-between items-center group hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 relative overflow-hidden">
+                          {/* Configuration Status Accent */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isConfigured ? 'bg-indigo-500' : 'bg-rose-400 opacity-50'}`} />
+                          
                           {editingBaseSubjectId === base.id ? (
                             <div className="flex-1 space-y-2 mr-4">
                               <input 
@@ -913,21 +981,26 @@ export function AdminPanel({
                               </div>
                             </div>
                           ) : (
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] font-black text-indigo-600 truncate">{base.code}</p>
-                              <p className="font-bold text-slate-800 text-sm truncate uppercase">{base.name}</p>
-                              {(!base.categories || base.categories.length === 0) ? (
-                                <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full border border-rose-100 mt-1 block w-fit">
-                                  TEMPLATE NOT SET
-                                </span>
-                              ) : (
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight mt-1 italic">
-                                  {base.categories.some(c => c.isComponent) ? 'Composite Configured' : 'Template Configured'}
-                                </p>
-                              )}
+                            <div className="min-w-0 flex-1 pl-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/50 uppercase tracking-wider">{base.code}</span>
+                                {isConfigured ? (
+                                   <span className="text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                                     <Check size={8} /> CONFIGURED
+                                   </span>
+                                ) : (
+                                   <span className="text-[10px] font-black bg-rose-50 text-rose-500 px-2 py-0.5 rounded border border-rose-100">
+                                     NO TEMPLATE
+                                   </span>
+                                )}
+                              </div>
+                              <h4 className="font-black text-slate-800 text-base truncate uppercase tracking-tight">{base.name}</h4>
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                {isComposite ? 'Composite Component Structure' : 'Standard Subject Template'}
+                              </p>
                             </div>
                           )}
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 ml-4">
                             {editingBaseSubjectId !== base.id && (
                               <button 
                                 onClick={() => {
@@ -939,28 +1012,29 @@ export function AdminPanel({
                                     schoolId: base.schoolId || '' // Ensure schoolId is explicitly set from base object
                                   });
                                 }}
-                                className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
-                                title="Edit Subject Label"
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                title="Edit Label"
                               >
                                 <Pencil size={16} />
                               </button>
                             )}
                             <button 
                               onClick={() => navigate('/templates', { state: { subjectId: base.id } })}
-                              className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
-                              title="Configure Grading structure"
+                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                              title="Configure Structure"
                             >
                               <Settings size={16} />
                             </button>
                             <button 
                               onClick={() => handleDeleteBaseSubject(base.id)} 
-                              className="p-2 text-slate-300 hover:text-rose-500 transition-all"
+                              className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                             >
                               <Trash2 size={16} />
                             </button>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   </div>
                 ))}
