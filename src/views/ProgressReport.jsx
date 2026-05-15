@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, Trash2, Table, Eye, Search, Loader2, FileText, X, Printer, Files } from 'lucide-react';
+import { Download, Trash2, Table, Eye, Search, Loader2, FileText, X, Printer, Files, BookOpen, Layers } from 'lucide-react';
 import gradingService from '../services/gradingService';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
@@ -275,6 +275,32 @@ export function ProgressReport({
     navigate(path, { state: { isBulk: true, studentsData } });
   };
 
+  // NEW: Animation Variants
+  const cardContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const cardItemVariants = {
+    hidden: { opacity: 0, scale: 0.8, y: 20 },
+    show: { 
+      opacity: 1, 
+      scale: 1, 
+      y: 0,
+      transition: { type: "spring", stiffness: 300, damping: 20 }
+    }
+  };
+
+  const getHonorStatus = (avg) => {
+    if (avg >= 98) return { label: 'With Highest Honors', color: 'bg-amber-500 text-white shadow-amber-200' };
+    if (avg >= 95) return { label: 'With High Honors', color: 'bg-indigo-600 text-white shadow-indigo-200' };
+    if (avg >= 90) return { label: 'With Honors', color: 'bg-emerald-500 text-white shadow-emerald-200' };
+    return null;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -356,93 +382,127 @@ export function ProgressReport({
             className="grid grid-cols-1 gap-6"
           >
             {studentReportData.map(({ student, subjectResults, generalAverage, avgDescriptor }) => ( // Individual Student Cards
-              <div key={student.id} className={`${theme.styles.card} overflow-hidden group`}>
-                 <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-slate-100/50 transition-colors gap-4">
+              <div key={student.id} className="bg-slate-50 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden group transition-all duration-300 relative">
+                 {/* Honor Ribbon */}
+                 {getHonorStatus(generalAverage) && (
+                   <div className={`absolute top-0 right-10 px-4 py-1.5 rounded-b-xl text-[10px] font-black uppercase tracking-widest z-10 shadow-lg ${getHonorStatus(generalAverage).color}`}>
+                     {getHonorStatus(generalAverage).label}
+                   </div>
+                 )}
+
+                 <div className="p-6 bg-slate-100 border-b border-slate-200 flex flex-col sm:flex-row justify-between sm:items-center group-hover:bg-white transition-colors gap-4">
                    <div className="flex items-center gap-4">
-                     <div className={`size-12 ${theme.styles.radiusSm} flex items-center justify-center text-sm font-black shadow-sm ${student.gender === 'MALE' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'} shrink-0 transition-colors`}>
+                     <div className={`size-16 rounded-[1.5rem] flex items-center justify-center text-lg font-black shadow-lg border-4 border-white ${student.gender === 'MALE' ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-rose-500 text-white shadow-rose-100'} shrink-0 transition-transform group-hover:scale-110 duration-500`}>
                        {getStudentInitials(student.name)}
                      </div>
                      <div className="min-w-0 flex-1">
                        {(() => {
                          const { lastName, firstName, middleName } = parseFullName(student.name);
                          return (
-                           <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">
-                             <span className="text-indigo-600" title="Last Name">{lastName}</span>
-                             {firstName && <>, <span className="text-emerald-600" title="First Name">{firstName}</span></>}
-                             {middleName && <>, <span className="text-slate-500" title="Middle Name">{middleName}</span></>}
-                           </h4>
+                           <div className="flex flex-col">
+                             <h4 className="font-black text-slate-800 uppercase text-base md:text-xl truncate tracking-tight leading-tight">
+                               <span className="text-indigo-600" title="Last Name">{lastName}</span>
+                               {firstName && <>, <span className="text-slate-700" title="First Name">{firstName}</span></>}
+                               {middleName && <span className="text-slate-400 ml-2" title="Middle Name">{middleName}</span>}
+                             </h4>
+                             <p className="text-[11px] text-slate-500 font-black tracking-[0.2em] uppercase mt-1">
+                               {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • LRN: {student.lrn}
+                             </p>
+                           </div>
                          );
                        })()}
-                       <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate mt-1">
-                         {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • LRN: {student.lrn}
-                       </p>
                      </div>
                    </div>
-                   <div className="text-left sm:text-right">
-                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">General Average</p>
-                     <p className={`text-2xl md:text-3xl font-black leading-none ${generalAverage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                       {generalAverage}
-                     </p>
-                     <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${avgDescriptor?.color}`}>
-                       {avgDescriptor?.label}
-                     </p>
+                   <div className="text-left sm:text-right flex items-center gap-6">
+                     <div className="h-12 w-px bg-slate-200 hidden sm:block"></div>
+                     <div>
+                       <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">General Average</p>
+                       <div className="flex items-baseline gap-2 sm:justify-end">
+                         <p className={`text-4xl md:text-5xl font-black leading-none tracking-tighter ${generalAverage >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                           {generalAverage}
+                         </p>
+                         <p className={`text-[11px] font-black uppercase tracking-widest ${avgDescriptor?.color}`}>
+                           {avgDescriptor?.label}
+                         </p>
+                       </div>
+                     </div>
                    </div>
                  </div>
                  
-                 <div className="p-6 md:p-8 bg-white">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                 <div className="p-6 md:p-8 bg-slate-200/30">
+                   <motion.div variants={cardContainerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                      {subjectResults.filter(r => !r.isComponent).map((res, i) => (
-                       <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow space-y-4">
-                         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">{res.name}</p>
-                         <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
-                           {res.quarterlyGrades.map(q => (
-                             <div key={q.quarter} className={`text-center py-1.5 rounded-lg border ${q.score === null ? 'border-transparent' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
-                               <p className="text-[6px] text-slate-400 font-black uppercase mb-0.5">Q{q.quarter}</p>
-                               <p className={`text-xs font-black leading-none ${q.score === null ? 'text-slate-300' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
-                                 {q.score || '--'}
-                               </p>
-                               {q.score !== null && (
-                                 <p className={`text-[5px] font-black uppercase mt-1 leading-none ${q.descriptor?.color}`}>
-                                   {q.descriptor?.label.substring(0, 3)}
-                                 </p>
-                               )}
+                       <motion.div variants={cardItemVariants} key={i} className="group/sub p-6 rounded-[2.5rem] border border-slate-200 bg-white hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-500/30 hover:scale-[1.3] origin-center hover:z-20 hover:brightness-110 transition-all duration-300 flex flex-col justify-between space-y-5 relative overflow-hidden shadow-md">
+                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-blue-400 opacity-0 group-hover/sub:opacity-100 transition-opacity" />
+                         
+                         <div className="space-y-4">
+                           <div className="flex items-center justify-between gap-2">
+                             <div className="flex items-center gap-2 min-w-0">
+                               <div className="size-7 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 shrink-0">
+                                 <BookOpen size={14} />
+                               </div>
+                               <p className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">{res.name}</p>
                              </div>
-                           ))}
-                         </div>
+                             {res.isVerified && (
+                               <span className="shrink-0 text-[8px] font-black bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>
+                             )}
+                           </div>
 
-                         {/* Composite Subject Components Breakdown */}
-                         {res.isComposite && (
-                           <div className="pt-3 border-t border-slate-50 space-y-1">
-                             {res.components.map(comp => (
-                               <div key={comp.id} className="flex items-center justify-between text-[7px] font-black text-slate-400 uppercase tracking-tighter">
-                                 <span className="truncate max-w-[60px]">{comp.name}</span>
-                                 <div className="flex gap-1">
-                                   {res.quarterlyGrades.map(q => {
-                                     const compScore = q.components?.find(c => c.id === comp.id)?.quarterly;
-                                     return <span key={q.quarter} className={`w-4 text-center ${compScore ? 'text-slate-600' : 'text-slate-200'}`}>{compScore || '-'}</span>
-                                   })}
-                                 </div>
+                           <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${maxQuarters}, minmax(0, 1fr))` }}>
+                             {res.quarterlyGrades.map(q => (
+                               <div key={q.quarter} className={`text-center py-2 rounded-xl border transition-all ${q.score === null ? 'border-dashed border-slate-200 bg-transparent' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                 <p className="text-[7px] text-slate-600 font-black uppercase mb-1">Q{q.quarter}</p>
+                                 <p className={`text-sm font-black leading-none ${q.score === null ? 'text-slate-400' : q.score < 75 ? 'text-rose-500' : 'text-slate-800'}`}>
+                                   {q.score || '--'}
+                                 </p>
+                                 {q.score !== null && (
+                                   <p className={`text-[6px] font-black uppercase mt-1.5 leading-none px-1 py-0.5 rounded-sm inline-block ${q.descriptor?.color?.replace('text-', 'bg-').replace('600', '50')} ${q.descriptor?.color}`}>
+                                     {q.descriptor?.label.substring(0, 3)}
+                                   </p>
+                                 )}
                                </div>
                              ))}
                            </div>
-                         )}
 
-                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                           <div className="flex flex-col gap-1">
-                             <span className="text-[9px] font-black text-slate-400 uppercase leading-none">Yearly Grade</span>
+                           {/* Composite Subject Components Breakdown */}
+                           {res.isComposite && (
+                             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+                               <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-50 pb-1 flex items-center gap-1">
+                                 <Layers size={10} /> Component Breakdown
+                               </p>
+                               <div className="space-y-1.5">
+                                 {res.components.map(comp => (
+                                   <div key={comp.id} className="flex items-center justify-between text-[8px] font-bold text-slate-700 uppercase tracking-tight">
+                                     <span className="truncate max-w-[80px]">{comp.name}</span>
+                                     <div className="flex gap-1">
+                                       {res.quarterlyGrades.map(q => {
+                                         const compScore = q.components?.find(c => c.id === comp.id)?.quarterly; // Check if compScore is defined
+                                         return <span key={q.quarter} className={`w-5 text-center font-black ${compScore ? 'text-indigo-600' : 'text-slate-400'}`}>{compScore || '-'}</span>
+                                       })}
+                                     </div>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+
+                         <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                           <div className="flex flex-col">
+                             <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">Yearly Grade</span>
                              {res.isVerified && (
-                               <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${res.finalDescriptor?.color}`}>
+                               <span className={`text-[9px] font-black uppercase tracking-tight mt-1 ${res.finalDescriptor?.color}`}>
                                  {res.finalDescriptor?.label}
                                </span>
                              )}
                            </div>
-                           <span className={`text-xl font-black ${res.finalGrade >= 75 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                             {res.finalGrade || '--'}
-                           </span>
+                           <div className={`size-12 rounded-2xl flex items-center justify-center border-2 ${res.finalGrade >= 75 ? 'bg-emerald-50 border-emerald-200 text-emerald-600 shadow-lg shadow-emerald-500/10' : 'bg-rose-50 border-rose-200 text-rose-600 shadow-lg shadow-rose-500/10'}`}>
+                              <span className="text-xl font-black">{res.finalGrade || '--'}</span>
+                           </div>
                          </div>
-                       </div>
+                       </motion.div>
                      ))}
-                   </div>
+                   </motion.div>
 
                    <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-2">
                       <button className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-2">
@@ -489,29 +549,29 @@ export function ProgressReport({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+            className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden"
           >
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-hide">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 w-12">No.</th>
-                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[200px] sticky left-0 bg-slate-50 z-10 border-r">Learner's Name</th>
+                  <tr className="bg-slate-100 border-b border-slate-300">
+                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-600 w-12">No.</th>
+                    <th rowSpan={2} className="p-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-800 min-w-[250px] sticky left-0 bg-slate-100 z-30 border-r border-slate-300 shadow-md">Learner's Name</th>
                     {summarySubjectsList.map(sub => (
-                      <th key={sub.id} colSpan={maxQuarters + 1} className={`p-2 text-center text-[10px] font-black uppercase tracking-widest border-r border-slate-200 ${sub.isComponent ? 'bg-slate-50 text-indigo-400 text-[8px]' : 'bg-slate-100 text-slate-600'}`}>
+                      <th key={sub.id} colSpan={maxQuarters + 1} className={`p-3 text-center text-[10px] font-black uppercase tracking-widest border-r border-slate-300 ${sub.isComponent ? 'bg-slate-50 text-indigo-500 text-[9px]' : 'bg-indigo-50 text-indigo-900'}`}>
                         <div className="flex flex-col items-center">
                           {sub.isComponent && <span className="text-[6px] opacity-50 block mb-0.5 tracking-tighter">↳ Component</span>}
                           {sub.name}
                         </div>
                       </th>
                     ))}
-                    <th rowSpan={2} className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 w-24 border-l border-indigo-100">Gen. Avg</th>
+                    <th rowSpan={2} className="p-4 text-center text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 w-24 sticky right-0 z-30 shadow-[-4px_0_10px_rgba(0,0,0,0.1)]">Gen. Avg</th>
                   </tr>
-                  <tr className="bg-slate-50/30 border-b border-slate-200">
+                  <tr className="bg-slate-50 border-b border-slate-200">
                     {summarySubjectsList.map(sub => (
                       <React.Fragment key={`sub-header-${sub.id}`}>
                         {Array.from({ length: maxQuarters }, (_, i) => (
-                          <th key={i} className="p-2 text-center text-[8px] font-black text-slate-400 border-r border-slate-100">Q{i + 1}</th>
+                          <th key={i} className="p-2 text-center text-[8px] font-black text-slate-500 border-r border-slate-100">Q{i + 1}</th>
                         ))}
                         <th className="p-2 text-center text-[8px] font-black text-indigo-500 bg-indigo-50/30 border-r border-slate-200 italic">Final</th>
                       </React.Fragment>
@@ -519,10 +579,10 @@ export function ProgressReport({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {studentReportData.map(({ student, subjectResults, generalAverage }, sIdx) => (
-                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="p-4 text-xs font-bold text-slate-400">{sIdx + 1}</td>
-                      <td className="p-4 text-sm font-black text-slate-800 uppercase sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r">
+                  {studentReportData.map(({ student, subjectResults, generalAverage, avgDescriptor }, sIdx) => (
+                    <tr key={student.id} className="hover:bg-indigo-50/30 transition-colors group even:bg-slate-50/50">
+                      <td className="p-4 text-xs font-bold text-slate-500">{sIdx + 1}</td>
+                      <td className="p-4 text-sm font-black text-slate-800 uppercase sticky left-0 bg-inherit group-hover:bg-indigo-50 z-10 border-r border-slate-200 shadow-sm">
                         {student.name}
                       </td>
                       {summarySubjectsList.map(sub => {
@@ -537,9 +597,9 @@ export function ProgressReport({
                                 </td>
                               );
                             })}
-                            <td className={`p-2 text-center text-xs font-black border-r border-slate-200 ${sub.isComponent ? 'bg-slate-50/50 text-slate-400' : 'bg-indigo-50/20'}`}>
+                            <td className={`p-2 text-center text-xs font-black border-r border-slate-200 ${sub.isComponent ? 'bg-slate-50/30 text-slate-400' : 'bg-gradient-to-b from-indigo-50/30 to-indigo-100/30'}`}>
                               {res ? (
-                                <span className={res.finalGrade < 75 ? 'text-rose-500' : 'text-indigo-600'}>
+                                <span className={res.finalGrade < 75 ? 'text-rose-600' : 'text-indigo-700'}>
                                   {res.finalGrade || '--'}
                                 </span>
                               ) : (
@@ -549,8 +609,11 @@ export function ProgressReport({
                           </React.Fragment>
                         );
                       })}
-                      <td className="p-4 text-center text-base font-black text-indigo-600 bg-indigo-50/30 border-l border-indigo-100">
-                        {generalAverage || '--'}
+                      <td className="p-4 text-center sticky right-0 z-10 bg-slate-900 text-white shadow-[-4px_0_15px_rgba(0,0,0,0.2)]">
+                        <div className="flex flex-col">
+                          <span className="text-lg font-black leading-none">{generalAverage || '--'}</span>
+                          <span className={`text-[7px] font-black uppercase tracking-tighter mt-1 ${avgDescriptor?.color.replace('text-', 'text-opacity-80 text-')}`}>{avgDescriptor?.label.split(' ')[0]}</span>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -571,7 +634,7 @@ function TabButton({ active, onClick, icon, label }) {
       className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs font-black uppercase transition-all ${
         active 
           ? 'bg-white text-indigo-600 shadow-sm' 
-          : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+          : 'text-slate-600 hover:text-indigo-700 hover:bg-white/50'
       }`}
     >
       {icon}

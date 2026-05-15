@@ -597,7 +597,7 @@ export function AdminPanel({
               </div>
             )}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-              <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-500">System User Management</h3>
+              <h3 className="text-sm font-black uppercase italic tracking-widest text-slate-600">System User Management</h3>
               <div className="relative w-full md:w-80 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
                 <input 
@@ -837,7 +837,7 @@ export function AdminPanel({
                 <h3 className="text-xl font-black uppercase italic text-slate-800 flex items-center gap-3">
                   <BookOpen className="text-indigo-600" size={24} /> Global Subject Templates
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-tight">Define standard grading structures and categories for subjects.</p>
+                <p className="text-xs text-slate-600 font-medium mt-1 uppercase tracking-tight">Define standard grading structures and categories for subjects.</p>
               </div>
 
               {/* Add Template Form Panel */}
@@ -845,7 +845,7 @@ export function AdminPanel({
                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 ml-1">New Template Entry</p>
                 <form onSubmit={handleAddBaseSubject} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 text-slate-700 items-end">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">System Code</label>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">System Code</label>
                     <input 
                       placeholder="AUTO" 
                       value={baseSubjectForm.code}
@@ -854,7 +854,7 @@ export function AdminPanel({
                     />
                   </div>
                   <div className="space-y-1 lg:col-span-2">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Subject Name</label>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Subject Name</label>
                     <input 
                       placeholder="e.g. SCIENCE" 
                       value={baseSubjectForm.name}
@@ -871,7 +871,7 @@ export function AdminPanel({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Grade Level</label>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Grade Level</label>
                     <select 
                       value={baseSubjectForm.gradeLevel}
                       onChange={e => {
@@ -891,7 +891,7 @@ export function AdminPanel({
                     {currentUserRole === 'superadmin' ? (
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">School Scope</label>
+                          <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">School Scope</label>
                           <select 
                             value={baseSubjectForm.schoolId}
                             onChange={e => setBaseSubjectForm({...baseSubjectForm, schoolId: e.target.value})}
@@ -995,7 +995,7 @@ export function AdminPanel({
                                 )}
                               </div>
                               <h4 className="font-black text-slate-800 text-base truncate uppercase tracking-tight">{base.name}</h4>
-                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                              <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mt-1">
                                 {isComposite ? 'Composite Component Structure' : 'Standard Subject Template'}
                               </p>
                             </div>

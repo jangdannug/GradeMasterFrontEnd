@@ -39,7 +39,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
             <h1 className={`${theme.styles.heading} text-xl leading-none text-indigo-600`}>
               GradeMaster
             </h1>
-            <p className="text-[11px] text-indigo-400 font-black tracking-normal uppercase mt-1">
+            <p className="text-[11px] text-indigo-600 font-black tracking-normal uppercase mt-1">
               L.I.S Integration
             </p>
           </motion.div>
