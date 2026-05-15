@@ -2,9 +2,9 @@ import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Sidebar } from './components/layout/Sidebar';
-import { Header } from './components/layout/Header';
+import { Header } from './components/layout/Header'; // Keep this line
 import { useGradeManagement } from './hooks/useGradeManagement';
-import { ShieldAlert, Loader2 } from 'lucide-react'; // Removed WifiOff, RefreshCw as they are now in ApiConnectionErrorDisplay
+import { ShieldAlert, Loader2, ShieldCheck } from 'lucide-react'; // Removed WifiOff, RefreshCw as they are now in ApiConnectionErrorDisplay
 import ProtectedRoute from './components/ProtectedRoute'; // UPDATED
 import authService from './services/authService'; // UPDATED
 import { theme } from './theme';
