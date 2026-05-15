@@ -37,7 +37,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
             <h1 className={`${theme.styles.heading} text-lg leading-none text-white`}>
               GradeMaster
             </h1>
-            <p className="text-[8px] text-indigo-100 font-black tracking-[0.2em] uppercase mt-1">
+            <p className="text-[10px] text-indigo-200 font-black tracking-[0.1em] uppercase mt-1">
               L.I.S Integration
             </p>
           </motion.div>
@@ -45,10 +45,10 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        <div className={`mb-4 px-4 flex items-center gap-2 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-          <UserCircle size={14} className="text-indigo-200" />
-          <span className="text-[9px] font-black text-indigo-300 tracking-[0.25em] uppercase">
-            {role} Portal
+        <div className={`mb-6 px-6 flex items-center gap-2 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+          <UserCircle size={16} className="text-indigo-600" />
+          <span className="text-[11px] font-black text-slate-500 tracking-widest uppercase">
+            {role} PORTAL
           </span>
         </div>
 
@@ -165,7 +165,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         )}
       </nav>
 
-      <div className="p-4 border-t border-white/10 text-[9px] text-indigo-200 text-center uppercase tracking-[0.2em] font-black italic">
+      <div className="p-4 border-t border-white/10 text-[10px] text-slate-400 text-center uppercase tracking-widest font-black italic">
         {isOpen && <span>Session: {role}</span>}
       </div>
 

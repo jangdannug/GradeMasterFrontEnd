@@ -34,9 +34,9 @@ export const theme = {
     
     // Sidebar & Navigation Specifics
     sidebar: "backdrop-blur-[120px] bg-white/10 border-r border-white/20 shadow-2xl z-30",
-    navItem: "flex items-center gap-3 px-6 py-4 rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all hover:bg-white/50 text-slate-600 hover:text-indigo-700 group",
+    navItem: "flex items-center gap-3 px-6 py-4 rounded-3xl font-black uppercase tracking-widest text-[11px] transition-all hover:bg-white/50 text-slate-600 hover:text-indigo-700 group",
     navActive: "bg-indigo-600 text-white shadow-2xl shadow-indigo-200/60 hover:bg-indigo-700 hover:text-white scale-[1.02]",
-    navLabel: "text-[9px] font-black text-indigo-300 uppercase tracking-[0.25em] mb-4 px-8",
+    navLabel: "text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 px-8",
 
     // Typography
     heading: "font-black uppercase italic tracking-tighter",
