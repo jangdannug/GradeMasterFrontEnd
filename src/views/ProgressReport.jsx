@@ -33,7 +33,8 @@ export function ProgressReport({
 
   const filteredStudents = React.useMemo(() => {
     return students.filter(s => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(s.lrn).includes(searchQuery) // Include LRN in search
     );
   }, [students, searchQuery]);
 
@@ -217,11 +218,11 @@ export function ProgressReport({
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative flex-1 sm:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text"
-              placeholder="Search student name..."
+              placeholder="Search student name or LRN..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`${theme.styles.input} !bg-white/50 !border-white/60 pl-10 py-2.5 text-sm`}
@@ -292,8 +293,8 @@ export function ProgressReport({
                      </div>
                      <div className="min-w-0 flex-1">
                        <h4 className="font-bold text-slate-800 uppercase text-sm md:text-base truncate">{student.name}</h4>
-                       <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate">
-                         {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • ID: {String(student.id).substring(0, 8)}
+                       <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate mt-1">
+                         {allSections.find(sec => String(sec.id) === String(student.sectionId))?.name || 'Unassigned'} • LRN: {student.lrn}
                        </p>
                      </div>
                    </div>
