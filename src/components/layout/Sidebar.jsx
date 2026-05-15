@@ -46,7 +46,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         )}
       </div>
 
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide">
         <div className={`mb-6 px-6 flex items-center gap-2 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
           <UserCircle size={16} className="text-indigo-600" />
           <span className="text-[11px] font-black text-slate-500 tracking-widest uppercase">
