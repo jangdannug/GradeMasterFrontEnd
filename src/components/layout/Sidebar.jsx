@@ -95,7 +95,7 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
           />
         )}
 
-        {(role === 'superadmin' || role === 'admin') && (
+        {(role === 'teacher' || role === 'adviser') && (
           <SidebarLink 
             to="/sf10"
             icon={<FileText size={20} />}

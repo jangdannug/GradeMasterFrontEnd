@@ -709,7 +709,3 @@ export default function App() {
     </Router>
   );
 }
-
-function ShieldCheck({ size, className }) {
-  return <ShieldAlert size={size} className={className} />;
-}
