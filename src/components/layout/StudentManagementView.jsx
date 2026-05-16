@@ -219,11 +219,11 @@ export function StudentManagementView({
         >
           <div className="md:col-span-3 pb-2 border-b border-slate-100 mb-2">
             <h2 className={theme.styles.heading}>Learner Registration</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase">Basic Learner Information System (LIS) Entry</p>
+            <p className="text-xs text-slate-500 font-bold uppercase">Basic Learner Information System (LIS) Entry</p>
           </div>
 
           <div className="space-y-1">
-            <label className={theme.styles.subheading}>Learner Reference Number (LRN)</label>
+            <label className={theme.styles.subheading}>Learner Reference Number</label>
             <input 
               required type="text" placeholder="Enter LRN"
               value={formData.lrn} onChange={e => setFormData({...formData, lrn: e.target.value.replace(/\D/g, '')})} // Only allow digits

@@ -98,15 +98,6 @@ export function Sidebar({ isOpen, setIsOpen, onLogout, role, hasSubjects }) {
         )}
 
         {(role === 'teacher' || role === 'adviser') && (
-          <SidebarLink 
-            to="/sf10"
-            icon={<FileText size={20} />}
-            label="SF10 Permanent Record"
-            collapsed={!isOpen}
-          />
-        )}
-
-        {(role === 'teacher' || role === 'adviser') && (
           <>
             <SidebarLink 
               to="/submitted-records"
