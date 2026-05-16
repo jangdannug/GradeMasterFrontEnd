@@ -400,7 +400,7 @@ export function ProgressReport({
                          const { lastName, firstName, middleName } = parseFullName(student.name);
                          return (
                            <div className="flex flex-col">
-                             <h4 className="font-black text-slate-800 uppercase text-base md:text-xl truncate tracking-tight leading-tight">
+                             <h4 className="font-black text-slate-800 uppercase text-base md:text-xl whitespace-normal break-words tracking-tight leading-tight">
                                <span className="text-indigo-600" title="Last Name">{lastName}</span>
                                {firstName && <>, <span className="text-slate-700" title="First Name">{firstName}</span></>}
                                {middleName && <span className="text-slate-400 ml-2" title="Middle Name">{middleName}</span>}

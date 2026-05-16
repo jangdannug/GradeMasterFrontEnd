@@ -263,7 +263,7 @@ export function AdvisoryDashboardView({
                     {getStudentInitials(student.name)}
                   </div>
                   <div>
-                    <p className="text-[11px] font-black text-slate-800 uppercase line-clamp-1">{student.name}</p>
+                    <p className="text-[11px] font-black text-slate-800 uppercase whitespace-normal break-words leading-tight">{student.name}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">ID: {student.id}</p>
                   </div>
                 </div>

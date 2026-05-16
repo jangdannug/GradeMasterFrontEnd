@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import schoolService from "../services/schoolService";
 import api from "../services/api";
+import { SearchableSelect } from "../components/ui/SearchableSelect"; // Import SearchableSelect
 
 function PasswordRule({ valid, text }) {
   return (
@@ -395,23 +396,15 @@ export function RegistrationView({ onRegister, onBack, isLoading: parentLoading,
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors"
               size={18}
             />
-            <select
-              required
+            <SearchableSelect
+              options={schools.map(school => ({ value: school.id, label: `${school.name} (${school.id})` }))}
               value={formData.schoolId}
-              onChange={(e) =>
-                setFormData({ ...formData, schoolId: e.target.value })
-              }
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
-            >
-              <option value="" disabled>
-                {isLoadingSchools ? "Loading schools..." : "Choose your school"}
-              </option>
-              {schools.map((school) => (
-                <option key={school.id} value={school.id}>
-                  {school.name} ({school.id})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, schoolId: val })}
+              placeholder={isLoadingSchools ? "Loading schools..." : "Choose your school"}
+              error={isLoadingSchools}
+              className="!pl-12 !h-auto !py-4 !leading-tight [&_*]:!whitespace-normal [&_*]:!break-words [&_*]:!overflow-visible [&_*]:!text-clip" // Force full display in box and dropdown
+              required
+            />
           </div>
         </div>
 

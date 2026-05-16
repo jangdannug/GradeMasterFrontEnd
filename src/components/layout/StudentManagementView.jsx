@@ -333,7 +333,7 @@ export function StudentManagementView({
                 <select 
                   value={schoolFilter}
                   onChange={(e) => setSchoolFilter(e.target.value)}
-                  className={`${theme.styles.input} !bg-white/50 !border-white/60 text-sm w-full md:w-48`}
+                  className={`${theme.styles.input} !bg-white/50 !border-white/60 text-sm w-full md:w-64 !h-auto !py-2 !leading-tight break-words whitespace-normal`}
                 >
                   <option value="all">All Schools</option>
                   {schools.map(s => (

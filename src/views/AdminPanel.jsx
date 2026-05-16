@@ -521,13 +521,9 @@ export function AdminPanel({
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">School Name</label>
-                    <input 
-                      readOnly
-                      type="text"
-                      placeholder="Auto-populated..."
-                      value={formData.schoolName}
-                      className={`${theme.styles.input} !bg-slate-100/50 !border-slate-200/50 !rounded-xl px-4 py-2 font-bold text-slate-500 cursor-not-allowed`}
-                    />
+                    <div className={`${theme.styles.input} !bg-slate-100/50 !border-slate-200/50 !rounded-xl px-4 py-2 font-bold text-slate-500 cursor-not-allowed min-h-[52px] flex items-center leading-tight break-words whitespace-normal`}>
+                      {formData.schoolName || <span className="opacity-40 italic">Auto-populated...</span>}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">School Year</label>
