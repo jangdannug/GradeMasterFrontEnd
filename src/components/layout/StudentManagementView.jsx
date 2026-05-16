@@ -400,7 +400,7 @@ export function StudentManagementView({
               <Download size={18} /> Download New CSV Template
             </button>
             <input 
-              type="file" accept=".csv" 
+              type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
               onChange={handleBulkUpload}
               disabled={isUploading}
               className="block w-full text-sm text-slate-500
