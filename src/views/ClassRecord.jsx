@@ -347,21 +347,34 @@ export function ClassRecord({
         });
       });
 
+      // 1. Pass 1: Extract HPS values from the file first to prevent stale validation
+      const fileHpsMap = {}; 
+      rows.forEach((cells) => {
+        let rawLrn = String(cells[0] || '').trim().replace(/^=/, '').replace(/"/g, '');
+        if (rawLrn.toUpperCase() === 'HPS') {
+          scoreMapping.forEach((map, mIdx) => {
+            const val = parseInt(cells[mIdx + 2], 10);
+            if (!isNaN(val)) {
+              if (!fileHpsMap[map.catId]) fileHpsMap[map.catId] = [];
+              fileHpsMap[map.catId][map.index] = val;
+            }
+          });
+        }
+      });
+
+      // 2. Pass 2: Process all rows (HPS and Students)
       rows.forEach((cells, rIdx) => {
         if (rIdx === 0) return; // Skip headers
 
         let rawLrn = String(cells[0] || '').trim().replace(/^=/, '').replace(/"/g, '');
-        // Handle Scientific Notation for LRNs (e.g. 1.23E+11)
         if (rawLrn.toUpperCase().includes('E+')) {
           const num = Number(rawLrn);
           if (!isNaN(num)) rawLrn = num.toLocaleString('fullwide', { useGrouping: false });
         }
-
         if (!rawLrn) return;
         
         const isHps = rawLrn.toUpperCase() === 'HPS';
         let targetId = isHps ? 'HPS' : null;
-
         if (!isHps) {
           const student = students.find(s => String(s.lrn) === String(rawLrn));
           if (student) targetId = student.id;
@@ -369,22 +382,27 @@ export function ClassRecord({
 
         if (targetId) {
           scoreMapping.forEach((map, mIdx) => {
-            const cellVal = cells[mIdx + 2]; // Scores start at Column C
-            if (cellVal !== undefined && cellVal !== null && cellVal !== '') {
-              let score = parseInt(cellVal, 10);
-              if (!isNaN(score)) {
-                // Get HPS for this specific cell to validate
-                const hpsRow = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[map.catId]?.hps || [];
-                const currentHps = hpsRow[map.index] || 0;
+            const cellVal = cells[mIdx + 2];
+            // Allow empty cells to overwrite existing data with null
+            let score = (cellVal === '' || cellVal === undefined || cellVal === null) 
+              ? null 
+              : parseInt(cellVal, 10);
+            
+            if (score !== null && isNaN(score)) return;
 
-                // Validate score against HPS (skip validation if we ARE uploading the HPS row)
-                if (!isHps && currentHps > 0 && score > currentHps) {
-                  console.warn(`Bulk Upload: Score ${score} for LRN ${rawLrn} exceeds HPS ${currentHps}. Clearing cell.`);
-                  score = null;
-                }
-                updateGrade(targetId, subject.id, map.catId, isHps ? 'hps' : 'points', map.index, score, quarter);
+            // Accurate Validation: Check against file HPS first, then state HPS
+            if (!isHps && score !== null) {
+              const fileHps = fileHpsMap[map.catId]?.[map.index];
+              const stateHps = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[map.catId]?.hps?.[map.index];
+              const activeHps = fileHps !== undefined ? fileHps : (stateHps || 0);
+
+              if (activeHps > 0 && score > activeHps) {
+                console.warn(`Validation: LRN ${rawLrn} score ${score} exceeds HPS ${activeHps}. Value cleared.`);
+                score = null;
               }
             }
+
+            updateGrade(targetId, subject.id, map.catId, isHps ? 'hps' : 'points', map.index, score, quarter);
           });
         }
       });

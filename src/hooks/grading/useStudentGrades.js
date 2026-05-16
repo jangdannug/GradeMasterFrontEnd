@@ -100,7 +100,7 @@ export function useStudentGrades(subjects, setSubjects, setBaseSubjects, current
         current.hps = nextHps;
       } else if (studentId !== 'HPS') {
         const nextScores = [...(current.scores || [])];
-        nextScores[index] = { points: value || 0 };
+        nextScores[index] = { points: value };
         current.scores = nextScores;
       }
 
