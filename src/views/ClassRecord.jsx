@@ -363,10 +363,13 @@ export function ClassRecord({
       });
 
       // 2. Pass 2: Process all rows (HPS and Students)
+      const invalidEntries = [];
       rows.forEach((cells, rIdx) => {
         if (rIdx === 0) return; // Skip headers
 
         let rawLrn = String(cells[0] || '').trim().replace(/^=/, '').replace(/"/g, '');
+        let studentName = String(cells[1] || '').trim();
+
         if (rawLrn.toUpperCase().includes('E+')) {
           const num = Number(rawLrn);
           if (!isNaN(num)) rawLrn = num.toLocaleString('fullwide', { useGrouping: false });
@@ -396,9 +399,9 @@ export function ClassRecord({
               const stateHps = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[map.catId]?.hps?.[map.index];
               const activeHps = fileHps !== undefined ? fileHps : (stateHps || 0);
 
-              if (activeHps > 0 && score > activeHps) {
-                console.warn(`Validation: LRN ${rawLrn} score ${score} exceeds HPS ${activeHps}. Value cleared.`);
-                score = null;
+              // Flag if score exceeds HPS, including cases where HPS is 0/not set
+              if (score > activeHps) {
+                invalidEntries.push({ name: studentName, lrn: rawLrn, score, hps: activeHps });
               }
             }
 
@@ -406,6 +409,13 @@ export function ClassRecord({
           });
         }
       });
+
+      if (invalidEntries.length > 0) {
+        const message = `⚠️ VALIDATION NOTICE: ${invalidEntries.length} score(s) exceed the Highest Possible Score (HPS).\n\n` +
+                        `These scores have been kept but are highlighted in red in the table. Please review and correct them before saving or submitting.`;
+        alert(message);
+      }
+
       event.target.value = '';
     };
     reader.readAsArrayBuffer(file);
@@ -781,6 +791,9 @@ export function ClassRecord({
                       <React.Fragment key={`row-${student.id}-${cat.id}`}>
                         {Array.from({length: count}).map((_, colIdx) => {
                           const hps = cg?.hps[colIdx] ?? 0;
+                          const scoreValue = cg?.scores[colIdx]?.points;
+                          const isInvalid = (scoreValue !== null && scoreValue !== undefined && scoreValue !== '') && (Number(scoreValue) > hps);
+
                           return (
                             <td key={`cell-${student.id}-${cat.id}-${colIdx}`} className="p-0">
                               <input 
@@ -788,22 +801,25 @@ export function ClassRecord({
                                 min="0"
                                 max={hps}
                                 title={hps > 0 ? `Enter score (Max: ${hps})` : "Please set HPS first"}
-                                value={(cg?.scores[colIdx]?.points === null || cg?.scores[colIdx]?.points === undefined || isNaN(Number(cg?.scores[colIdx]?.points))) ? '' : Number(cg?.scores[colIdx]?.points)}
+                                value={(scoreValue === null || scoreValue === undefined || isNaN(Number(scoreValue))) ? '' : Number(scoreValue)}
                                 onChange={(e) => {
                                   if (isCurrentViewEditable) {
                                     let val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                                     if (val !== null) {
                                       if (isNaN(val) || val < 0) val = 0;
-                                      if (hps > 0 && val > hps) {
-                                        alert(`⚠️ INVALID SCORE: ${val} exceeds the Highest Possible Score (${hps}).\n\nThis entry is invalid and has been cleared. Please enter a score between 0 and ${hps}.`);
-                                        val = null;
-                                      }
                                     }
                                     updateGrade(student.id, subject.id, cat.id, 'points', colIdx, val, quarter);
                                   }
                                 }}
-                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold ${hps === 0 || !isCurrentViewEditable ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' : 'text-slate-900 bg-white/50 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner transition-all'} invalid:bg-rose-50 invalid:text-rose-600 invalid:ring-2 invalid:ring-rose-500`}
-                                disabled={hps === 0 || !isCurrentViewEditable}
+                                className={`w-full h-full py-2 px-1 text-center outline-none font-bold transition-all ${
+                                  isInvalid 
+                                    ? 'bg-rose-50 text-rose-600 ring-2 ring-inset ring-rose-500 z-10' 
+                                    : (hps === 0 || !isCurrentViewEditable 
+                                        ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' 
+                                        : 'text-slate-900 bg-white/50 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner')
+                                }`}
+                                // Allow interaction if invalid so user can clear the value
+                                disabled={(hps === 0 && !isInvalid) || !isCurrentViewEditable}
                               />
                             </td>
                           );
