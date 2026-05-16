@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { motion } from 'motion/react'; // Keep this line
 import { Trash2, Send, Maximize2, Minimize2, ShieldAlert, Loader2, Save, Layers, Upload, FileDown } from 'lucide-react';
 import gradingService from '../services/gradingService';
+import * as XLSX from 'xlsx-js-style';
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
 
@@ -331,9 +332,13 @@ export function ClassRecord({
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const content = e.target.result;
-      const lines = content.split(/\r?\n/);
-      if (lines.length < 2) return;
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      // CRITICAL: Use defval: '' to prevent column shifting when cells are empty
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      
+      if (rows.length < 2) return;
 
       const scoreMapping = [];
       effectiveCategories.forEach(cat => {
@@ -342,22 +347,42 @@ export function ClassRecord({
         });
       });
 
-      lines.slice(1).forEach(line => {
-        if (!line.trim()) return;
-        // Regex to split by comma but ignore commas inside quotes
-        const cells = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-        const lrn = cells[0];
+      rows.forEach((cells, rIdx) => {
+        if (rIdx === 0) return; // Skip headers
+
+        let rawLrn = String(cells[0] || '').trim().replace(/^=/, '').replace(/"/g, '');
+        // Handle Scientific Notation for LRNs (e.g. 1.23E+11)
+        if (rawLrn.toUpperCase().includes('E+')) {
+          const num = Number(rawLrn);
+          if (!isNaN(num)) rawLrn = num.toLocaleString('fullwide', { useGrouping: false });
+        }
+
+        if (!rawLrn) return;
         
-        if (lrn) {
+        const isHps = rawLrn.toUpperCase() === 'HPS';
+        let targetId = isHps ? 'HPS' : null;
+
+        if (!isHps) {
+          const student = students.find(s => String(s.lrn) === String(rawLrn));
+          if (student) targetId = student.id;
+        }
+
+        if (targetId) {
           scoreMapping.forEach((map, mIdx) => {
-            const cellVal = cells[mIdx + 2]; // Scores start at column 3 (index 2)
-            if (cellVal !== undefined && cellVal !== '') {
-              const score = parseInt(cellVal, 10);
+            const cellVal = cells[mIdx + 2]; // Scores start at Column C
+            if (cellVal !== undefined && cellVal !== null && cellVal !== '') {
+              let score = parseInt(cellVal, 10);
               if (!isNaN(score)) {
-                const isHps = lrn.toUpperCase() === 'HPS';
-                const type = isHps ? 'hps' : 'points';
-                const targetId = isHps ? 'HPS' : lrn;
-                updateGrade(targetId, subject.id, map.catId, type, map.index, score, quarter);
+                // Get HPS for this specific cell to validate
+                const hpsRow = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[map.catId]?.hps || [];
+                const currentHps = hpsRow[map.index] || 0;
+
+                // Validate score against HPS (skip validation if we ARE uploading the HPS row)
+                if (!isHps && currentHps > 0 && score > currentHps) {
+                  console.warn(`Bulk Upload: Score ${score} for LRN ${rawLrn} exceeds HPS ${currentHps}. Clearing cell.`);
+                  score = null;
+                }
+                updateGrade(targetId, subject.id, map.catId, isHps ? 'hps' : 'points', map.index, score, quarter);
               }
             }
           });
@@ -365,8 +390,8 @@ export function ClassRecord({
       });
       event.target.value = '';
     };
-    reader.readAsText(file);
-  }, [subject.id, quarter, effectiveCategories, updateGrade]);
+    reader.readAsArrayBuffer(file);
+  }, [subject.id, quarter, effectiveCategories, updateGrade, students]);
 
   // Handle Grade Calculations
   React.useEffect(() => {
