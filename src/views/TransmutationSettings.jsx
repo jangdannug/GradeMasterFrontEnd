@@ -6,6 +6,7 @@ import { theme } from '../theme';
 
 export function TransmutationSettings({ data, onSave, onAdd, onUpdate, onDelete, syncStandards, isLoading, syncError }) {
   const [localData, setLocalData] = React.useState([]);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   // Keep local state in sync when data prop updates from API
   React.useEffect(() => {
@@ -61,13 +62,21 @@ export function TransmutationSettings({ data, onSave, onAdd, onUpdate, onDelete,
     if (itemId && itemId > 0) {
       try {
         await onUpdate(itemId, row);
-        alert("Entry updated successfully!");
       } catch (err) {
         alert("Failed to update entry: " + (err.response?.data?.message || err.message));
       }
-    } else {
-      // This case should ideally be handled by handleAdd, but as a fallback
-      alert("This entry needs to be added first before it can be updated.");
+    }
+    // No alert for success or new rows to avoid focus/blur loops
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave();
+    } catch (err) {
+      alert("Failed to synchronize changes: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -94,10 +103,12 @@ export function TransmutationSettings({ data, onSave, onAdd, onUpdate, onDelete,
             <RefreshCw size={14} /> Sort High to Low
           </button>
           <button
-            onClick={onSave} // onSave now triggers a full re-sync
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+            onClick={handleSave}
+            disabled={isSaving || isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={14} /> Save Changes
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -121,7 +132,7 @@ export function TransmutationSettings({ data, onSave, onAdd, onUpdate, onDelete,
           </thead>
           <tbody className="divide-y divide-slate-100">
             {localData.map((row, idx) => (
-              <tr key={idx} className="hover:bg-white/50 transition-colors">
+              <tr key={row.id || `new-${idx}`} className="hover:bg-white/50 transition-colors">
                 <td className="p-4">
                   <input
                     type="number"
