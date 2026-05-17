@@ -650,9 +650,7 @@ export function ClassRecord({
           <table className="w-full border-collapse border border-slate-200">
           <thead className="bg-white/50 backdrop-blur-sm">
             {/* Category Header */}
-            <tr className="bg-slate-100 text-xs font-black text-slate-600 uppercase divide-x divide-slate-300 border-b border-slate-300">
-              <th rowSpan={2} className="p-4 text-left w-64 min-w-[250px] sticky left-0 bg-slate-100 z-20 shadow-[2px_0_4px_rgba(0,0,0,0.05)] border-r border-slate-300">LEARNERS' NAMES</th>
-              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
+            <tr className="bg-slate-100 text-xs font-black text-slate-600 uppercase divide-x divide-slate-300 border-b border-slate-300"><th rowSpan={2} className="p-4 text-left w-64 min-w-[250px] sticky left-0 bg-slate-100 z-20 shadow-[2px_0_4px_rgba(0,0,0,0.05)] border-r border-slate-300">LEARNERS' NAMES</th>{!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const count = cat.columnNames?.length || 5;
                 return (
                   <th key={cat.id} colSpan={count + 3} className={`p-4 text-center ${idx % 2 === 0 ? 'bg-blue-100/50' : 'bg-emerald-100/50'}`}>
@@ -662,28 +660,21 @@ export function ClassRecord({
                     </div>
                   </th>
                 );
-              })}
-              {activeComponentId === 'summary' && resolvedCategories.map(comp => (
+              })}{activeComponentId === 'summary' && resolvedCategories.map(comp => (
                 <th key={`h-sum-${comp.id}`} className="p-4 text-center bg-indigo-100/50">
                   <div className="flex flex-col items-center">
                     <span className="font-black text-xs text-indigo-800 italic uppercase">{comp.name}</span>
                     <span className="text-[8px] opacity-60">Component Grade</span>
                   </div>
                 </th>
-              ))}
-              <th rowSpan={2} className="p-3 w-16 bg-slate-200 text-slate-800 border-l border-slate-300">
+              ))}<th rowSpan={2} className="p-3 w-16 bg-slate-200 text-slate-800 border-l border-slate-300">
                 <div className="flex flex-col items-center gap-1">
                   <span>Initial Grade</span>
                   <span className="text-[8px] opacity-50 whitespace-nowrap">(WS TOTAL)</span>
                 </div>
-              </th> {/* Initial Grade */}
-              <th rowSpan={2} className="p-3 w-16 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Term Grade</th> {/* Transmuted Grade */}
-              <th rowSpan={2} className="p-3 w-32 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Descriptor</th> {/* Descriptor */}
-              <th rowSpan={2} className="p-3 w-24 bg-slate-900 text-white sticky right-0 z-30 shadow-[-4px_0_8px_rgba(0,0,0,0.2)] border-l border-slate-700">Quarterly Grade</th>
-            </tr>
+              </th><th rowSpan={2} className="p-3 w-16 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Term Grade</th><th rowSpan={2} className="p-3 w-32 bg-slate-100 text-slate-700 border-l border-slate-300 font-bold uppercase text-[9px] text-center">Descriptor</th><th rowSpan={2} className="p-3 w-24 bg-slate-900 text-white sticky right-0 z-30 shadow-[-4px_0_8px_rgba(0,0,0,0.2)] border-l border-slate-700">Quarterly Grade</th></tr>
             {/* Sub-header (1-5, Total, PS, WS) */}
-            <tr className="bg-slate-50 text-[10px] font-bold text-slate-500 divide-x divide-slate-200 border-b border-slate-300">
-              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
+            <tr className="bg-slate-50 text-[10px] font-bold text-slate-500 divide-x divide-slate-200 border-b border-slate-300">{!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const columnNames = cat.columnNames || Array(5).fill(0).map((_, i) => (i + 1).toString());
                 
                 return (
@@ -698,16 +689,11 @@ export function ClassRecord({
                     <th className={`w-12 p-1 ${idx % 2 === 0 ? 'bg-blue-50/50' : 'bg-emerald-50/50'}`}>WS</th>
                   </React.Fragment>
                 );
-              })}
-            </tr>
+              })}</tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-xs">
             {/* HIGHEST POSSIBLE SCORE ROW */}
-            <tr className="bg-slate-900/90 text-white divide-x divide-slate-700 font-black">
-              <td className="p-3 sticky left-0 bg-slate-900 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)] border-r border-slate-700 uppercase">
-                 {effectiveSummaryOnly ? 'Standard Weights' : 'Highest Possible Score'}
-              </td>
-              {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
+            <tr className="bg-slate-900/90 text-white divide-x divide-slate-700 font-black"><td className="p-3 sticky left-0 bg-slate-900 z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)] border-r border-slate-700 uppercase">{effectiveSummaryOnly ? 'Standard Weights' : 'Highest Possible Score'}</td>{!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
                 const hpsValues = students[0]?.grades?.[subject.id]?.[quarter]?.categoryGrades?.[cat.id]?.hps || [];
                 const count = cat.columnNames?.length || 5;
 
@@ -740,20 +726,15 @@ export function ClassRecord({
                     </td>
                   </React.Fragment>
                 );
-              })}
-              {activeComponentId === 'summary' && resolvedCategories.map(comp => (
+              })}{activeComponentId === 'summary' && resolvedCategories.map(comp => (
                 <td key={`hps-sum-${comp.id}`} className="bg-slate-800"></td>
-              ))}
-              {effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => (
+              ))}{effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => (
                 <td key={`weight-${cat.id}`} className="p-3 text-center bg-slate-800">
                   <div className={`p-1 font-black text-[10px] rounded ${idx % 2 === 0 ? 'bg-blue-900/50 text-blue-300' : 'bg-emerald-900/50 text-emerald-300'}`}>
                     {Math.round(cat.weight * 100)}% {cat.name.split(' ')[0]}
                   </div>
                 </td>
-              ))}
-              <td className="bg-slate-800/80"></td>
-              <td className="bg-slate-800 sticky right-0 z-20"></td>
-            </tr>
+              ))}<td className="bg-slate-800/80"></td><td className="bg-slate-800 sticky right-0 z-20"></td></tr>
 
             {students.map((student, sIdx) => {
               const sg = student.grades[subject.id]?.[quarter];
@@ -772,28 +753,16 @@ export function ClassRecord({
               }
 
               return (
-                <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-white/50 transition-colors divide-x divide-slate-200">
-                  <td className="p-3 sticky left-0 bg-inherit z-10 shadow-[2px_0_4px_rgba(0,0,0,0.02)] border-r border-slate-200">
-                    <div className="flex gap-2">
-                       <span className="text-[9px] font-bold text-slate-400 w-4">{sIdx + 1}</span>
-                       <span className="font-black text-slate-800 uppercase truncate">{student.name}</span>
-                    </div>
-                  </td>
-                  
-                  {!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
-                    const cg = sg?.categoryGrades?.[cat.id]; // This is for student input scores
-                    const catRes = (results.categories || []).find(c => 
-                      String(c.categoryId) === String(cat.id)
-                    ) || { total: 0, ps: 0, ws: 0 }; // This is for calculated results
+                <tr key={student.id} className="group hover:bg-indigo-50/40 even:bg-white/50 transition-colors divide-x divide-slate-200"><td className="p-3 sticky left-0 bg-inherit z-10 shadow-[2px_0_4px_rgba(0,0,0,0.02)] border-r border-slate-200"><div className="flex gap-2"><span className="text-[9px] font-bold text-slate-400 w-4">{sIdx + 1}</span><span className="font-black text-slate-800 uppercase truncate">{student.name}</span></div></td>{!effectiveSummaryOnly && (effectiveCategories).map((cat, idx) => {
+                    const cg = sg?.categoryGrades?.[cat.id];
+                    const catRes = (results.categories || []).find(c => String(c.categoryId) === String(cat.id)) || { total: 0, ps: 0, ws: 0 };
                     const count = cat.columnNames?.length || 5;
-
                     return (
                       <React.Fragment key={`row-${student.id}-${cat.id}`}>
                         {Array.from({length: count}).map((_, colIdx) => {
                           const hps = cg?.hps[colIdx] ?? 0;
                           const scoreValue = cg?.scores[colIdx]?.points;
                           const isInvalid = (scoreValue !== null && scoreValue !== undefined && scoreValue !== '') && (Number(scoreValue) > hps);
-
                           return (
                             <td key={`cell-${student.id}-${cat.id}-${colIdx}`} className="p-0">
                               <input 
@@ -818,7 +787,6 @@ export function ClassRecord({
                                         ? 'bg-slate-200/40 text-slate-400 cursor-not-allowed select-none' 
                                         : 'text-slate-900 bg-white/50 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-indigo-500 shadow-inner')
                                 }`}
-                                // Allow interaction if invalid so user can clear the value
                                 disabled={(hps === 0 && !isInvalid) || !isCurrentViewEditable}
                               />
                             </td>
@@ -829,36 +797,20 @@ export function ClassRecord({
                         <td className={`p-2 text-center font-black select-none cursor-default ${idx % 2 === 0 ? 'text-blue-500 bg-blue-100/40' : 'text-emerald-500 bg-emerald-100/40'}`}>{catRes.ws.toFixed(2)}</td>
                       </React.Fragment> 
                     );
-                  })}
-
-                  {activeComponentId === 'summary' && rawResults.isComposite && resolvedCategories.map(comp => {
-                    const compRes = (rawResults.components || []).find(c => 
-                      String(c.id) === String(comp.id)
-                    );
+                  })}{activeComponentId === 'summary' && rawResults.isComposite && resolvedCategories.map(comp => {
+                    const compRes = (rawResults.components || []).find(c => String(c.id) === String(comp.id));
                     return (
                       <td key={`cell-sum-${comp.id}`} className="p-3 text-center font-bold bg-indigo-50/30 text-indigo-600">
                         {calculatingGrades ? <Loader2 size={12} className="animate-spin mx-auto" /> : (compRes?.quarterly || 0)}
                       </td>
                     );
-                  })}
-                  
-                  {/* Final results */}
-                  <td className="p-2 text-center font-black bg-slate-200/60 text-slate-500 select-none cursor-default">{(results.initial || 0).toFixed(2)}</td>
-                  <td className="p-2 text-center font-bold bg-slate-100/50 text-slate-400 border-l border-slate-200 select-none cursor-default">
-                    {calculatingGrades ? (
+                  })}<td className="p-2 text-center font-black bg-slate-200/60 text-slate-500 select-none cursor-default">{(results.initial || 0).toFixed(2)}</td><td className="p-2 text-center font-bold bg-slate-100/50 text-slate-400 border-l border-slate-200 select-none cursor-default">{calculatingGrades ? (
                       <div className="flex items-center justify-center">
                         <Loader2 size={14} className="animate-spin text-slate-400" />
                       </div>
                     ) : (
                       results.quarterly || 0
-                    )}
-                  </td>
-                  <td className={`p-2 text-center font-black bg-white/50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor?.color || ''}`}>
-                    {results.descriptor?.label || ''}
-                  </td>
-                  <td className="p-3 bg-slate-900 text-white sticky right-0 z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.2)]">
-                    <div className="flex flex-col items-center justify-center gap-0.5">
-                      {calculatingGrades ? (
+                    )}</td><td className={`p-2 text-center font-black bg-white/50 border-l border-slate-200 text-[10px] uppercase italic ${results.descriptor?.color || ''}`}>{results.descriptor?.label || ''}</td><td className="p-3 bg-slate-900 text-white sticky right-0 z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.2)]"><div className="flex flex-col items-center justify-center gap-0.5">{calculatingGrades ? (
                         <div className="flex items-center justify-center">
                           <Loader2 size={16} className="animate-spin text-white/70" />
                         </div>
@@ -866,10 +818,7 @@ export function ClassRecord({
                         <>
                           <span className="text-base font-black leading-none">{results.quarterly || 0}</span>
                         </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                      )}</div></td></tr>
               );
             })}
           </tbody>
