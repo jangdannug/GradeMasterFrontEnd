@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Save, Plus, Trash2, Loader2 } from "lucide-react";
 import { ApiConnectionErrorDisplay } from "../components/ApiConnectionErrorDisplay";
 import { theme } from "../theme";
+import api from "../services/api";
 
 export function DescriptorSettings({
   data,
@@ -12,9 +13,10 @@ export function DescriptorSettings({
   syncError,
 }) {
   const [localData, setLocalData] = React.useState([]);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
-    setLocalData([...data]);
+    if (data) setLocalData([...data]);
   }, [data]);
 
   // Handle early returns after hooks are initialized
@@ -35,6 +37,20 @@ export function DescriptorSettings({
 
   const handleRemove = (index) => {
     setLocalData(localData.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Use the onSave handler which now calls the correct POST endpoint via service/hook
+      const response = await onSave(localData);
+      if (syncStandards) await syncStandards();
+      alert(response?.message || "Descriptors saved successfully.");
+    } catch (err) {
+      alert("Failed to save descriptors: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const colorMap = {
@@ -66,10 +82,12 @@ export function DescriptorSettings({
           </p>
         </div>
         <button
-          onClick={() => onSave(localData)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+          onClick={handleSave}
+          disabled={isSaving || isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save size={14} /> Save Changes
+          {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+          {isSaving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
@@ -176,7 +194,7 @@ export function DescriptorSettings({
         </button>
       </div>
 
-      <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+      {/* <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
         <h4 className="text-blue-800 font-bold text-sm mb-2 uppercase tracking-tight">
           Available Colors
         </h4>
@@ -199,7 +217,7 @@ export function DescriptorSettings({
             </span>
           ))}
         </div>
-      </div>
+      </div> */}
     </motion.div>
   );
 }

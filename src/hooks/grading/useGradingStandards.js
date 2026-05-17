@@ -51,8 +51,9 @@ export function useGradingStandards(currentUser) {
   const updateDescriptorsAPI = async (data) => {
     try {
       setError(null);
-      const updated = await standardsService.updateDescriptors(data);
-      setDescriptors(normalize(updated));
+      const response = await standardsService.updateDescriptors(data);
+      setDescriptors(normalize(data)); // Update local state with the data sent
+      return response; // Return to allow component to access success message
     } catch (err) {
       console.error("Failed to update descriptors:", err);
       setError(err);

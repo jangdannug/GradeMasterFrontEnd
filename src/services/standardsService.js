@@ -30,8 +30,7 @@ export const getDescriptors = async () => {
 
 export const updateDescriptors = async (data) => {
     try {
-        // Assuming the backend has a PUT endpoint to update the entire list of descriptors
-        const response = await api.put('/standards/descriptors', data);
+        const response = await api.post('/standards/saveDescriptors', data);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Failed to update descriptors';
