@@ -88,7 +88,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     step="0.01"
                     value={row.min}
                     onChange={(e) => handleUpdate(idx, 'min', parseFloat(e.target.value))}
-                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
+                    className={`w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
                 <td className="p-4">
@@ -97,7 +97,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     step="0.01"
                     value={row.max}
                     onChange={(e) => handleUpdate(idx, 'max', parseFloat(e.target.value))}
-                    className="w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
+                    className={`w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
                 <td className="p-4">
@@ -105,7 +105,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     type="number"
                     value={row.transmutedValue}
                     onChange={(e) => handleUpdate(idx, 'transmutedValue', parseInt(e.target.value))}
-                    className="w-full bg-transparent font-black text-slate-900 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none"
+                    className={`w-full bg-transparent font-black text-slate-900 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
                 <td className="p-4 text-right">
