@@ -8,14 +8,19 @@ import api from "../services/api";
 export function DescriptorSettings({
   data,
   onSave,
+  onDelete,
   syncStandards,
   isLoading,
   syncError,
 }) {
-  const [localData, setLocalData] = React.useState([]);
+  // localData acts as a "Draft" buffer so typing is fast and responsive.
+  // We sync it with the "data" prop (the source of truth from the API) whenever it changes.
+  const [localData, setLocalData] = React.useState(data || []);
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
+    // ALWAYS sync local state when the parent data (API source of truth) changes.
+    // This ensures that after a Save, the local rows receive their database IDs.
     if (data) setLocalData([...data]);
   }, [data]);
 
@@ -35,17 +40,50 @@ export function DescriptorSettings({
     ]);
   };
 
-  const handleRemove = (index) => {
-    setLocalData(localData.filter((_, i) => i !== index));
+  const handleRemove = async (index) => {
+    const item = localData[index];
+    // Robust ID detection: Check for 'id', 'Id', or 'dbId'
+    // We also check if it's NOT a placeholder or zero
+    const itemId = item.id !== undefined ? item.id : item.Id;
+
+    console.log(`[DescriptorSettings] Attempting delete for:`, { label: item.label, itemId });
+
+    // If the item has a valid ID that isn't null/undefined/empty
+    if (itemId !== undefined && itemId !== null && itemId !== "" && itemId !== 0) {
+      const confirmMsg = `Are you sure you want to delete "${item.label}"?\n\nThis will remove it from the database immediately.`;
+      
+      if (window.confirm(confirmMsg)) {
+        try {
+          // If you don't see this in your console, the itemId check above failed.
+          console.log(`%c [API] CALLING HttpDelete -> /api/standards/deleteDescriptors/${itemId} `, 'background: #222; color: #bada55; font-weight: bold;');
+          
+          if (typeof onDelete === 'function') {
+            await onDelete(itemId);
+          } else {
+            throw new Error("onDelete function is missing from props. Check App.jsx drilling.");
+          }
+          setLocalData(localData.filter((_, i) => i !== index));
+        } catch (err) {
+          alert("Failed to delete descriptor: " + err);
+        }
+      }
+    } else {
+      // Just a new row not yet saved to the database
+      console.log("[DescriptorSettings] Unsaved item. Removing from view only.");
+      setLocalData(localData.filter((_, i) => i !== index));
+    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       // Use the onSave handler which now calls the correct POST endpoint via service/hook
-      const response = await onSave(localData);
-      if (syncStandards) await syncStandards();
-      alert(response?.message || "Descriptors saved successfully.");
+      const result = await onSave(localData);
+      // Immediately re-sync to get the latest IDs for any newly inserted rows
+      if (syncStandards) {
+        await syncStandards();
+      }
+      alert(result?.message || "Descriptors saved successfully.");
     } catch (err) {
       alert("Failed to save descriptors: " + (err.response?.data?.message || err.message));
     } finally {

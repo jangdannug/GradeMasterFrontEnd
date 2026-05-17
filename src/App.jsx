@@ -125,6 +125,7 @@ export default function App() {
     descriptors,
     setTransmutationTable,
     setDescriptors,
+    deleteDescriptor,
     submitClassRecord,
     requestEditClassRecord,
     approveEditRequest,
@@ -627,6 +628,7 @@ export default function App() {
                     <DescriptorSettings 
                       data={descriptors} 
                       onSave={setDescriptors} 
+                      onDelete={deleteDescriptor}
                       syncStandards={syncStandards}
                       isLoading={standardsLoading}
                       syncError={syncError} // Pass syncError to DescriptorSettings

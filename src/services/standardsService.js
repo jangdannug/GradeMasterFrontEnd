@@ -37,4 +37,14 @@ export const updateDescriptors = async (data) => {
     }
 };
 
-export default { getTransmutationTable, updateTransmutationTable, getDescriptors, updateDescriptors };
+export const deleteDescriptor = async (id) => {
+    try {
+        // Ensure this matches your C# [HttpDelete("deleteDescriptors/{id}")]
+        const response = await api.delete(`/standards/deleteDescriptors/${id}`); 
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Failed to delete descriptor';
+    }
+};
+
+export default { getTransmutationTable, updateTransmutationTable, getDescriptors, updateDescriptors, deleteDescriptor };

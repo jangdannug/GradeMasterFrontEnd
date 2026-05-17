@@ -52,7 +52,10 @@ export function useGradingStandards(currentUser) {
     try {
       setError(null);
       const response = await standardsService.updateDescriptors(data);
-      setDescriptors(normalize(data)); // Update local state with the data sent
+      if (response && response.descriptors) {
+        setDescriptors(normalize(response.descriptors)); 
+      }
+      
       return response; // Return to allow component to access success message
     } catch (err) {
       console.error("Failed to update descriptors:", err);
@@ -61,5 +64,17 @@ export function useGradingStandards(currentUser) {
     }
   };
 
-  return { transmutationTable, syncStandards, setTransmutationTable: updateTransmutationTableAPI, descriptors, setDescriptors: updateDescriptorsAPI, error };
+  const deleteDescriptorAPI = async (id) => {
+    try {
+      setError(null);
+      await standardsService.deleteDescriptor(id);
+      setDescriptors(prev => prev.filter(d => d.id !== id));
+    } catch (err) {
+      console.error("Failed to delete descriptor:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  return { transmutationTable, syncStandards, setTransmutationTable: updateTransmutationTableAPI, descriptors, setDescriptors: updateDescriptorsAPI, deleteDescriptor: deleteDescriptorAPI, error };
 }

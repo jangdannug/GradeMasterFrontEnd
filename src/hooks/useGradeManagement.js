@@ -95,6 +95,7 @@ export function useGradeManagement(currentUser) {
     setTransmutationTable: standardsState.setTransmutationTable,
     descriptors: standardsState.descriptors,
     setDescriptors: standardsState.setDescriptors,
+    deleteDescriptor: standardsState.deleteDescriptor,
 
     // Sections
     sections: sectionsState.sections || [],
