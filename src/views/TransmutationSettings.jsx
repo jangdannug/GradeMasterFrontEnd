@@ -4,7 +4,7 @@ import { Save, RefreshCw, Trash2, Plus, Loader2 } from 'lucide-react';
 import { ApiConnectionErrorDisplay } from '../components/ApiConnectionErrorDisplay';
 import { theme } from '../theme';
 
-export function TransmutationSettings({ data, onSave, syncStandards, isLoading, syncError }) {
+export function TransmutationSettings({ data, onSave, onAdd, onUpdate, onDelete, syncStandards, isLoading, syncError }) {
   const [localData, setLocalData] = React.useState([]);
 
   // Keep local state in sync when data prop updates from API
@@ -18,17 +18,57 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
   if (syncError) return <ApiConnectionErrorDisplay />;
 
   const handleUpdate = (index, field, value) => {
-    const next = [...localData];
-    next[index] = { ...next[index], [field]: value };
-    setLocalData(next);
+    const updatedRow = { ...localData[index], [field]: value };
+    setLocalData(prev => prev.map((row, i) => i === index ? updatedRow : row));
   };
 
-  const handleAdd = () => {
-    setLocalData([{ min: 0, max: 0, transmutedValue: 60 }, ...localData]);
+  const handleAdd = async () => {
+    const newEntry = { min: 0, max: 0, transmutedValue: 60 };
+    try {
+      const response = await onAdd(newEntry);
+      // Assuming onAdd returns the newly created entry with its ID
+      setLocalData(prev => [...prev, response.data].sort((a, b) => b.min - a.min));
+      alert("Entry added successfully!");
+    } catch (err) {
+      alert("Failed to add entry: " + (err.response?.data?.message || err.message));
+    }
   };
 
-  const handleRemove = (index) => {
-    setLocalData(localData.filter((_, i) => i !== index));
+  const handleRemove = async (index) => {
+    const item = localData[index];
+    const itemId = item.id || item.Id;
+
+    if (itemId && itemId > 0) {
+      if (window.confirm(`Are you sure you want to delete this entry (Min: ${item.min}, Max: ${item.max})? This cannot be undone.`)) {
+        try {
+          await onDelete(itemId);
+          setLocalData(prev => prev.filter((_, i) => i !== index));
+          alert("Entry deleted successfully!");
+        } catch (err) {
+          alert("Failed to delete entry: " + (err.response?.data?.message || err.message));
+        }
+      }
+    } else {
+      // If it's a new unsaved row, just remove it from local state
+      setLocalData(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleSaveRow = async (index) => {
+    const row = localData[index];
+    const itemId = row.id || row.Id;
+
+    if (itemId && itemId > 0) {
+      try {
+        await onUpdate(itemId, row);
+        alert("Entry updated successfully!");
+      } catch (err) {
+        alert("Failed to update entry: " + (err.response?.data?.message || err.message));
+      }
+    } else {
+      // This case should ideally be handled by handleAdd, but as a fallback
+      alert("This entry needs to be added first before it can be updated.");
+    }
   };
 
   const sortByMin = () => {
@@ -54,7 +94,7 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
             <RefreshCw size={14} /> Sort High to Low
           </button>
           <button
-            onClick={() => onSave(localData)}
+            onClick={onSave} // onSave now triggers a full re-sync
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
           >
             <Save size={14} /> Save Changes
@@ -87,7 +127,8 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     type="number"
                     step="0.01"
                     value={row.min}
-                    onChange={(e) => handleUpdate(idx, 'min', parseFloat(e.target.value))}
+                    onChange={(e) => handleUpdate(idx, 'min', parseFloat(e.target.value || '0'))}
+                    onBlur={() => handleSaveRow(idx)} // Save on blur
                     className={`w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
@@ -96,7 +137,8 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                     type="number"
                     step="0.01"
                     value={row.max}
-                    onChange={(e) => handleUpdate(idx, 'max', parseFloat(e.target.value))}
+                    onChange={(e) => handleUpdate(idx, 'max', parseFloat(e.target.value || '0'))}
+                    onBlur={() => handleSaveRow(idx)} // Save on blur
                     className={`w-full bg-transparent font-bold text-slate-700 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>
@@ -104,7 +146,8 @@ export function TransmutationSettings({ data, onSave, syncStandards, isLoading, 
                   <input
                     type="number"
                     value={row.transmutedValue}
-                    onChange={(e) => handleUpdate(idx, 'transmutedValue', parseInt(e.target.value))}
+                    onChange={(e) => handleUpdate(idx, 'transmutedValue', parseInt(e.target.value || '0'))}
+                    onBlur={() => handleSaveRow(idx)} // Save on blur
                     className={`w-full bg-transparent font-black text-slate-900 outline-none focus:text-blue-600 ${theme.styles.input} !p-0 !px-1 !border-none !shadow-none`}
                   />
                 </td>

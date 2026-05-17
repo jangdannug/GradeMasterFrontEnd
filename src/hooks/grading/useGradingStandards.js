@@ -36,11 +36,57 @@ export function useGradingStandards(currentUser) {
     }
   }, [currentUser]);
 
-  const updateTransmutationTableAPI = async (data) => {
+  // NEW: Add a single transmutation entry
+  const addTransmutationAPI = async (entry) => {
     try {
       setError(null);
-      const updated = await standardsService.updateTransmutationTable(data);
-      setTransmutationTable(normalize(updated));
+      const response = await standardsService.addTransmutation(entry);
+      // Assuming backend returns the new entry with its ID
+      setTransmutationTable(prev => [...prev, normalize(response.data)]);
+      return response;
+    } catch (err) {
+      console.error("Failed to add transmutation entry:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  // NEW: Update a single transmutation entry
+  const updateTransmutationAPI = async (id, entry) => {
+    try {
+      setError(null);
+      const response = await standardsService.updateTransmutation(id, entry);
+      setTransmutationTable(prev => prev.map(t => String(t.id) === String(id) ? normalize(response.data) : t));
+      return response;
+    } catch (err) {
+      console.error("Failed to update transmutation entry:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  // NEW: Delete a single transmutation entry
+  const deleteTransmutationAPI = async (id) => {
+    try {
+      setError(null);
+      await standardsService.deleteTransmutation(id);
+      setTransmutationTable(prev => prev.filter(t => String(t.id) !== String(id)));
+    } catch (err) {
+      console.error("Failed to delete transmutation entry:", err);
+      setError(err);
+      throw err;
+    }
+  };
+
+  // This function will now orchestrate the save for TransmutationSettings
+  const saveTransmutationTableAPI = async (localData) => {
+    try {
+      setError(null);
+      // Compare localData with current transmutationTable to identify changes
+      // For simplicity, we'll re-fetch all after a save, or implement a more complex diff.
+      // Given the new backend has individual endpoints, we'll just re-sync.
+      await syncStandards(); // Re-sync to get the latest state from the DB
+      return { message: "Transmutation table saved successfully." };
     } catch (err) {
       console.error("Failed to update transmutation table:", err);
       setError(err);
@@ -76,5 +122,5 @@ export function useGradingStandards(currentUser) {
     }
   };
 
-  return { transmutationTable, syncStandards, setTransmutationTable: updateTransmutationTableAPI, descriptors, setDescriptors: updateDescriptorsAPI, deleteDescriptor: deleteDescriptorAPI, error };
+  return { transmutationTable, syncStandards, setTransmutationTable: saveTransmutationTableAPI, addTransmutation: addTransmutationAPI, updateTransmutation: updateTransmutationAPI, deleteTransmutation: deleteTransmutationAPI, descriptors, setDescriptors: updateDescriptorsAPI, deleteDescriptor: deleteDescriptorAPI, error };
 }

@@ -124,6 +124,9 @@ export default function App() {
     transmutationTable,
     descriptors,
     setTransmutationTable,
+    addTransmutation, // NEW
+    updateTransmutation, // NEW
+    deleteTransmutation, // NEW
     setDescriptors,
     deleteDescriptor,
     submitClassRecord,
@@ -607,6 +610,9 @@ export default function App() {
                     <TransmutationSettings 
                       data={transmutationTable} 
                       onSave={setTransmutationTable} 
+                      onAdd={addTransmutation} // NEW
+                      onUpdate={updateTransmutation} // NEW
+                      onDelete={deleteTransmutation} // NEW
                       syncStandards={syncStandards}
                       isLoading={standardsLoading}
                       syncError={syncError} // Pass syncError to TransmutationSettings
