@@ -8,7 +8,7 @@ import {
   ChevronRight, ChevronLeft, Users, Move, Type, 
   Layout, Download, Upload, Search, Check, 
   X, GripVertical, MousePointer2, Layers, Maximize2, Minimize2, 
-  ArrowLeft, PanelLeftClose, PanelLeftOpen, Loader2,
+  ArrowLeft, PanelLeftClose, PanelLeftOpen, Loader2, Minus,
   ZoomIn, ZoomOut
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
@@ -78,6 +78,15 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
   const pageRef = useRef(null);
   const menuRef = useRef(null);
 
+  const updateFieldFontSize = (instanceId, delta) => {
+    setPlacedFields(prev => prev.map(f => {
+      if (f.instanceId === instanceId) {
+        return { ...f, fontSize: Math.max(6, Math.min(72, f.fontSize + delta)) };
+      }
+      return f;
+    }));
+  };
+
   // Handle outside interactions for the pop-over menu to allow "anytime" selection of underlying tags
   useEffect(() => {
     const handleOutsideInteraction = (e) => {
@@ -114,6 +123,16 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
         if (e.key === 'ArrowRight') dx = step;
         
         updateFieldPosition(selectedFieldId, dx, dy);
+      }
+
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        updateFieldFontSize(selectedFieldId, 1);
+      }
+      
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        updateFieldFontSize(selectedFieldId, -1);
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -429,6 +448,27 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
             <button onClick={saveTemplate} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Save Template">
               <Save size={18} />
             </button>
+
+            {selectedFieldId && (
+              <div className="flex items-center gap-1 bg-indigo-50 rounded-xl p-1 border border-indigo-100 ml-2">
+                <span className="text-[9px] font-black px-2 text-indigo-600 uppercase">Size</span>
+                <button 
+                  onClick={() => updateFieldFontSize(selectedFieldId, -1)}
+                  className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-400 hover:text-indigo-600"
+                >
+                  <Minus size={14} />
+                </button>
+                <span className="text-[10px] font-black w-6 text-center text-indigo-700">
+                  {placedFields.find(f => f.instanceId === selectedFieldId)?.fontSize}
+                </span>
+                <button 
+                  onClick={() => updateFieldFontSize(selectedFieldId, 1)}
+                  className="p-1.5 hover:bg-white rounded-lg transition-all text-slate-400 hover:text-indigo-600"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -547,7 +587,7 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ 
                       scale: 1, 
-                      opacity: (isMovingWithArrows || (selectedFieldId === field.instanceId && isMovingWithArrows)) ? 0.5 : 1,
+                      opacity: (selectedFieldId === field.instanceId && isMovingWithArrows) ? 0.5 : 1,
                       x: 0, 
                       y: 0 
                     }}
