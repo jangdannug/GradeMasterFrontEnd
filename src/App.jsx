@@ -24,6 +24,7 @@ const StudentManagementView = lazy(() => import('./components/layout/StudentMana
 const SF10JHSForm = lazy(() => import('./views/SF10JHSForm').then(m => ({ default: m.default })));
 const SF9Form = lazy(() => import('./views/SF9Form').then(m => ({ default: m.default })));
 const SchoolManagement = lazy(() => import('./views/SchoolManagement').then(m => ({ default: m.SchoolManagement })));
+const DocTagMapper = lazy(() => import('./views/DocTagMapper').then(m => ({ default: m.DocTagMapper })));
 const Login = lazy(() => import('./views/Login').then(m => ({ default: m.Login })));
 
 // Global state for current user, selected quarter, and selected subject
@@ -707,15 +708,20 @@ export default function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/sf10" element={
+         
+            <Route path="/doctag" element={
               <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
-                <div className="flex-1 overflow-auto bg-slate-200 print:overflow-visible print:bg-white print:p-0">
-                  <SF10JHSForm />
-                </div>
+                <DocTagMapper 
+                  systemStudents={students}
+                  systemSections={sections}
+                  systemBaseSubjects={baseSubjects}
+                  currentUser={currentUser}
+                />
               </ProtectedRoute>
             } />
 
             <Route path="/sf9" element={
+
               <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
                 <div className="flex-1 overflow-auto bg-slate-200 print:overflow-visible print:bg-white print:p-0">
                   <SF9Form />

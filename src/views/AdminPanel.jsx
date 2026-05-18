@@ -21,7 +21,9 @@ import {
   Clock,
   Users,
   Trash2,
-  Loader2
+  Loader2,
+  FileText,
+  ChevronRight
 } from 'lucide-react';
 import { theme } from '../theme';
 import authService from '../services/authService';
@@ -436,6 +438,12 @@ export function AdminPanel({
             onClick={() => setActiveTab('settings')}
             icon={<Settings size={14} />}
             label="Settings"
+          />
+          <TabButton 
+            active={activeTab === 'pdf-mapper'} 
+            onClick={() => setActiveTab('pdf-mapper')}
+            icon={<FileText size={14} />}
+            label="PDF Mapper"
           />
           {pendingRegistrations.length > 0 && (
             <TabButton 
@@ -1064,6 +1072,39 @@ export function AdminPanel({
                     ))}
                   </select>
                   <p className="text-[10px] text-slate-400 mt-2 italic font-medium">Changing this will update all dropdowns and report cards across the system.</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'pdf-mapper' && (
+          <motion.div
+            key="pdf-mapper"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6"
+          >
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8">
+              <div className="size-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 shrink-0 shadow-inner">
+                <FileText size={48} />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-800">
+                  DocTag PDF Mapper
+                </h3>
+                <p className="text-sm text-slate-500 font-medium mt-2 max-w-xl">
+                  Design reusable PDF templates by dragging and dropping dynamic tags. 
+                  Perfect for generating customized SF9 (Report Cards), SF10, or Certificates 
+                  using live student data from your school database.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
+                  <button 
+                    onClick={() => navigate('/doctag')}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                  >
+                    Launch PDF Designer <ChevronRight size={18} />
+                  </button>
                 </div>
               </div>
             </div>
