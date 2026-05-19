@@ -80,6 +80,13 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
   const menuRef = useRef(null);
   const [moveVersion, setMoveVersion] = useState(0);
 
+  // Track mounted fields to skip entrance animations during remounts (e.g. arrow key moves)
+  const mountedFieldsRef = useRef(new Set());
+  useEffect(() => {
+    // Add existing fields to the set of "already mounted" fields after render
+    placedFields.forEach(f => mountedFieldsRef.current.add(f.instanceId));
+  }, [placedFields]);
+
   const updateFieldFontSize = (instanceId, delta) => {
     setPlacedFields(prev => prev.map(f => {
       if (f.instanceId === instanceId) {
@@ -600,7 +607,7 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
                           setMenuAnchor(null);
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
-                        initial={{ scale: 0.8, opacity: 0 }}
+                        initial={mountedFieldsRef.current.has(field.instanceId) ? false : { scale: 0.8, opacity: 0 }}
                         animate={{
                           scale: 1,
                           opacity: (selectedFieldId === field.instanceId && isMovingWithArrows) ? 0.5 : 1,
