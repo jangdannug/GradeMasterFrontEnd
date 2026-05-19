@@ -85,6 +85,17 @@ export function DocTagMapper({
   const [exportPage2Id, setExportPage2Id] = useState('');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportMode, setExportMode] = useState('single'); // 'single' | 'bulk'
+  const [selectedExportStudentIds, setSelectedExportStudentIds] = useState([]);
+  const [exportSearchQuery, setExportSearchQuery] = useState('');
+
+  // Initialize export selection when modal opens
+  useEffect(() => {
+    if (isExportModalOpen) {
+      setSelectedExportStudentIds([selectedStudentId]);
+      setExportSearchQuery('');
+      setExportMode('single');
+    }
+  }, [isExportModalOpen, selectedStudentId]);
 
   // UI State
   const [isPdfReady, setIsPdfReady] = useState(false);
@@ -555,22 +566,17 @@ export function DocTagMapper({
       return;
     }
 
-    // Get layout names for filename construction
-    const page1TemplateObj = templates.find(t => t.id === exportPage1Id);
-    const page2TemplateObj = templates.find(t => t.id === exportPage2Id);
-    const page1LayoutName = page1TemplateObj?.name.replace(/\s+/g, '_') || 'Layout1';
-    const page2LayoutName = page2TemplateObj?.name.replace(/\s+/g, '_') || 'Layout2';
-    const now = new Date();
-    const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-
-    const targetStudents = exportMode === 'bulk' ? students : [currentStudent];
+    const targetStudents = students.filter(s => selectedExportStudentIds.includes(s.id));
     setIsExportModalOpen(false);
     setIsGeneratingBulk(true);
     try {
       for (let i = 0; i < targetStudents.length; i++) {
         const student = targetStudents[i];
         setBulkProgress({ current: i + 1, total: targetStudents.length });
+        
+        // Switch student context and wait for React to re-render the text labels
         setSelectedStudentId(student.id);
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         let studentPdf = null;
         const layoutIds = [exportPage1Id];
@@ -587,7 +593,10 @@ export function DocTagMapper({
           
           // Wait for the PDF to load in the viewer and labels to settle
           await waitPdfReady();
+          await waitPdfReady(); // Wait for the new PDF background to render
           await new Promise(resolve => setTimeout(resolve, 400));
+          // Increase settling time to ensure data labels are fully populated and painted
+          await new Promise(resolve => setTimeout(resolve, 700));
 
           const cap = await getCanvasCaptureData();
           if (!cap) continue;
@@ -605,22 +614,8 @@ export function DocTagMapper({
         }
 
         if (studentPdf) {
-          let fileName = '';
-          const studentNameFormatted = student.name.replace(/[,\s]+/g, '_');
-
-          if (exportMode === 'single') {
-            if (layoutIds.length === 1) {
-              fileName = `${page1LayoutName}_${studentNameFormatted}_${dateTime}.pdf`;
-            } else {
-              fileName = `combine_${studentNameFormatted}_${page1LayoutName}_${page2LayoutName}.pdf`;
-            }
-          } else { // exportMode === 'bulk'
-            if (layoutIds.length === 1) {
-              fileName = `bulk_${page1LayoutName}_${dateTime}_${studentNameFormatted}.pdf`;
-            } else {
-              fileName = `bulk_combine_${page1LayoutName}_${page2LayoutName}_${dateTime}_${studentNameFormatted}.pdf`;
-            }
-          }
+          const suffix = layoutIds.length > 1 ? '_Combined' : '';
+          const fileName = `${templateName.replace(/\s+/g, '_')}${suffix}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
           studentPdf.save(fileName);
         }
       }
@@ -1159,61 +1154,105 @@ export function DocTagMapper({
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-6">
               <div>
                 <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-800">Multi-Page Export</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">Select two layouts to merge into one student document.</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">Merge layouts and select recipients.</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 1 (Front)</label>
-                  <select 
-                    value={exportPage1Id} 
-                    onChange={(e) => setExportPage1Id(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase"
-                  >
-                    <option value="">Select Layout...</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 1 (Front)</label>
+                    <select 
+                      value={exportPage1Id} 
+                      onChange={(e) => setExportPage1Id(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      <option value="">Select Layout...</option>
+                      {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 2 (Back)</label>
+                    <select 
+                      value={exportPage2Id} 
+                      onChange={(e) => setExportPage2Id(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      <option value="">(Optional)</option>
+                      {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 2 (Back)</label>
-                  <select 
-                    value={exportPage2Id} 
-                    onChange={(e) => setExportPage2Id(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase"
-                  >
-                    <option value="">No Second Page (Optional)</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Students ({selectedExportStudentIds.length})</label>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (selectedExportStudentIds.length === students.length) setSelectedExportStudentIds([]);
+                        else setSelectedExportStudentIds(students.map(s => s.id));
+                        setExportMode(selectedExportStudentIds.length === students.length ? 'single' : 'bulk');
+                      }}
+                      className="text-[9px] font-black text-indigo-600 uppercase hover:underline"
+                    >
+                      {selectedExportStudentIds.length === students.length ? 'Clear All' : 'Select All'}
+                    </button>
+                  </div>
 
-                <div className="pt-2">
-                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="relative group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={14} />
                     <input 
-                      type="checkbox" 
-                      id="bulkToggle" 
-                      checked={exportMode === 'bulk'} 
-                      onChange={(e) => setExportMode(e.target.checked ? 'bulk' : 'single')}
-                      className="size-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                      type="text"
+                      placeholder="Search student name..."
+                      value={exportSearchQuery}
+                      onChange={(e) => setExportSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
-                    <label htmlFor="bulkToggle" className="text-xs font-black uppercase text-slate-700 cursor-pointer">
-                      Apply to all {students.length} students
-                    </label>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-2xl p-2 bg-slate-50/30 space-y-1 scrollbar-hide">
+                    {students
+                      .filter(s => s.name.toLowerCase().includes(exportSearchQuery.toLowerCase()))
+                      .map(student => (
+                        <label 
+                          key={student.id} 
+                          className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border ${
+                            selectedExportStudentIds.includes(student.id) 
+                              ? 'bg-white border-indigo-200 shadow-sm' 
+                              : 'border-transparent hover:bg-white/60'
+                          }`}
+                        >
+                          <input 
+                            type="checkbox" 
+                            checked={selectedExportStudentIds.includes(student.id)} 
+                            onChange={() => {
+                              const next = selectedExportStudentIds.includes(student.id)
+                                ? selectedExportStudentIds.filter(id => id !== student.id)
+                                : [...selectedExportStudentIds, student.id];
+                              setSelectedExportStudentIds(next);
+                              setExportMode(next.length > 1 ? 'bulk' : 'single');
+                            }}
+                            className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                          />
+                          <span className="text-[11px] font-bold uppercase text-slate-700 truncate">{student.name}</span>
+                        </label>
+                      ))}
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => setIsExportModalOpen(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-black uppercase text-slate-500 hover:bg-slate-50 transition-colors">
+                <button onClick={() => setIsExportModalOpen(false)} className="flex-1 py-4 border border-slate-200 rounded-2xl text-xs font-black uppercase text-slate-500 hover:bg-slate-50 transition-colors">
                   Cancel
                 </button>
                 <button 
                   onClick={handleExportFromModal}
-                  disabled={!exportPage1Id}
-                  className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={!exportPage1Id || selectedExportStudentIds.length === 0}
+                  className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Download size={16} /> 
-                  {exportMode === 'bulk' ? (exportPage2Id ? 'Bulk Combine & Export' : 'Bulk Export') : (exportPage2Id ? 'Combine & Export PDF' : 'Export PDF')}
+                  {selectedExportStudentIds.length > 1 ? `Export ${selectedExportStudentIds.length} Records` : 'Export PDF'}
                 </button>
               </div>
             </motion.div>
