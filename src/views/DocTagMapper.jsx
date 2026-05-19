@@ -555,6 +555,14 @@ export function DocTagMapper({
       return;
     }
 
+    // Get layout names for filename construction
+    const page1TemplateObj = templates.find(t => t.id === exportPage1Id);
+    const page2TemplateObj = templates.find(t => t.id === exportPage2Id);
+    const page1LayoutName = page1TemplateObj?.name.replace(/\s+/g, '_') || 'Layout1';
+    const page2LayoutName = page2TemplateObj?.name.replace(/\s+/g, '_') || 'Layout2';
+    const now = new Date();
+    const dateTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+
     const targetStudents = exportMode === 'bulk' ? students : [currentStudent];
     setIsExportModalOpen(false);
     setIsGeneratingBulk(true);
@@ -597,8 +605,22 @@ export function DocTagMapper({
         }
 
         if (studentPdf) {
-          const suffix = layoutIds.length > 1 ? '_Combined' : '';
-          const fileName = `${templateName.replace(/\s+/g, '_')}${suffix}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
+          let fileName = '';
+          const studentNameFormatted = student.name.replace(/[,\s]+/g, '_');
+
+          if (exportMode === 'single') {
+            if (layoutIds.length === 1) {
+              fileName = `${page1LayoutName}_${studentNameFormatted}_${dateTime}.pdf`;
+            } else {
+              fileName = `combine_${studentNameFormatted}_${page1LayoutName}_${page2LayoutName}.pdf`;
+            }
+          } else { // exportMode === 'bulk'
+            if (layoutIds.length === 1) {
+              fileName = `bulk_${page1LayoutName}_${dateTime}_${studentNameFormatted}.pdf`;
+            } else {
+              fileName = `bulk_combine_${page1LayoutName}_${page2LayoutName}_${dateTime}_${studentNameFormatted}.pdf`;
+            }
+          }
           studentPdf.save(fileName);
         }
       }
