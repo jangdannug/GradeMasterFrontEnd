@@ -12,6 +12,7 @@ import {
   ZoomIn, ZoomOut
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
 
 // Worker configuration for react-pdf
@@ -52,7 +53,16 @@ const PARAMETER_DEFINITIONS = [
   }
 ];
 
-export function DocTagMapper({ systemStudents = [], systemSections = [], systemBaseSubjects = [], currentUser }) {
+export function DocTagMapper({ 
+  systemStudents = [], 
+  systemSections = [], 
+  systemBaseSubjects = [], 
+  systemSubjects = [],
+  savedClassRecords = [],
+  transmutationTable = [],
+  descriptors = [],
+  currentUser 
+}) {
   // Core State
   const navigate = useNavigate();
   const [pdfFile, setPdfFile] = useState(null);
@@ -79,6 +89,37 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
   const pageRef = useRef(null);
   const menuRef = useRef(null);
   const [moveVersion, setMoveVersion] = useState(0);
+
+  const allParameterDefinitions = useMemo(() => {
+    const groups = [...PARAMETER_DEFINITIONS];
+    
+    const subjectsByGrade = systemBaseSubjects.reduce((acc, sub) => {
+      if (!acc[sub.gradeLevel]) acc[sub.gradeLevel] = [];
+      acc[sub.gradeLevel].push(sub);
+      return acc;
+    }, {});
+    
+    Object.keys(subjectsByGrade).sort((a, b) => parseInt(a) - parseInt(b)).forEach(grade => {
+      const items = subjectsByGrade[grade].flatMap(sub => {
+        const base = [
+          { id: `sub_${sub.id}_q1`, label: `${sub.name} Q1`, iconType: 'Type' },
+          { id: `sub_${sub.id}_q2`, label: `${sub.name} Q2`, iconType: 'Type' },
+          { id: `sub_${sub.id}_q3`, label: `${sub.name} Q3`, iconType: 'Type' },
+          { id: `sub_${sub.id}_q4`, label: `${sub.name} Q4`, iconType: 'Type' },
+          { id: `sub_${sub.id}_final`, label: `${sub.name} Final`, iconType: 'Type' },
+        ];
+        // Add component tags if subject is composite
+        const components = sub.categories?.filter(c => c.isComponent) || [];
+        const compItems = components.flatMap(comp => [
+          { id: `sub_${sub.id}_comp_${comp.id}_q1`, label: `${sub.name}-${comp.name} Q1`, iconType: 'Type' },
+          { id: `sub_${sub.id}_comp_${comp.id}_final`, label: `${sub.name}-${comp.name} Final`, iconType: 'Type' },
+        ]);
+        return [...base, ...compItems];
+      });
+      groups.push({ group: `Grades - Grade ${grade}`, items });
+    });
+    return groups;
+  }, [systemBaseSubjects]);
 
   // Track mounted fields to skip entrance animations during remounts (e.g. arrow key moves)
   const mountedFieldsRef = useRef(new Set());
@@ -217,6 +258,62 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
 
     const mappedSystemStudents = systemStudents.map(s => {
       const section = systemSections.find(sec => String(sec.id) === String(s.sectionId));
+      const gradeValues = {};
+
+      // Dynamically calculate accurate grades for each subject template
+      systemBaseSubjects.forEach(baseSub => {
+        const instance = systemSubjects.find(sub => 
+          String(sub.baseSubjectId) === String(baseSub.id) && 
+          String(sub.sectionId) === String(s.sectionId)
+        );
+        
+        if (instance) {
+          const resolvedCategories = (instance.categories && instance.categories.length > 0) 
+            ? instance.categories 
+            : (baseSub?.categories || []);
+          const instanceWithCats = { ...instance, categories: resolvedCategories };
+          const isComposite = resolvedCategories.some(c => c.isComponent);
+          const quarterlyScores = [];
+          const componentScoresMap = {};
+
+          for (let q = 1; q <= 4; q++) {
+            try {
+              // Accuracy Fix: Prioritize Verified Class Records over live data
+              const recordId = `${s.sectionId}-${instance.id}-Q${q}`;
+              const verifiedRecord = savedClassRecords.find(r => r.id === recordId && r.isVerified);
+              let sg = verifiedRecord 
+                ? verifiedRecord.studentSnapshots?.find(sn => String(sn.id) === String(s.id))?.grades 
+                : s.grades?.[instance.id]?.[q];
+
+              const result = calculateSubjectResult(sg, instanceWithCats, transmutationTable, descriptors);
+              const qGrade = result?.quarterly || 0;
+              gradeValues[`sub_${baseSub.id}_q${q}`] = qGrade > 0 ? String(qGrade) : '';
+              if (qGrade > 0) quarterlyScores.push(qGrade);
+
+              if (isComposite && result?.components) {
+                result.components.forEach(cr => {
+                  const val = cr.quarterly || 0;
+                  gradeValues[`sub_${baseSub.id}_comp_${cr.id}_q${q}`] = val > 0 ? String(val) : '';
+                  if (val > 0) {
+                    if (!componentScoresMap[cr.id]) componentScoresMap[cr.id] = [];
+                    componentScoresMap[cr.id].push(val);
+                  }
+                });
+              }
+            } catch (e) {}
+          }
+          
+          if (quarterlyScores.length > 0) {
+            gradeValues[`sub_${baseSub.id}_final`] = String(Math.round(quarterlyScores.reduce((a,b)=>a+b,0)/quarterlyScores.length));
+          }
+          if (isComposite) {
+            Object.entries(componentScoresMap).forEach(([cid, scores]) => {
+              gradeValues[`sub_${baseSub.id}_comp_${cid}_final`] = String(Math.round(scores.reduce((a,b)=>a+b,0)/scores.length));
+            });
+          }
+        }
+      });
+
       return {
         id: s.id,
         name: s.name,
@@ -232,6 +329,7 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
           'sch_region': section?.region || '',
           'sch_division': section?.division || '',
           'fac_adviser': section?.adviserName || '',
+          ...gradeValues
         }
       };
     });
@@ -251,7 +349,7 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
     }
 
     if (allStudents.length > 0 && !selectedStudentId) setSelectedStudentId(allStudents[0].id);
-  }, [activeTemplateId, loadTemplate, selectedStudentId, systemSections, systemStudents]);
+  }, [activeTemplateId, loadTemplate, selectedStudentId, systemSections, systemStudents, systemSubjects, systemBaseSubjects, savedClassRecords, transmutationTable, descriptors]);
 
   useEffect(() => {
     syncSystemData();
@@ -319,7 +417,7 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
   // This is zoom-independent because both numerator and denominator scale together.
   const handleDragEnd = (instanceId, e, info) => {
     const container = pageRef.current;
-    const element = e.currentTarget;
+    const element = e.target.closest('.placed-tag-item');
     if (!container || !element) return;
 
     const containerRect = container.getBoundingClientRect();
@@ -333,6 +431,8 @@ export function DocTagMapper({ systemStudents = [], systemSections = [], systemB
         ? { ...f, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
         : f
     ));
+    
+    setMoveVersion(v => v + 1); // SYNC: Match arrow key behavior to clear internal drag transforms
   };
 
   const removeField = (instanceId) => {
@@ -673,7 +773,7 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
                     </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto p-1 scrollbar-hide">
-                    {PARAMETER_DEFINITIONS.flatMap(g => g.items)
+                    {allParameterDefinitions.flatMap(g => g.items)
                       .filter(p => p.label.toLowerCase().includes(paramSearch.toLowerCase()))
                       .map(param => (
                         <button
@@ -690,7 +790,7 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
                           <span className="text-xs font-bold text-slate-600 uppercase group-hover:text-indigo-700">{param.label}</span>
                         </button>
                       ))}
-                    {PARAMETER_DEFINITIONS.flatMap(g => g.items).filter(p => p.label.toLowerCase().includes(paramSearch.toLowerCase())).length === 0 && (
+                    {allParameterDefinitions.flatMap(g => g.items).filter(p => p.label.toLowerCase().includes(paramSearch.toLowerCase())).length === 0 && (
                       <p className="p-4 text-center text-[10px] font-bold text-slate-400 uppercase italic">No matches</p>
                     )}
                   </div>
@@ -808,7 +908,7 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
 
                       <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
                         <p className="text-[10px] font-black uppercase text-slate-400 px-1 border-b border-slate-200 pb-1">Field Values</p>
-                        {PARAMETER_DEFINITIONS.flatMap(g => g.items).map(param => (
+                        {allParameterDefinitions.flatMap(g => g.items).map(param => (
                           <div key={param.id} className="space-y-1">
                             <label className="text-[9px] font-black text-slate-500 uppercase px-1">{param.label}</label>
                             <input

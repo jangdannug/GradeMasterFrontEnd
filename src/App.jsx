@@ -715,6 +715,10 @@ export default function App() {
                   systemStudents={students}
                   systemSections={sections}
                   systemBaseSubjects={baseSubjects}
+                  systemSubjects={subjects}
+                  savedClassRecords={savedClassRecords}
+                  transmutationTable={transmutationTable}
+                  descriptors={descriptors}
                   currentUser={currentUser}
                 />
               </ProtectedRoute>
