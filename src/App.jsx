@@ -178,6 +178,14 @@ export default function App() {
     if (currentUser) fetchData();
   }, [currentUser, syncAuthData, syncSections, syncSubjects, syncStudents, syncSubmissions, syncStandards]);
 
+  // Enrich sections with adviserName for display purposes (e.g., in DocTagMapper)
+  const enrichedSections = useMemo(() => {
+    return sections.map(sec => {
+      const adviser = users.find(u => String(u.id) === String(sec.adviserId));
+      return { ...sec, adviserName: adviser?.name || 'Unassigned' };
+    });
+  }, [sections, users]);
+
   // Provide a robust default section object to prevent crashes if sections are empty
   const defaultSection = sections[0] || { 
     id: 'default', 
@@ -713,7 +721,7 @@ export default function App() {
               <ProtectedRoute roles={['superadmin', 'admin', 'adviser']}>
                 <DocTagMapper 
                   systemStudents={students}
-                  systemSections={sections}
+                  systemSections={enrichedSections}
                   systemBaseSubjects={baseSubjects}
                   systemSubjects={subjects}
                   savedClassRecords={savedClassRecords}
