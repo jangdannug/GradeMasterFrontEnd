@@ -8,10 +8,12 @@ import {
   ChevronRight, ChevronLeft, Users, Move, Type, 
   Layout, Download, Upload, Search, Check, 
   X, GripVertical, MousePointer2, Layers, Maximize2, Minimize2, 
-  ArrowLeft, PanelLeftClose, PanelLeftOpen, Loader2, Minus,
+  ArrowLeft, PanelLeftClose, PanelLeftOpen, Loader2, Minus, Printer,
   ZoomIn, ZoomOut
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import html2canvas from 'html2canvas'; // NEW: For exporting PDF with data
+import { jsPDF } from 'jspdf'; // NEW: For exporting PDF with data
 import { calculateSubjectResult } from '../utils/calculations';
 import { theme } from '../theme';
 
@@ -324,7 +326,7 @@ export function DocTagMapper({
           'std_gender': s.gender,
           'std_grade': s.gradeLevel,
           'std_section': section?.name || 'N/A',
-          'sch_name': section?.schoolName || '',
+          'sch_name': section?.schoolName || currentUser?.schoolName || '',
           'sch_year': s.schoolYear || section?.schoolYear || '',
           'sch_region': section?.region || '',
           'sch_division': section?.division || '',
@@ -413,8 +415,6 @@ export function DocTagMapper({
   setMoveVersion(v => v + 1); // force remount to clear Framer's drag transform
 };
 
-  // KEY FIX: Use element's top-left corner relative to container as percentage.
-  // This is zoom-independent because both numerator and denominator scale together.
   const handleDragEnd = (instanceId, e, info) => {
     const container = pageRef.current;
     const element = e.target.closest('.placed-tag-item');
@@ -434,9 +434,78 @@ export function DocTagMapper({
     
     setMoveVersion(v => v + 1); // SYNC: Match arrow key behavior to clear internal drag transforms
   };
-
+  
   const removeField = (instanceId) => {
     setPlacedFields(placedFields.filter(f => f.instanceId !== instanceId));
+  };
+
+  const downloadPdf = () => {
+    if (!pageRef.current || !pdfFile) {
+      alert("No PDF document or page to export.");
+      return;
+    }
+
+    // Get the actual dimensions of the rendered PDF page within pageRef
+    const pdfPageElement = pageRef.current;
+    const pdfPageRect = pdfPageElement.getBoundingClientRect();
+    html2canvas(pdfPageElement, {
+      scale: 2, // Increase scale for better resolution (e.g., 2x or 3x)
+      useCORS: true, // Important for images loaded from external sources
+      width: pdfPageRect.width,
+      height: pdfPageRect.height,
+      x: pdfPageRect.left,
+      y: pdfPageRect.top, // windowWidth and windowHeight are not needed if x, y, width, height are set
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc) => {
+        const hasOklch = (val) => val && typeof val === 'string' && val.includes('oklch');
+        
+        // 1. Find and hide the pop-over selector menu in the clone if it exists
+        const menu = clonedDoc.querySelector('.fixed.z-50.w-64');
+        if (menu) menu.style.display = 'none';
+
+        // 2. Fix oklch colors in the clone for all elements to prevent html2canvas parsing errors.
+        // Tailwind CSS v4 often uses oklch() for colors which html2canvas cannot parse.
+        const elements = clonedDoc.querySelectorAll('*');
+        elements.forEach(el => {
+          const view = clonedDoc.defaultView || window;
+          const computed = view.getComputedStyle(el);
+
+          // Force safe colors if oklch is detected in computed styles
+          if (hasOklch(computed.color)) el.style.color = '#000000';
+          if (hasOklch(computed.backgroundColor)) el.style.backgroundColor = 'transparent';
+          if (hasOklch(computed.borderColor)) el.style.borderColor = '#000000';
+          if (hasOklch(computed.boxShadow)) el.style.boxShadow = 'none';
+          if (hasOklch(computed.filter)) el.style.filter = 'none';
+          
+          // Specifically ensure placed tags are rendered with safe hex indigo fallback
+          if (el.classList.contains('placed-tag-item')) {
+            el.style.backgroundColor = 'transparent';
+            el.style.color = '#000000'; // Set text to black for the PDF
+            el.style.border = 'none';
+            el.style.boxShadow = 'none';
+          }
+        });
+      }
+    }).then(canvas => {
+      const imgData = canvas.toDataURL('image/jpeg', 1.0); // Use JPEG for smaller file size, 1.0 quality
+      
+      // Create a new PDF document with the same dimensions as the captured image
+      const pdf = new jsPDF({
+        // Determine orientation based on the captured image dimensions
+        orientation: pdfPageRect.width > pdfPageRect.height ? 'l' : 'p', 
+        unit: 'px', // Use pixels as unit
+        format: [pdfPageRect.width, pdfPageRect.height] // Set custom format to match canvas dimensions
+      });
+
+      // Add the image to the PDF, covering the entire page
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageRect.width, pdfPageRect.height);
+      
+      const fileName = `${templateName.replace(/\s+/g, '_')}_page_${currentPage}_with_data.pdf`;
+      pdf.save(fileName);
+    }).catch(error => {
+      console.error("Error generating PDF with data:", error);
+      alert("Failed to generate PDF with data. Please try again.");
+    });
   };
 
   const saveTemplate = () => {
@@ -633,6 +702,22 @@ export function DocTagMapper({
 
         <div className="flex items-center gap-2">
           <button
+            onClick={downloadPdf}
+            disabled={!pdfFile}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export PDF with Data"
+          >
+            <Download size={20} />
+          </button>
+          <button
+            onClick={() => window.print()}
+            disabled={!pdfFile}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Print Document"
+          >
+            <Printer size={20} />
+          </button>
+          <button
             onClick={toggleFullscreen}
             className={`p-2 rounded-xl transition-all ${isFullscreen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:bg-slate-100'}`}
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
@@ -694,9 +779,8 @@ export function DocTagMapper({
                   >
                     {placedFields.filter(f => Number(f.page) === Number(currentPage)).map(field => (
                       <motion.div
-                        // KEY FIX: include x/y in key so Framer resets its internal
-                        // drag transform whenever the stored position changes.
-key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 100)}-${moveVersion}`}                        drag
+                        key={field.instanceId}
+                        drag
                         dragMomentum={false}
                         dragElastic={0}
                         dragConstraints={pageRef}
@@ -717,14 +801,10 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
                           position: 'absolute',
                           left: `${field.x}%`,
                           top: `${field.y}%`,
-                          // FIX: do NOT multiply fontSize or dimensions by scale.
-                          // Positions are stored as % of container. If the tag's
-                          // rendered size changes with scale, the saved top-left
-                          // percentage drifts. Keep tag size fixed in pixels.
                           fontSize: `${field.fontSize}px`,
                           minWidth: '40px',
                           minHeight: '28px',
-                          transform: 'none',
+                          transform: 'translate(-50%, -50%)',
                           zIndex: selectedFieldId === field.instanceId ? 50 : 10,
                         }}
                         className={`placed-tag-item pointer-events-auto group flex items-center justify-center whitespace-nowrap px-2 py-1 rounded-md font-bold shadow-sm cursor-move transition-all ${
@@ -956,6 +1036,32 @@ key={`${field.instanceId}-${Math.round(field.x * 100)}-${Math.round(field.y * 10
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        @media print {
+          header, footer, aside, .print-hidden, .fixed {
+            display: none !important;
+          }
+          main {
+            background: white !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+            height: auto !important;
+            position: static !important;
+          }
+          .shadow-2xl {
+            box-shadow: none !important;
+          }
+          .placed-tag-item {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: black !important;
+            padding: 0 !important;
+          }
+          .placed-tag-item button {
+            display: none !important;
+          }
         }
       `}</style>
     </div>
