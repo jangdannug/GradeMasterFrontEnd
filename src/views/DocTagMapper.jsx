@@ -7,7 +7,7 @@ import {
   FileText, User, Settings, Trash2, Plus, Save, 
   ChevronRight, ChevronLeft, Users, Move, Type, 
   Layout, Download, Upload, Search, Check, 
-  X, GripVertical, MousePointer2, Layers, Maximize2, Minimize2, 
+  X, GripVertical, MousePointer2, Layers, Maximize2, Minimize2, Files,
   ArrowLeft, PanelLeftClose, PanelLeftOpen, Loader2, Minus, Printer,
   ZoomIn, ZoomOut
 } from 'lucide-react';
@@ -77,6 +77,10 @@ export function DocTagMapper({
   const [students, setStudents] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [templateName, setTemplateName] = useState('New Template');
+
+  // Bulk Export State
+  const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
 
   // UI State
   const [isPdfReady, setIsPdfReady] = useState(false);
@@ -460,18 +464,16 @@ export function DocTagMapper({
     setPlacedFields(placedFields.filter(f => f.instanceId !== instanceId));
   };
 
-  const downloadPdf = () => {
-    if (!pageRef.current || !pdfFile) {
-      alert("No PDF document or page to export.");
-      return;
-    }
-
+  // Internal shared capture function to ensure bulk and single export use exact same logic
+  const executeCapture = async (student) => {
     const container = pageRef.current;
+    if (!container) return;
+    
     const rect = container.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
 
-    html2canvas(container, {
+    return html2canvas(container, {
       scale: window.devicePixelRatio * 2, // Increased scale for finer positioning precision
       useCORS: true, // Important for images loaded from external sources
       logging: false,
@@ -556,12 +558,55 @@ export function DocTagMapper({
       // Add the image to the PDF, covering the entire page
       pdf.addImage(imgData, 'JPEG', 0, 0, width, height);
 
-      const fileName = `${templateName.replace(/\s+/g, '_')}_page_${currentPage}_with_data.pdf`;
+      const fileName = `${templateName.replace(/\s+/g, '_')}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
       pdf.save(fileName);
-    }).catch(error => {
-      console.error("Error generating PDF with data:", error);
-      alert("Failed to generate PDF with data. Please try again.");
     });
+  };
+
+  const downloadPdf = async () => {
+    if (!pageRef.current || !pdfFile || !currentStudent) {
+      alert("No PDF document or page to export.");
+      return;
+    }
+
+    try {
+      await executeCapture(currentStudent);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF with data.");
+    }
+  };
+
+  const generateBulkPdf = async () => {
+    if (!pdfFile || students.length === 0) {
+      alert("No document or student data available for bulk export.");
+      return;
+    }
+
+    if (!window.confirm(`This will sequentially generate separate PDFs for all ${students.length} students. Proceed?`)) return;
+
+    setIsGeneratingBulk(true);
+    
+    try {
+      for (let i = 0; i < students.length; i++) {
+        const student = students[i];
+        setBulkProgress({ current: i + 1, total: students.length });
+        
+        // 1. Load the student data (triggers re-render of labels)
+        setSelectedStudentId(student.id);
+        
+        // 2. Wait for React to re-render the labels (0.4s delay for safety)
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        // 3. Execute capture using the exact same logic as single export
+        await executeCapture(student);
+      }
+    } catch (err) {
+      console.error("Bulk Export Error:", err);
+      alert("Bulk extract process interrupted.");
+    } finally {
+      setIsGeneratingBulk(false);
+    }
   };
 
   const saveTemplate = () => {
@@ -757,6 +802,14 @@ export function DocTagMapper({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={generateBulkPdf}
+            disabled={!pdfFile || isGeneratingBulk}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-50"
+            title="Bulk Export All Records"
+          >
+            {isGeneratingBulk ? <Loader2 size={20} className="animate-spin" /> : <Files size={20} />}
+          </button>
           <button
             onClick={downloadPdf}
             disabled={!pdfFile}
@@ -1080,7 +1133,28 @@ export function DocTagMapper({
           </div>
         )}
       </AnimatePresence>
-
+      
+      {/* Bulk Progress Modal */}
+      <AnimatePresence>
+        {isGeneratingBulk && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-10 shadow-2xl text-center space-y-4"
+            >
+              <div className="size-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto text-indigo-600">
+                <Loader2 size={40} className="animate-spin" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-800">Exporting Records</h3>
+                <p className="text-xs text-slate-500 font-medium">Processing {bulkProgress.current} / {bulkProgress.total} Students</p>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic pt-2">Please keep this tab open</p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <style>{`
         .react-pdf__Page__canvas {
           margin: 0 auto;
