@@ -569,54 +569,107 @@ export function DocTagMapper({
     const targetStudents = students.filter(s => selectedExportStudentIds.includes(s.id));
     setIsExportModalOpen(false);
     setIsGeneratingBulk(true);
+    const isBulkFileExport = exportMode === 'bulk';
+
     try {
-      for (let i = 0; i < targetStudents.length; i++) {
-        const student = targetStudents[i];
-        setBulkProgress({ current: i + 1, total: targetStudents.length });
-        
-        // Switch student context and wait for React to re-render the text labels
-        setSelectedStudentId(student.id);
-        await new Promise(resolve => setTimeout(resolve, 300));
+      if (isBulkFileExport) {
+        let bulkPdf = null;
 
-        let studentPdf = null;
-        const layoutIds = [exportPage1Id];
-        if (exportPage2Id) {
-          layoutIds.push(exportPage2Id);
-        }
+        for (let i = 0; i < targetStudents.length; i++) {
+          const student = targetStudents[i];
+          setBulkProgress({ current: i + 1, total: targetStudents.length });
 
-        for (let j = 0; j < layoutIds.length; j++) {
-          const template = templates.find(t => t.id === layoutIds[j]);
-          if (!template) continue;
+          // Switch student context and wait for React to re-render the text labels
+          setSelectedStudentId(student.id);
+          await new Promise(resolve => setTimeout(resolve, 300));
 
-          // Triggers PDF data change and UI re-render
-          loadTemplate(template);
-          
-          // Wait for the PDF to load in the viewer and labels to settle
-          await waitPdfReady();
-          await waitPdfReady(); // Wait for the new PDF background to render
-          await new Promise(resolve => setTimeout(resolve, 400));
-          // Increase settling time to ensure data labels are fully populated and painted
-          await new Promise(resolve => setTimeout(resolve, 700));
-
-          const cap = await getCanvasCaptureData();
-          if (!cap) continue;
-
-          if (!studentPdf) {
-            studentPdf = new jsPDF({
-              orientation: cap.width > cap.height ? 'l' : 'p',
-              unit: 'px',
-              format: [cap.width, cap.height]
-            });
-          } else {
-            studentPdf.addPage([cap.width, cap.height], cap.width > cap.height ? 'l' : 'p');
+          const layoutIds = [exportPage1Id];
+          if (exportPage2Id) {
+            layoutIds.push(exportPage2Id);
           }
-          studentPdf.addImage(cap.imgData, 'JPEG', 0, 0, cap.width, cap.height);
+
+          for (let j = 0; j < layoutIds.length; j++) {
+            const template = templates.find(t => t.id === layoutIds[j]);
+            if (!template) continue;
+
+            // Triggers PDF data change and UI re-render
+            loadTemplate(template);
+            
+            // Wait for the PDF to load in the viewer and labels to settle
+            await waitPdfReady();
+            await waitPdfReady(); // Wait for the new PDF background to render
+            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            const cap = await getCanvasCaptureData();
+            if (!cap) continue;
+
+            if (!bulkPdf) {
+              bulkPdf = new jsPDF({
+                orientation: cap.width > cap.height ? 'l' : 'p',
+                unit: 'px',
+                format: [cap.width, cap.height]
+              });
+            } else {
+              bulkPdf.addPage([cap.width, cap.height], cap.width > cap.height ? 'l' : 'p');
+            }
+            bulkPdf.addImage(cap.imgData, 'JPEG', 0, 0, cap.width, cap.height);
+          }
         }
 
-        if (studentPdf) {
-          const suffix = layoutIds.length > 1 ? '_Combined' : '';
-          const fileName = `${templateName.replace(/\s+/g, '_')}${suffix}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
-          studentPdf.save(fileName);
+        if (bulkPdf) {
+          const suffix = exportPage2Id ? '_2Pages' : '_1Page';
+          const fileName = `BulkExport_${targetStudents.length}_Students${suffix}.pdf`;
+          bulkPdf.save(fileName);
+        }
+      } else {
+        for (let i = 0; i < targetStudents.length; i++) {
+          const student = targetStudents[i];
+          setBulkProgress({ current: i + 1, total: targetStudents.length });
+
+          // Switch student context and wait for React to re-render the text labels
+          setSelectedStudentId(student.id);
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+          let studentPdf = null;
+          const layoutIds = [exportPage1Id];
+          if (exportPage2Id) {
+            layoutIds.push(exportPage2Id);
+          }
+
+          for (let j = 0; j < layoutIds.length; j++) {
+            const template = templates.find(t => t.id === layoutIds[j]);
+            if (!template) continue;
+
+            // Triggers PDF data change and UI re-render
+            loadTemplate(template);
+            
+            // Wait for the PDF to load in the viewer and labels to settle
+            await waitPdfReady();
+            await waitPdfReady(); // Wait for the new PDF background to render
+            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise(resolve => setTimeout(resolve, 700));
+
+            const cap = await getCanvasCaptureData();
+            if (!cap) continue;
+
+            if (!studentPdf) {
+              studentPdf = new jsPDF({
+                orientation: cap.width > cap.height ? 'l' : 'p',
+                unit: 'px',
+                format: [cap.width, cap.height]
+              });
+            } else {
+              studentPdf.addPage([cap.width, cap.height], cap.width > cap.height ? 'l' : 'p');
+            }
+            studentPdf.addImage(cap.imgData, 'JPEG', 0, 0, cap.width, cap.height);
+          }
+
+          if (studentPdf) {
+            const suffix = layoutIds.length > 1 ? '_Combined' : '';
+            const fileName = `${templateName.replace(/\s+/g, '_')}${suffix}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
+            studentPdf.save(fileName);
+          }
         }
       }
     } catch (err) {
