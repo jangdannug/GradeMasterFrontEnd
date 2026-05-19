@@ -445,61 +445,96 @@ export function DocTagMapper({
       return;
     }
 
-    // Get the actual dimensions of the rendered PDF page within pageRef
-    const pdfPageElement = pageRef.current;
-    const pdfPageRect = pdfPageElement.getBoundingClientRect();
-    html2canvas(pdfPageElement, {
-      scale: 2, // Increase scale for better resolution (e.g., 2x or 3x)
+    const container = pageRef.current;
+    const rect = container.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+
+    html2canvas(container, {
+      scale: window.devicePixelRatio * 2, // Increased scale for finer positioning precision
       useCORS: true, // Important for images loaded from external sources
-      width: pdfPageRect.width,
-      height: pdfPageRect.height,
-      x: pdfPageRect.left,
-      y: pdfPageRect.top, // windowWidth and windowHeight are not needed if x, y, width, height are set
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
       backgroundColor: '#ffffff',
       onclone: (clonedDoc) => {
-        const hasOklch = (val) => val && typeof val === 'string' && val.includes('oklch');
-        
-        // 1. Find and hide the pop-over selector menu in the clone if it exists
-        const menu = clonedDoc.querySelector('.fixed.z-50.w-64');
-        if (menu) menu.style.display = 'none';
+  // Hide menu
+  const menu = clonedDoc.querySelector('.fixed.z-50.w-64');
+  if (menu) menu.style.display = 'none';
 
-        // 2. Fix oklch colors in the clone for all elements to prevent html2canvas parsing errors.
-        // Tailwind CSS v4 often uses oklch() for colors which html2canvas cannot parse.
-        const elements = clonedDoc.querySelectorAll('*');
-        elements.forEach(el => {
-          const view = clonedDoc.defaultView || window;
-          const computed = view.getComputedStyle(el);
+  // Convert unsupported oklch colors
+  const allElements = clonedDoc.querySelectorAll('*');
 
-          // Force safe colors if oklch is detected in computed styles
-          if (hasOklch(computed.color)) el.style.color = '#000000';
-          if (hasOklch(computed.backgroundColor)) el.style.backgroundColor = 'transparent';
-          if (hasOklch(computed.borderColor)) el.style.borderColor = '#000000';
-          if (hasOklch(computed.boxShadow)) el.style.boxShadow = 'none';
-          if (hasOklch(computed.filter)) el.style.filter = 'none';
-          
-          // Specifically ensure placed tags are rendered with safe hex indigo fallback
-          if (el.classList.contains('placed-tag-item')) {
-            el.style.backgroundColor = 'transparent';
-            el.style.color = '#000000'; // Set text to black for the PDF
-            el.style.border = 'none';
-            el.style.boxShadow = 'none';
-          }
-        });
+  allElements.forEach((el) => {
+    const computed = window.getComputedStyle(el);
+
+    const sanitizeColor = (value, fallback = 'transparent') => {
+      if (!value) return fallback;
+
+      // html2canvas cannot parse oklch()
+      if (value.includes('oklch(')) {
+        return fallback;
       }
+
+      return value;
+    };
+
+    try {
+      el.style.color = sanitizeColor(computed.color, '#000');
+      el.style.backgroundColor = sanitizeColor(
+        computed.backgroundColor,
+        'transparent'
+      );
+
+      el.style.borderColor = sanitizeColor(
+        computed.borderColor,
+        'transparent'
+      );
+
+      el.style.boxShadow = 'none';
+      el.style.filter = 'none';
+    } catch (err) {
+      console.warn('Style sanitization failed:', err);
+    }
+  });
+
+  // Extra cleanup for placed tags
+  const tags = clonedDoc.querySelectorAll('.placed-tag-item');
+
+  tags.forEach((el) => {
+    const parent = el.offsetParent;
+    if (parent) {
+      const elRect = el.getBoundingClientRect();
+      const parentRect = parent.getBoundingClientRect();
+      const leftPx = elRect.left - parentRect.left;
+      const topPx = elRect.top - parentRect.top - 6; // increased upward adjustment
+      el.style.left = `${leftPx}px`;
+      el.style.top = `${topPx}px`;
+      el.style.transform = 'none';
+      el.style.margin = '0';
+    }
+
+    el.style.backgroundColor = 'transparent';
+    el.style.border = 'none';
+    el.style.color = '#000';
+    el.style.boxShadow = 'none';
+    el.style.webkitFontSmoothing = 'antialiased';
+  });
+}
     }).then(canvas => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0); // Use JPEG for smaller file size, 1.0 quality
-      
+
       // Create a new PDF document with the same dimensions as the captured image
       const pdf = new jsPDF({
         // Determine orientation based on the captured image dimensions
-        orientation: pdfPageRect.width > pdfPageRect.height ? 'l' : 'p', 
+        orientation: width > height ? 'l' : 'p', 
         unit: 'px', // Use pixels as unit
-        format: [pdfPageRect.width, pdfPageRect.height] // Set custom format to match canvas dimensions
+        format: [width, height] // Set custom format to match canvas dimensions
       });
 
       // Add the image to the PDF, covering the entire page
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageRect.width, pdfPageRect.height);
-      
+      pdf.addImage(imgData, 'JPEG', 0, 0, width, height);
+
       const fileName = `${templateName.replace(/\s+/g, '_')}_page_${currentPage}_with_data.pdf`;
       pdf.save(fileName);
     }).catch(error => {
@@ -810,7 +845,7 @@ export function DocTagMapper({
                         className={`placed-tag-item pointer-events-auto group flex items-center justify-center whitespace-nowrap px-2 py-1 rounded-md font-bold shadow-sm cursor-move transition-all ${
                           selectedFieldId === field.instanceId
                             ? 'bg-indigo-600 text-white border-2 border-white ring-2 ring-indigo-600'
-                            : 'bg-indigo-600/10 border border-indigo-600/50 text-indigo-700 hover:bg-indigo-600/20'
+                            : 'bg-transparent text-slate-900 border border-transparent hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 hover:shadow-sm'
                         }`}
                       >
                         <span className="pointer-events-none uppercase">{getFieldValue(field.id)}</span>
