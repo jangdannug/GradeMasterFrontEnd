@@ -468,8 +468,8 @@ export function DocTagMapper({
     setPlacedFields(placedFields.filter(f => f.instanceId !== instanceId));
   };
 
-  // Shared poller to wait for the PDF canvas to be fully painted in the viewer
-  const waitPdfReady = () => new Promise(resolve => {
+  // Shared poller to wait for the PDF canvas to be fully painted in the viewer.
+  const waitPdfReady = () => new Promise((resolve) => {
     const check = setInterval(() => {
       if (isPdfReady) {
         clearInterval(check);
@@ -481,7 +481,8 @@ export function DocTagMapper({
   });
 
   // Shared logic to capture the current state of the page container.
-  // This performs the html2canvas part and returns the canvas and dimensions.
+  // This performs the html2canvas part and returns the image data and dimensions.
+  // Positioning and sanitization logic is preserved exactly as requested.
   const getCanvasCaptureData = async () => {
     const container = pageRef.current;
     if (!container) return null;
@@ -490,7 +491,7 @@ export function DocTagMapper({
     const width = rect.width;
     const height = rect.height;
 
-    const canvas = await html2canvas(container, {
+    const canvas = await html2canvas(container, { // html2canvas is used here
       scale: window.devicePixelRatio * 2, // Increased scale for finer positioning precision
       useCORS: true, // Important for images loaded from external sources
       logging: false,
@@ -547,32 +548,16 @@ export function DocTagMapper({
     return { imgData, width, height };
   };
 
-  // Helper to capture the current view and save it as a single PDF
-  const captureAndSaveSinglePdf = async (student) => {
-    const cap = await getCanvasCaptureData();
-    if (!cap) return;
-    
-    const pdf = new jsPDF({
-      orientation: cap.width > cap.height ? 'l' : 'p', 
-      unit: 'px',
-      format: [cap.width, cap.height]
-    });
-    pdf.addImage(cap.imgData, 'JPEG', 0, 0, cap.width, cap.height);
-    const fileName = `${templateName.replace(/\s+/g, '_')}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
-    pdf.save(fileName);
-  };
-
-  // Multi-page combined export using the sequential "Load -> Wait -> Export" logic
-  const generateCombinedPdf = async () => {
-    if (!exportPage1Id || !exportPage2Id) {
-      alert("Please select both Layout 1 and Layout 2.");
+  // Unified export function for single, combined, and bulk exports from the modal
+  const handleExportFromModal = async () => {
+    if (!exportPage1Id) {
+      alert("Please select at least one layout for Page 1.");
       return;
     }
 
     const targetStudents = exportMode === 'bulk' ? students : [currentStudent];
     setIsExportModalOpen(false);
     setIsGeneratingBulk(true);
-
     try {
       for (let i = 0; i < targetStudents.length; i++) {
         const student = targetStudents[i];
@@ -580,7 +565,10 @@ export function DocTagMapper({
         setSelectedStudentId(student.id);
 
         let studentPdf = null;
-        const layoutIds = [exportPage1Id, exportPage2Id];
+        const layoutIds = [exportPage1Id];
+        if (exportPage2Id) {
+          layoutIds.push(exportPage2Id);
+        }
 
         for (let j = 0; j < layoutIds.length; j++) {
           const template = templates.find(t => t.id === layoutIds[j]);
@@ -609,59 +597,14 @@ export function DocTagMapper({
         }
 
         if (studentPdf) {
-          const fileName = `${templateName.replace(/\s+/g, '_')}_Combined_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
+          const suffix = layoutIds.length > 1 ? '_Combined' : '';
+          const fileName = `${templateName.replace(/\s+/g, '_')}${suffix}_${student.name.replace(/[,\s]+/g, '_')}.pdf`;
           studentPdf.save(fileName);
         }
       }
     } catch (err) {
       console.error("Combined Export Error:", err);
       alert("The process was interrupted. Please try again.");
-    } finally {
-      setIsGeneratingBulk(false);
-    }
-  };
-
-  const downloadPdf = async () => {
-    if (!pageRef.current || !pdfFile || !currentStudent) {
-      alert("No PDF document or page to export.");
-      return;
-    }
-
-    try {
-      await captureAndSaveSinglePdf(currentStudent);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF with data.");
-    }
-  };
-
-  const generateBulkPdf = async () => {
-    if (!pdfFile || students.length === 0) {
-      alert("No document or student data available for bulk export.");
-      return;
-    }
-
-    if (!window.confirm(`This will sequentially generate separate PDFs for all ${students.length} students. Proceed?`)) return;
-
-    setIsGeneratingBulk(true);
-    
-    try {
-      for (let i = 0; i < students.length; i++) {
-        const student = students[i];
-        setBulkProgress({ current: i + 1, total: students.length });
-        
-        // 1. Load the student data (triggers re-render of labels)
-        setSelectedStudentId(student.id);
-        
-        // 2. Wait for React to re-render the labels (0.4s delay for safety)
-        await new Promise(resolve => setTimeout(resolve, 400));
-
-        // 3. Execute capture using the exact same logic as single export
-        await captureAndSaveSinglePdf(student);
-      }
-    } catch (err) {
-      console.error("Bulk Export Error:", err);
-      alert("Bulk extract process interrupted.");
     } finally {
       setIsGeneratingBulk(false);
     }
@@ -860,30 +803,16 @@ export function DocTagMapper({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Multi-Page Export Button (opens modal) */}
           <button
             onClick={() => { setExportMode('single'); setIsExportModalOpen(true); }}
-            disabled={templates.length < 2 || isGeneratingBulk}
+            disabled={templates.length === 0 || isGeneratingBulk} // Disable if no templates or bulk is running
             className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-30"
-            title="Combined Multi-page Export"
+            title="Export Layouts"
           >
-            <Printer size={20} />
+            <Files size={20} /> {/* Changed icon to Files */}
           </button>
-          <button
-            onClick={generateBulkPdf}
-            disabled={!pdfFile || isGeneratingBulk}
-            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-50"
-            title="Bulk Export All Records"
-          >
-            {isGeneratingBulk ? <Loader2 size={20} className="animate-spin" /> : <Files size={20} />}
-          </button>
-          <button
-            onClick={downloadPdf}
-            disabled={!pdfFile}
-            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Export PDF with Data"
-          >
-            <Download size={20} />
-          </button>
+          {/* Removed the old single downloadPdf button */}
           <button
             onClick={() => window.print()}
             disabled={!pdfFile}
@@ -1231,7 +1160,7 @@ export function DocTagMapper({
                     onChange={(e) => setExportPage2Id(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase"
                   >
-                    <option value="">Select Layout...</option>
+                    <option value="">No Second Page (Optional)</option>
                     {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
@@ -1257,82 +1186,12 @@ export function DocTagMapper({
                   Cancel
                 </button>
                 <button 
-                  onClick={generateCombinedPdf}
-                  disabled={!exportPage1Id || !exportPage2Id}
+                  onClick={handleExportFromModal}
+                  disabled={!exportPage1Id}
                   className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Download size={16} /> 
-                  {exportMode === 'bulk' ? 'Bulk Export' : 'Export PDF'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Combined Multi-page Export Modal */}
-      <AnimatePresence>
-        {isExportModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsExportModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-6">
-              <div>
-                <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-800">Multi-Page Export</h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">Select two layouts to merge into one student document.</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 1 (Front)</label>
-                  <select 
-                    value={exportPage1Id} 
-                    onChange={(e) => setExportPage1Id(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase"
-                  >
-                    <option value="">Select Layout...</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Page 2 (Back)</label>
-                  <select 
-                    value={exportPage2Id} 
-                    onChange={(e) => setExportPage2Id(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold uppercase"
-                  >
-                    <option value="">Select Layout...</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="pt-2">
-                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <input 
-                      type="checkbox" 
-                      id="bulkToggle" 
-                      checked={exportMode === 'bulk'} 
-                      onChange={(e) => setExportMode(e.target.checked ? 'bulk' : 'single')}
-                      className="size-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500" 
-                    />
-                    <label htmlFor="bulkToggle" className="text-xs font-black uppercase text-slate-700 cursor-pointer">
-                      Apply to all {students.length} students
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button onClick={() => setIsExportModalOpen(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-black uppercase text-slate-500 hover:bg-slate-50 transition-colors">
-                  Cancel
-                </button>
-                <button 
-                  onClick={generateCombinedPdf}
-                  disabled={!exportPage1Id || !exportPage2Id}
-                  className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <Download size={16} /> 
-                  {exportMode === 'bulk' ? 'Bulk Export' : 'Export PDF'}
+                  {exportMode === 'bulk' ? (exportPage2Id ? 'Bulk Combine & Export' : 'Bulk Export') : (exportPage2Id ? 'Combine & Export PDF' : 'Export PDF')}
                 </button>
               </div>
             </motion.div>
