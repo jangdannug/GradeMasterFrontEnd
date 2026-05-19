@@ -81,6 +81,7 @@ export function DocTagMapper({
   // UI State
   const [isPdfReady, setIsPdfReady] = useState(false);
   const [scale, setScale] = useState(1.1);
+  const [printOrientation, setPrintOrientation] = useState('portrait');
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isTemplatesDropdownOpen, setIsTemplatesDropdownOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -213,6 +214,26 @@ export function DocTagMapper({
     setNumPages(null);
     setIsPdfReady(false);
   }, [pdfFile]);
+
+  // Auto-detect print orientation based on PDF page dimensions
+  useEffect(() => {
+    const updateOrientation = () => {
+      const pageEl = pageRef.current;
+      if (!pageEl) return;
+      const rect = pageEl.getBoundingClientRect();
+      setPrintOrientation(rect.width > rect.height ? 'landscape' : 'portrait');
+    };
+
+    updateOrientation();
+    const observer = new ResizeObserver(updateOrientation);
+    if (pageRef.current) observer.observe(pageRef.current);
+    window.addEventListener('resize', updateOrientation);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateOrientation);
+    };
+  }, [isPdfReady, currentPage, pdfFile, scale]);
 
   // Handle Browser Fullscreen API
   const toggleFullscreen = () => {
@@ -628,10 +649,10 @@ export function DocTagMapper({
             <AnimatePresence>
               {isTemplatesDropdownOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsTemplatesDropdownOpen(false)} />
+                  <div className="fixed inset-0 z-40 print-hidden" onClick={() => setIsTemplatesDropdownOpen(false)} />
                   <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full mt-2 left-0 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 overflow-hidden"
+                    className="absolute top-full mt-2 left-0 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 overflow-hidden print-hidden"
                   >
                     <div className="flex items-center justify-between p-3 mb-1">
                       <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Saved Layouts</span>
@@ -770,7 +791,7 @@ export function DocTagMapper({
       {/* Canvas Area */}
       <main className="flex-1 overflow-auto p-2 md:p-4 bg-slate-200/50 flex justify-center scrollbar-hide">
         {pdfFile ? (
-          <div className="relative shadow-2xl bg-white w-fit h-fit" ref={pageRef} onClick={handlePageClick}>
+          <div className="relative shadow-2xl bg-white w-fit h-fit printable-pdf" ref={pageRef} onClick={handlePageClick}>
             <Document
               key={activeTemplateId || 'new-document'}
               file={pdfFile}
@@ -871,7 +892,7 @@ export function DocTagMapper({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
                   style={{ left: menuAnchor.clientX, top: menuAnchor.clientY }}
-                  className="fixed z-50 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+                  className="fixed z-50 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden print-hidden"
                 >
                   <div className="p-3 bg-slate-50 border-b border-slate-100 space-y-2">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Assign Data Tag</p>
@@ -936,10 +957,10 @@ export function DocTagMapper({
       {/* Student Management Modal */}
       <AnimatePresence>
         {isStudentModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 print-hidden">
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm print-hidden"
               onClick={() => setIsStudentModalOpen(false)}
             />
             <motion.div
@@ -1065,6 +1086,14 @@ export function DocTagMapper({
           margin: 0 auto;
           border-radius: 4px;
         }
+        @page {
+          size: ${printOrientation};
+          margin: 0;
+        }
+        body, html {
+          margin: 0;
+          padding: 0;
+        }
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
@@ -1073,16 +1102,31 @@ export function DocTagMapper({
           scrollbar-width: none;
         }
         @media print {
-          header, footer, aside, .print-hidden, .fixed {
+          header, footer, aside, .print-hidden {
             display: none !important;
           }
-          main {
-            background: white !important;
+          body, html {
+            margin: 0 !important;
             padding: 0 !important;
+            width: auto !important;
+            min-height: auto !important;
+          }
+          main, .printable-pdf {
+            width: auto !important;
+            max-width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
             overflow: visible !important;
             display: block !important;
-            height: auto !important;
             position: static !important;
+          }
+          .react-pdf__Page__canvas, .react-pdf__Page {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+          }
+          .react-pdf__Page__canvas {
+            page-break-after: always !important;
           }
           .shadow-2xl {
             box-shadow: none !important;
